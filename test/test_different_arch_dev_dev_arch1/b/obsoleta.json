@@ -1,0 +1,13 @@
+{
+  "name": "b",
+  "state": "development",
+  "version": "0.1.2",
+  "depends": [
+      {
+      "name": "c",
+      "state": "release",
+      "version": "1.2.3",
+      "arch": "linux_x86_64"
+      }
+  ]
+}

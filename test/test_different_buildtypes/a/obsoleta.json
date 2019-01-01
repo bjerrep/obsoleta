@@ -1,0 +1,12 @@
+{
+  "name": "a",
+  "track": "development",
+  "version": "0.1.2",
+  "buildtype": "debug",
+  "depends": [
+    {
+      "name": "b",
+      "version": "0.1.2"
+    }
+  ]
+}

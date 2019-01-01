@@ -1,0 +1,12 @@
+{
+  "name": "c",
+  "state": "development",
+  "version": "0.1.2",
+  "depends": [
+      {
+      "name": "a",
+      "state": "development",
+      "version": "0.1.2"
+      }
+  ]
+}
