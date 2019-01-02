@@ -183,6 +183,10 @@ class Package:
             optionals = optionals and (self.track != Track.production or self.buildtype == other.buildtype)
         return optionals
 
+    def matches_without_version(self, other):
+        match = self.name == other.name and self.track == other.track and self.arch == other.arch and self.buildtype == other.buildtype
+        return match
+
     def __lt__(self, other):
         return self.version < other.version
 
@@ -276,7 +280,7 @@ class Obsoleta:
         json_files = sorted(json_files)
         for file in json_files:
             with open(file) as f:
-                log.debug('parsing file %s' % file)
+                log.debug('[parsing file %s]' % file)
                 dict = json.loads(f.read())
                 package = Package(dict, os.path.dirname(file))
                 self.loaded_packages.append(package)
@@ -296,14 +300,15 @@ class Obsoleta:
 
         for dependency in dependencies:
             resolved = self.lookup(dependency)
-            log.debug(indent + 'will use %s for dependency %s' % (str(resolved), str(dependency)))
+            log.debug(indent + 'lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
+
+            _2 = Indent()
 
             if resolved:
                 resolved.parent = package
                 resolved = copy.deepcopy(resolved)
                 if level > 1:
                     resolved.set_lookup()
-                _2 = Indent()
                 for d in resolved.get_dependencies():
                     circular_dependency = d.search_upstream()
                     if circular_dependency:
@@ -335,23 +340,35 @@ class Obsoleta:
         return max(candidates)
 
     def check_for_multiple_versions(self):
-        packages = []
+        log.info('checking for multiple versions:')
+        _1 = Indent()
 
         for package in self.loaded_packages:
-            packages += self.get_package_list(package)
-        unique_packages = set(packages)
+            package_list = []
+            self.get_package_list(package, package_list)
+            unique_packages = set(package_list)
 
-        names = [p.get_name() for p in unique_packages]
+            names = [p.get_name() for p in unique_packages]
+            names = [name for name, count in collections.Counter(names).items() if count > 1]
 
-        names = [name for name, count in collections.Counter(names).items() if count > 1]
+            for name in names:
+                candidate = []
+                for _package in unique_packages:
+                    if _package.get_name() == name:
+                        candidate.append(_package)
 
-        for name in names:
-            for package in self.loaded_packages:
-                if package.get_name() == name:
-                    package.add_error(Error(ErrorCode.MULTIPLE_VERSIONS, package))
-                    log.debug("adding multiple version error to %s", package.to_string())
+                for i in range(len(candidate)):
+                    for j in candidate[i+1:]:
+                        if candidate[i].matches_without_version(j):
+                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], "with parent %s" % candidate[i].parent)
+                            log.error(indent + "ERROR: " + err1.to_string())
+                            candidate[i].add_error(err1)
 
-    def get_package_list(self, package, packages=[]):
+                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, "with parent %s" % j.parent)
+                            log.error(indent + "ERROR: " + err2.to_string())
+                            j.add_error(err2)
+
+    def get_package_list(self, package, packages):
         packages.append(package)
         for dependency in package.dependencies:
             self.get_package_list(dependency, packages)
@@ -367,11 +384,11 @@ class Obsoleta:
 
     def dump_build_order(self, package_name):
         packages_build_order = []
-        packages = []
+        package_list = []
         for package in self.loaded_packages:
             if package_name == package.get_name() or package_name == "all":
-                self.get_package_list(package, packages)
-        packages = set(packages)
+                self.get_package_list(package, package_list)
+        packages = set(package_list)
         deleted = []
         package_copy = packages
         found_next = True
@@ -403,24 +420,16 @@ class Obsoleta:
 
         for package in self.loaded_packages:
             if package.get_name() == package_name:
-
-                # first source of errors are those found in the individually copied package objects
-                # made to mimic the dependency hierarchy
                 errors += package.get_errors()
-                dependencies = package.get_dependencies()
-                for _package in dependencies:
-                    errors += _package.get_errors()
-
-                # second source of errors would be those listed on the loaded packages list directly.
-                # (that would currently be multiple version errors).
-                used_packages = set(self.get_package_list(package))
-                for _package in used_packages:
+                package_list = []
+                package_list = set(self.get_package_list(package, package_list))
+                for _package in package_list:
                     for loaded_package in self.loaded_packages:
                         if loaded_package.get_name() == _package.get_name():
                             errors += loaded_package.get_errors()
                             _package.errors = loaded_package.errors
 
-                return set(errors)
+                return list(set(errors))
 
         return ErrorCode.PACKAGE_NOT_FOUND
 
@@ -447,7 +456,7 @@ parser.add_argument('--tree', dest='tree',
 parser.add_argument('--buildorder', dest='buildorder',
                     help='show dependencies in building order for a package or "all" for all packages')
 parser.add_argument('--path', action='store', dest='path',
-                    help='comma seperated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
+                    help=': separated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
 parser.add_argument('--verbose', action='store_true',
                     help='enable log messages')
 parser.add_argument('--printpaths', action='store_true',
@@ -462,7 +471,7 @@ if results.verbose:
 # parse configuration file
 
 try:
-    paths = results.path.split(',')
+    paths = results.path.split(os.pathsep)
 except:
     paths = []
 
@@ -481,7 +490,7 @@ try:
         if env_paths:
             expanded = os.path.expandvars(env_paths)
             log.info('environment search path %s expanded to %s' % (env_paths, expanded))
-            paths += expanded.split(';')
+            paths += expanded.split(os.pathsep)
         using_arch = conf.get('using_arch') == 'on'
         using_track = conf.get('using_track') == 'on'
         using_buildtype = conf.get('using_buildtype') == 'on'
@@ -531,6 +540,7 @@ if not obsoleta.loaded_packages:
 elif results.package:
     log.info('checking package "%s"' % results.package)
     errors = obsoleta.get_errors(results.package)
+
     if errors == ErrorCode.PACKAGE_NOT_FOUND:
         print_error('package "%s" not found' % results.package)
         exit_code = errors

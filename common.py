@@ -26,7 +26,7 @@ class ErrorCode(Enum):
             'Dependency not found',
             'Package not found',
             'Mixing different arch',
-            'Multiple packages',
+            'Multiple versions',
             'Circular dependency',
             'Test failed',
             'Syntax error',
@@ -51,7 +51,7 @@ class Error:
         return self.error_type
 
     def __str__(self):
-        return ErrorCode.to_string(self.error_type.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
+        return ErrorCode.to_string(self.error_type.value) + ': ' + self.package.to_string()
 
     def to_string(self):
         return ErrorCode.to_string(self.error_type.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
@@ -59,5 +59,9 @@ class Error:
     def __repr__(self):
         return str(self)
 
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
     def __hash__(self):
-        return hash(self.to_string())
+        uid = str(self)
+        return hash(uid)

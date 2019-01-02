@@ -1,4 +1,5 @@
 obsoleta.conf
 
+*.pyc
 __pycache__
 .idea

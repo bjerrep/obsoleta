@@ -50,6 +50,9 @@ class Digit:
             return True
         return self.number < other.number
 
+    def increase(self):
+        self.number += 1
+
 
 class Version:
     def __init__(self, version_string='*.*.*'):
@@ -105,6 +108,8 @@ class Version:
                 return False
         return True
 
+    def increase(self, position):
+        self.digits[position].increase()
 
 if __name__ == "__main__":
     aye = 0

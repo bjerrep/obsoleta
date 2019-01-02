@@ -145,7 +145,7 @@ is not legal:
 	  b:test:anyarch:0.1.2
 	       - Package not found: b:test:anyarch:0.1.2 required by a:test:anyarch:0.1.2
 
-Complaining about the package b:test:anyarch:0.1.2 which is a dummy constructed for the occasion might not be the best way to convey the problem but thats the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way is should be.
+Complaining about the package b:test:anyarch:0.1.2 which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
 
 ### Arch
 
@@ -153,7 +153,11 @@ The arch attribute acts as an appendix to the name so e.g. a library can coexist
 
 ### Buildtype
 
-Buildtype is ignored exept for the track 'production' where it is illegal to mix different buildtypes. This is a somewhat debatable implementation and it might not hold in the real world.
+Buildtype is ignored except for the track 'production' where it is illegal to mix different buildtypes. This is a somewhat debatable implementation and it might not hold in the real world.
+
+## Search paths
+
+Obsoleta currently have no concept of a default search path and it will fall over if none is given. Search paths can be specified on the command line using '--path' and/or in the configuration file. All paths are concatenated to a single list which is traversed at each invocation (no caching, at least not yet). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
 
 ## Build support
 
@@ -179,6 +183,6 @@ This is as far as this project has made it for now. But conceptually there isn't
 		export obsoleta=$obsoleta:path # for the build system to use
 		./build.sh
 
-A utility script intended to make usage easier for both a CI and developers is on the future-list. The purpose of such a script should be that it shouldn't normally be required to edit the json files manually once they are made. A developer might use "--increase_minor" and a CI '--increase_build' or '--promote a:development:1.2.3 testing'. Stuff like that.
+The start of a utility script intended to make usage easier for both a CI and developers can be found as dixi.py. The purpose of such a script is that it shouldn't normally be required to edit the json files manually once they are made. A developer might use "--increase_minor" and a CI might use'--increase_build' or '--promote a:development:1.2.3 testing'. Stuff like that. The script does nothing yet.
 
 

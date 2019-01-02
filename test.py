@@ -7,6 +7,9 @@ now it is most of all annoying that this makes it impossible to debug obsoleta u
 from common import ErrorCode
 import subprocess
 import os
+import time
+
+start_time = time.time()
 
 obsoleta_root = os.path.dirname(__file__)
 os.chdir(obsoleta_root)
@@ -27,16 +30,16 @@ def execute(command, expected_exit_code):
         output = output.decode()
         print(output)
         if expected_exit_code != ErrorCode.OK.value:
-            print('  fail - didnt return exit code %i' % (expected_exit_code))
+            print('  process fail - didnt return exit code %i' % (expected_exit_code))
             exit_code = ErrorCode.TEST_FAILED
         return 0, output
     except subprocess.CalledProcessError as e:
         output = e.stdout.decode()
         if e.returncode != expected_exit_code:
-            print('  fail - unexpected exit code (not %i): %s' % (expected_exit_code, str(e)))
+            print('  process fail - unexpected exit code (not %i): %s' % (expected_exit_code, str(e)))
             exit_code = ErrorCode.TEST_FAILED
         else:
-            print('  pass with expected exit code %i %s' % (expected_exit_code, ErrorCode.to_string(expected_exit_code)))
+            print('  process pass with expected exit code %i %s' % (expected_exit_code, ErrorCode.to_string(expected_exit_code)))
         return e.returncode, output
 
 
@@ -96,8 +99,14 @@ err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/test_
 
 title(35, 'failing since a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
 err, output = execute('./obsoleta.py --conf test.conf --path test/test_multiple_versions --check a', ErrorCode.MULTIPLE_VERSIONS)
+print(output)
+test("c:anytrack:anyarch:unknown:1.2.3" in output)
+test("c:anytrack:anyarch:unknown:1.2.4" in output)
 
-title(36, 'fail to list buildorder as there are a circular dependency')
+title(36, 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
+err, output = execute('./obsoleta.py --conf test.conf --path test/test_multiple_versions --check d', ErrorCode.OK)
+
+title(37, 'fail to list buildorder as there are a circular dependency')
 err, output = execute('./obsoleta.py --conf test.conf --buildorder all --path test/test_circular_dependency', ErrorCode.CIRCULAR_DEPENDENCY)
 
 title(40, 'find b in version 0.2.0')
@@ -108,9 +117,9 @@ title(41, 'find b in version 0.2.0')
 err, output = execute('./obsoleta.py --conf test.conf --tree c --path test/range_find_newest', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
-title(42, 'find b in version 0.1.0')
+title(42, 'find b in version 0.2.0')
 err, output = execute('./obsoleta.py --conf test.conf --tree d --path test/range_find_newest', ErrorCode.OK)
-test("b:anytrack:anyarch:unknown:0.1.0" in output)
+test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
 title(43, 'find b in version 0.2.0')
 err, output = execute('./obsoleta.py --conf test.conf --tree e --path test/range_find_newest', ErrorCode.OK)
@@ -119,6 +128,8 @@ test("b:anytrack:anyarch:unknown:0.2.0" in output)
 title(50, 'find b in version 0.1.2, higher versions exist but they are discontiued and defective respectively')
 err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/test_discontinued_defective', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.1.2" in output)
+
+print('test suite took %.3f secs' % (time.time() - start_time))
 
 if exit_code == ErrorCode.OK:
     print("\npass\n")
