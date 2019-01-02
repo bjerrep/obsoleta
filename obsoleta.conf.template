@@ -2,6 +2,7 @@
   "paths": [
       ""
       ],
+  "env_paths": "$OBSOLETA_ENV_PATHS",
   "using_arch": "on",
   "using_track": "on",
   "using_buildtype": "on"

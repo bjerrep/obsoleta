@@ -8,6 +8,7 @@ import os
 import copy
 from common import ErrorCode, Error, IllegalPackage
 from version import Version
+import collections
 
 indent = ''
 
@@ -47,7 +48,7 @@ class Package:
         self.path = path
         self.dependencies = []
         self.direct_dependency = True
-        self.error = []
+        self.errors = []
 
         self.name = dict["name"]
 
@@ -138,8 +139,8 @@ class Package:
         extra = ''
         if not self.direct_dependency:
             extra += ':(lookup)'
-        if self.error:
-            extra += ':(errors=%i)' % len(self.error)
+        if self.errors:
+            extra += ':(errors=%i)' % len(self.errors)
         if self.dependencies:
             extra += ':[depends='
             for dependency in self.dependencies:
@@ -190,7 +191,7 @@ class Package:
 
     def dump(self, ret, error, indent='', root=True):
         title = indent + self.to_string()
-        for err in self.error:
+        for err in self.errors:
             title += "\n" + indent + '     - ' + err.to_string()
             error = err.get_error()
         ret.append(title)
@@ -203,16 +204,16 @@ class Package:
         return self.dependencies
 
     def get_root_error(self):
-        return self.error
+        return self.errors
 
     def get_errors(self, errors=[]):
-        errors += self.error
+        errors += self.errors
         for dependency in self.dependencies:
             errors += dependency.get_errors(errors)
         return errors
 
     def add_error(self, error):
-        self.error.append(error)
+        self.errors.append(error)
 
     def set_lookup(self):
         self.direct_dependency = False
@@ -251,16 +252,15 @@ class Obsoleta:
 
     def find_packages_in_path(self, path, results=[], maxdepth=2):
         self.dirs_checked += 1
-        with os.scandir(path) as it:
-            for entry in it:
-                if entry.is_dir():
-                    if maxdepth:
-                        maxdepth -= 1
-                        self.find_packages_in_path(entry.path, results, maxdepth)
-                        maxdepth += 1
-                if entry.name == 'obsoleta.json':
-                    results.append(entry.path)
-                    continue
+        for entry in os.scandir(path):
+            if entry.is_dir():
+                if maxdepth:
+                    maxdepth -= 1
+                    self.find_packages_in_path(entry.path, results, maxdepth)
+                    maxdepth += 1
+            if entry.name == 'obsoleta.json':
+                results.append(entry.path)
+                continue
 
         return results
 
@@ -335,19 +335,23 @@ class Obsoleta:
         return max(candidates)
 
     def check_for_multiple_versions(self):
-        for package in self.loaded_packages:
-            packages = []
-            self.get_package_list(package, packages)
-            names = [p.get_name() for p in packages]
-            for name in set(names):
-                names.remove(name)
-            names = list(set(names))
-            for name in names:
-                for package in packages:
-                    if package.get_name() == name:
-                        package.add_error(Error(ErrorCode.MULTIPLE_VERSIONS, package))
+        packages = []
 
-    def get_package_list(self, package, packages):
+        for package in self.loaded_packages:
+            packages += self.get_package_list(package)
+        unique_packages = set(packages)
+
+        names = [p.get_name() for p in unique_packages]
+
+        names = [name for name, count in collections.Counter(names).items() if count > 1]
+
+        for name in names:
+            for package in self.loaded_packages:
+                if package.get_name() == name:
+                    package.add_error(Error(ErrorCode.MULTIPLE_VERSIONS, package))
+                    log.debug("adding multiple version error to %s", package.to_string())
+
+    def get_package_list(self, package, packages=[]):
         packages.append(package)
         for dependency in package.dependencies:
             self.get_package_list(dependency, packages)
@@ -399,17 +403,31 @@ class Obsoleta:
 
         for package in self.loaded_packages:
             if package.get_name() == package_name:
+
+                # first source of errors are those found in the individually copied package objects
+                # made to mimic the dependency hierarchy
                 errors += package.get_errors()
                 dependencies = package.get_dependencies()
+                for _package in dependencies:
+                    errors += _package.get_errors()
 
-                for package in dependencies:
-                    errors += package.get_errors()
+                # second source of errors would be those listed on the loaded packages list directly.
+                # (that would currently be multiple version errors).
+                used_packages = set(self.get_package_list(package))
+                for _package in used_packages:
+                    for loaded_package in self.loaded_packages:
+                        if loaded_package.get_name() == _package.get_name():
+                            errors += loaded_package.get_errors()
+                            _package.errors = loaded_package.errors
+
                 return set(errors)
 
         return ErrorCode.PACKAGE_NOT_FOUND
 
 
 # ---------------------------------------------------------------------------------------------
+
+obsoleta_root = os.path.dirname(__file__)
 
 def print_error(message):
     print(message)
@@ -448,7 +466,7 @@ try:
 except:
     paths = []
 
-conffile = 'obsoleta.conf'
+conffile = os.path.join(obsoleta_root, 'obsoleta.conf')
 if results.conffile:
     conffile = results.conffile
     if not os.path.exists(conffile):
@@ -459,11 +477,16 @@ try:
     with open(conffile) as f:
         conf = json.loads(f.read())
         paths += conf.get('paths')
+        env_paths = conf.get('env_paths')
+        if env_paths:
+            expanded = os.path.expandvars(env_paths)
+            log.info('environment search path %s expanded to %s' % (env_paths, expanded))
+            paths += expanded.split(';')
         using_arch = conf.get('using_arch') == 'on'
         using_track = conf.get('using_track') == 'on'
         using_buildtype = conf.get('using_buildtype') == 'on'
 except FileNotFoundError:
-    pass
+    log.info('no configuration file %s found - continuing regardless' % conffile)
 
 
 paths = [os.path.abspath(p) for p in paths if p]

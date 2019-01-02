@@ -4,9 +4,12 @@ Black-box test suite. Initially it seemed like a good idea to write a test suite
 now it is most of all annoying that this makes it impossible to debug obsoleta using the test directly...
 ./test/ is tests that executes without fatal problems and ./exception/ is for tests that makes Obsoleta give up.
 """
-import subprocess
-
 from common import ErrorCode
+import subprocess
+import os
+
+obsoleta_root = os.path.dirname(__file__)
+os.chdir(obsoleta_root)
 
 exit_code = ErrorCode.OK
 
