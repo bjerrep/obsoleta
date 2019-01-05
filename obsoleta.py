@@ -6,7 +6,7 @@ from log import logger as log
 import logging
 import os
 import copy
-from common import ErrorCode, Error, IllegalPackage
+from common import ErrorCode, Error, NoPackage, IllegalPackage
 from version import Version
 import collections
 
@@ -43,49 +43,71 @@ TrackToString = ['defective', 'discontinued', 'anytrack', 'development', 'testin
 
 
 class Package:
-    def __init__(self, dict, path=None):
+    def __init__(self, packagepath, compact=None, dictionary=None):
         self.parent = None
-        self.path = path
-        self.dependencies = []
+        self.packagepath = packagepath
+        self.dependencies = None
         self.direct_dependency = True
-        self.errors = []
+        self.errors = None
 
-        self.name = dict["name"]
+        if packagepath:
+            if not packagepath.endswith('obsoleta.json'):
+                self.packagepath = os.path.join(packagepath, 'obsoleta.json')
+            with open(self.packagepath) as f:
+                log.debug('[parsing file %s]' % self.packagepath)
+                dictionary = json.loads(f.read())
+                self.construct_from_dict(dictionary)
+        elif compact:
+            self.construct_from_compact(compact)
+        else:
+            self.construct_from_dict(dictionary)
+
+    def construct_from_dict(self, dictionary):
+
+        self.name = dictionary["name"]
 
         try:
-            self.version = Version(dict["version"])
+            self.version = Version(dictionary["version"])
         except:
-            raise IllegalPackage("invalid version number in %s" % self.path)
+            raise IllegalPackage("invalid version number in %s" % self.packagepath)
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         if using_track:
-            if 'track' in dict:
+            if 'track' in dictionary:
                 try:
-                    self.track = Track[dict['track']]
+                    self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise IllegalPackage('invalid track name "%s" in %s' % (dict['track'], self.path))
+                    raise IllegalPackage('invalid track name "%s" in %s' % (dictionary['track'], self.packagepath))
             else:
                 self.track = Track.ANY
 
         if using_arch:
             try:
-                self.arch = dict["arch"]
+                self.arch = dictionary["arch"]
             except:
                 self.arch = "anyarch"
 
         if using_buildtype:
-            if 'buildtype' in dict:
+            if 'buildtype' in dictionary:
                 try:
-                    self.buildtype = dict["buildtype"]
+                    self.buildtype = dictionary["buildtype"]
                 except:
-                    raise IllegalPackage('invalid buildtype "%s" in %s' % (dict['buildtype'], self.path))
+                    raise IllegalPackage('invalid buildtype "%s" in %s' % (dictionary['buildtype'], self.packagepath))
             else:
                 self.buildtype = buildtype_unknown
 
+        log.debug(indent + '%s' % self.to_extra_string())
+
         try:
-            dependencies = dict["depends"]
+            dependencies = dictionary["depends"]
+
+            if dependencies:
+                if not self.dependencies:
+                    self.dependencies = []
+                _i = Indent()
+
             for dependency in dependencies:
-                package = Package(dependency, path)
+                package = Package(None, None, dependency)
                 package.parent = self
                 # inherit optionals from the package if they are unspecified. The downside is that they will no
                 # longer look exactly as they appear in the package file, the upside is that they now tell
@@ -103,15 +125,36 @@ class Package:
                         package.buildtype = self.buildtype
 
                 self.dependencies.append(package)
+
         except KeyError:
             pass
         except Exception as e:
             log.critical("Package caught %s" % str(e))
             raise e
 
-        # This will list any dependencies as they get parsed, before the package itself, but this way the
-        # dependencies for the package itself when it is printed will be in the inherited form.
-        log.debug('  %s' % self.to_extra_string())
+    def construct_from_compact(self, compact):
+        self.name = '*'
+        self.version = Version('*')
+        if using_track:
+            self.track = Track.ANY
+        if using_arch:
+            self.arch = 'anyarch'
+        if using_buildtype:
+            self.buildtype = buildtype_unknown
+
+        if compact != '*' and compact != 'all':
+            entries = compact.split(':')
+            try:
+                self.name = entries.pop(0)
+                if using_track:
+                    self.track = Track[entries.pop(0)]
+                if using_arch:
+                    self.arch = entries.pop(0)
+                if using_buildtype:
+                    self.buildtype = entries.pop(0)
+                self.version = Version(entries.pop(0))
+            except:
+                pass
 
     def get_name(self):
         return self.name
@@ -120,7 +163,7 @@ class Package:
         return self.version
 
     def get_path(self):
-        return self.path
+        return self.packagepath
 
     def to_string(self):
         # The fully unique identifier string for a package
@@ -155,21 +198,26 @@ class Package:
         return self.to_string()
 
     def __eq__(self, other):
-        if self.name != other.name or self.version != other.version:
-            return False
+        if self.name != '*' and other.name != '*':
+            if self.name != other.name or self.version != other.version:
+                return False
 
         optionals = True
         if using_track:
-            optionals = optionals and self.track == other.track
+            if other.track != Track.ANY:
+                optionals = optionals and self.track == other.track
         if using_arch:
-            optionals = optionals and self.arch == other.arch
+            if other.arch != 'anyarch':
+                optionals = optionals and self.arch == other.arch
         if using_buildtype:
-            optionals = optionals and self.buildtype == other.buildtype
+            if other.buildtype != 'unknown':
+                optionals = optionals and self.buildtype == other.buildtype
         return optionals
 
     def equal_or_better(self, other):
-        if self.name != other.name or self.version != other.version:
-            return False
+        if self.name != '*' and other.name != '*':
+            if self.name != other.name or self.version != other.version:
+                return False
 
         optionals = True
         if using_track:
@@ -195,9 +243,10 @@ class Package:
 
     def dump(self, ret, error, indent='', root=True):
         title = indent + self.to_string()
-        for err in self.errors:
-            title += "\n" + indent + '     - ' + err.to_string()
-            error = err.get_error()
+        if self.errors:
+            for err in self.errors:
+                title += "\n" + indent + '     - ' + err.to_string()
+                error = err.get_error()
         ret.append(title)
         if self.dependencies:
             for dependency in self.dependencies:
@@ -211,18 +260,23 @@ class Package:
         return self.errors
 
     def get_errors(self, errors=[]):
-        errors += self.errors
-        for dependency in self.dependencies:
-            errors += dependency.get_errors(errors)
+        if self.errors:
+            errors += self.errors
+        if self.dependencies:
+            for dependency in self.dependencies:
+                dependency.get_errors(errors)
         return errors
 
     def add_error(self, error):
+        if not self.errors:
+            self.errors = []
         self.errors.append(error)
 
     def set_lookup(self):
         self.direct_dependency = False
-        for dependency in self.dependencies:
-            dependency.direct_dependency = False
+        if self.dependencies:
+            for dependency in self.dependencies:
+                dependency.direct_dependency = False
 
     def search_upstream(self, package_under_test=None, found=False):
         if not package_under_test:
@@ -247,6 +301,9 @@ class Obsoleta:
 
         self.loaded_packages = []
         self.load(self.package_files)
+
+        if not self.loaded_packages:
+            raise NoPackage("didn't find any packages")
 
         for package in self.loaded_packages:
             self.resolve_dependencies(package)
@@ -279,11 +336,8 @@ class Obsoleta:
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
-            with open(file) as f:
-                log.debug('[parsing file %s]' % file)
-                dict = json.loads(f.read())
-                package = Package(dict, os.path.dirname(file))
-                self.loaded_packages.append(package)
+            package = Package(file)
+            self.loaded_packages.append(package)
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
@@ -294,40 +348,44 @@ class Obsoleta:
         _1 = Indent()
 
         dependencies = package.get_dependencies()
-        package.dependencies = []
 
-        level += 1
+        if dependencies:
+            package.dependencies = []
 
-        for dependency in dependencies:
-            resolved = self.lookup(dependency)
-            log.debug(indent + 'lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
+            level += 1
 
-            _2 = Indent()
+            for dependency in dependencies:
+                resolved = self.lookup(dependency)
+                log.debug(indent + 'lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
 
-            if resolved:
-                resolved.parent = package
-                resolved = copy.deepcopy(resolved)
-                if level > 1:
-                    resolved.set_lookup()
-                for d in resolved.get_dependencies():
-                    circular_dependency = d.search_upstream()
-                    if circular_dependency:
-                        resolved.add_error(Error(ErrorCode.CIRCULAR_DEPENDENCY, d, 'required by ' + package.to_string()))
-                        package.dependencies.append(resolved)
-                        return False
-                resolved.set_lookup()
-                package.dependencies.append(resolved)
-                self.resolve_dependencies(resolved, level)
-            else:
-                resolved = copy.deepcopy(dependency)
-                if level > 1:
-                    resolved.set_lookup()
-                resolved.add_error(Error(ErrorCode.PACKAGE_NOT_FOUND, resolved, 'required by ' + package.to_string()))
-                resolved.parent = package
-                package.dependencies.append(resolved)
-                log.debug(indent + 'package ' + dependency.to_string() + ' does not exist')
+                _2 = Indent()
 
-        level -= 1
+                if resolved:
+                    resolved.parent = package
+                    resolved = copy.deepcopy(resolved)
+                    if level > 1:
+                        resolved.set_lookup()
+                    resolved_dependencies = resolved.get_dependencies()
+                    if resolved_dependencies:
+                        for d in resolved_dependencies:
+                            circular_dependency = d.search_upstream()
+                            if circular_dependency:
+                                resolved.add_error(Error(ErrorCode.CIRCULAR_DEPENDENCY, d, 'required by ' + package.to_string()))
+                                package.dependencies.append(resolved)
+                                return False
+
+                    package.dependencies.append(resolved)
+                    self.resolve_dependencies(resolved, level)
+                else:
+                    resolved = copy.deepcopy(dependency)
+                    if level > 1:
+                        resolved.set_lookup()
+                    resolved.add_error(Error(ErrorCode.PACKAGE_NOT_FOUND, resolved, 'required by ' + package.to_string()))
+                    resolved.parent = package
+                    package.dependencies.append(resolved)
+                    log.debug(indent + 'package ' + dependency.to_string() + ' does not exist')
+
+            level -= 1
         return True
 
     def lookup(self, target_package):
@@ -370,23 +428,24 @@ class Obsoleta:
 
     def get_package_list(self, package, packages):
         packages.append(package)
-        for dependency in package.dependencies:
-            self.get_package_list(dependency, packages)
+        if package.dependencies:
+            for dependency in package.dependencies:
+                self.get_package_list(dependency, packages)
         return packages
 
     def dump_tree(self, root_package):
         ret = []
         error = ErrorCode.OK
         for package in self.loaded_packages:
-            if root_package == 'all' or root_package == package.get_name():
+            if package == root_package:
                 error = package.dump(ret, error)
         return ret, error
 
-    def dump_build_order(self, package_name):
+    def dump_build_order(self, root_package):
         packages_build_order = []
         package_list = []
         for package in self.loaded_packages:
-            if package_name == package.get_name() or package_name == "all":
+            if package == root_package:
                 self.get_package_list(package, package_list)
         packages = set(package_list)
         deleted = []
@@ -415,21 +474,22 @@ class Obsoleta:
 
         return package_copy, packages_build_order
 
-    def get_errors(self, package_name):
+    def get_errors(self, package):
         errors = []
 
-        for package in self.loaded_packages:
-            if package.get_name() == package_name:
-                errors += package.get_errors()
-                package_list = []
-                package_list = set(self.get_package_list(package, package_list))
-                for _package in package_list:
-                    for loaded_package in self.loaded_packages:
-                        if loaded_package.get_name() == _package.get_name():
-                            errors += loaded_package.get_errors()
-                            _package.errors = loaded_package.errors
+        if self.loaded_packages:
+            for loaded_package in self.loaded_packages:
+                if loaded_package == package:
+                    errors += loaded_package.get_errors()
+                    package_list = []
+                    package_list = set(self.get_package_list(loaded_package, package_list))
+                    for _package in package_list:
+                        for loaded_package in self.loaded_packages:
+                            if loaded_package.get_name() == _package.get_name():
+                                errors += loaded_package.get_errors()
+                                _package.errors = loaded_package.errors
 
-                return list(set(errors))
+                    return list(set(errors))
 
         return ErrorCode.PACKAGE_NOT_FOUND
 
@@ -447,14 +507,20 @@ def print_message(message):
 
 
 parser = argparse.ArgumentParser('obsoleta')
+parser.add_argument('--package', dest='compact',
+                    help='the package to investigate in compact form or "all". See also --json')
+parser.add_argument('--json', dest='packagepath',
+                    help='the path for the package to investigate. See also --package')
+
+parser.add_argument('--check', action='store_true',
+                    help='check a specified package')
+parser.add_argument('--tree', action='store_true',
+                    help='show tree for a package')
+parser.add_argument('--buildorder', action='store_true',
+                    help='show dependencies in building order for a package')
+
 parser.add_argument('--conf', dest='conffile',
                     help='load specified configuration file rather than the default obsoleta.conf')
-parser.add_argument('--check', dest='package',
-                    help='check specified package recusively')
-parser.add_argument('--tree', dest='tree',
-                    help='show tree for a package or "all" for all packages')
-parser.add_argument('--buildorder', dest='buildorder',
-                    help='show dependencies in building order for a package or "all" for all packages')
 parser.add_argument('--path', action='store', dest='path',
                     help=': separated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
 parser.add_argument('--verbose', action='store_true',
@@ -467,6 +533,16 @@ results = parser.parse_args()
 
 if results.verbose:
     log.setLevel(logging.DEBUG)
+
+# go-no-go checks
+
+if not results.compact and not results.packagepath:
+    print_error('no package specified, see --package and --json')
+    exit(ErrorCode.MISSING_INPUT.value)
+
+if not results.tree and not results.check and not results.buildorder:
+    print_error('no action specified, see --check, --tree and --buildorder')
+    exit(ErrorCode.MISSING_INPUT.value)
 
 # parse configuration file
 
@@ -497,19 +573,18 @@ try:
 except FileNotFoundError:
     log.info('no configuration file %s found - continuing regardless' % conffile)
 
-
 paths = [os.path.abspath(p) for p in paths if p]
 paths = set(paths)
 
 if not paths:
-    log.critical('no paths given from commandline and/or conf file, giving up')
+    print_error('no paths given from commandline and/or conf file, giving up')
     exit(ErrorCode.MISSING_INPUT.value)
-
-# construct obsoleta, load and parse everything in one go
 
 log.info('searching %i paths' % len(paths))
 for path in paths:
     log.info('  path = %s' % path)
+
+# construct obsoleta, load and parse everything in one go
 
 try:
     obsoleta = Obsoleta(paths)
@@ -523,69 +598,71 @@ except FileNotFoundError as e:
 except KeyError as e:
     log.critical('missing entry in package file: %s' % str(e))
     exit(ErrorCode.MISSING_INPUT.value)
+except NoPackage as e:
+    print_error('no packages found, giving up. Searched the path(s):')
+    for path in paths:
+        print_error('  %s' % path)
+    exit(ErrorCode.PACKAGE_NOT_FOUND.value)
 except Exception as e:
     log.critical('caught exception: %s' % str(e))
     exit(ErrorCode.MISSING_INPUT.value)
 
 exit_code = ErrorCode.UNSET
 
-if not obsoleta.loaded_packages:
-    print_error('no packages found, giving up. Searched the path(s):')
-    for path in paths:
-        print_error('  %s' % path)
-    exit_code = ErrorCode.PACKAGE_NOT_FOUND
+package = Package(results.packagepath, results.compact)
 
 # and now figure out what to do
 
-elif results.package:
-    log.info('checking package "%s"' % results.package)
-    errors = obsoleta.get_errors(results.package)
+if results.check:
+    log.info('checking package "%s"' % package)
+    errors = obsoleta.get_errors(package)
 
     if errors == ErrorCode.PACKAGE_NOT_FOUND:
-        print_error('package "%s" not found' % results.package)
+        print_error('package "%s" not found' % package)
         exit_code = errors
     elif errors:
-        print_error('checking package "%s": failed, %i errors found' % (results.package, len(errors)))
+        print_error('checking package "%s": failed, %i errors found' % (package, len(errors)))
         for error in errors:
             print_error('   ' + error.to_string())
             exit_code = error.get_error()
     else:
-        print_message('checking package "%s": success' % results.package)
+        print_message('checking package "%s": success' % package)
         exit_code = ErrorCode.OK
 
-elif results.buildorder:
-    exit_code = ErrorCode.OK
-    log.info('packages listed in buildorder')
-    unresolved, resolved = obsoleta.dump_build_order(results.buildorder)
-
-    log.info('build order')
-    if not resolved:
-        print_error(' - unable to find somewhere to start')
-    for package in resolved:
-        if results.printpaths:
-            print_message(package.get_path())
-        else:
-            print_message(package.to_string())
-        errors = package.get_root_error()
-        for error in errors:
-            exit_code = error.get_error()
-            print_error(' - error: ' + error.to_string())
-
-    if unresolved:
-        print_error('unable to resolve build order for the following packages (circular dependencies ?)')
-        exit_code = ErrorCode.CIRCULAR_DEPENDENCY
-        for package in unresolved:
-            print_error(' - ' + package.to_string())
-
 elif results.tree:
-    log.info('package tree for "%s"' % results.tree)
-    dump, error = obsoleta.dump_tree(results.tree)
+    log.info('package tree for "%s"' % package)
+    dump, error = obsoleta.dump_tree(package)
     if dump:
         print_message("\n".join(dump))
         exit_code = error
     else:
         print_message("package not found")
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
+
+elif results.buildorder:
+    exit_code = ErrorCode.OK
+    log.info('packages listed in buildorder')
+    unresolved, resolved = obsoleta.dump_build_order(package)
+
+    log.info('build order')
+    if not resolved:
+        print_error(' - unable to find somewhere to start')
+    for _package in resolved:
+        if results.printpaths:
+            print_message(_package.get_path())
+        else:
+            print_message(_package.to_string())
+        errors = _package.get_root_error()
+        if errors:
+            for error in errors:
+                exit_code = error.get_error()
+                print_error(' - error: ' + error.to_string())
+
+    if unresolved:
+        print_error('unable to resolve build order for the following packages (circular dependencies ?)')
+        exit_code = ErrorCode.CIRCULAR_DEPENDENCY
+        for _package in unresolved:
+            print_error(' - ' + _package.to_string())
 
 else:
     log.error("no valid command found")

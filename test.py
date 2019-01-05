@@ -26,6 +26,7 @@ def execute(command, expected_exit_code):
 
     try:
         print('testing "%s"' % command)
+        output = None
         output = subprocess.check_output(command, shell=True)
         output = output.decode()
         print(output)
@@ -58,76 +59,94 @@ def title(serial, purpose):
     print('---------------------------------------------')
 
 
+fixed = './obsoleta.py --conf test.conf '
+
 title(10, 'simple sunshine --tree')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_simple --tree all', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_simple --package \* --tree', ErrorCode.OK)
 test(len(output[:-1].split('\n')), 6)
 
 title(11, 'simple sunshine --list')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_simple --check a', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_simple --package a --check', ErrorCode.OK)
 
 title(12, 'simple sunshine --buildorder')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_simple --buildorder a', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_simple --package a --buildorder', ErrorCode.OK)
 test(output == ('c:anytrack:anyarch:unknown:0.1.2\nb:anytrack:anyarch:unknown:0.1.2\na:anytrack:anyarch:unknown:0.1.2\n'))
 
 title(20, 'no json files found (bad path)')
-err, output = execute('./obsoleta.py --conf test.conf --path nonexisting --check a', ErrorCode.BAD_PATH)
+err, output = execute(fixed + '--path nonexisting --package a --check', ErrorCode.BAD_PATH)
 
 title(21, 'json syntax error')
-err, output = execute('./obsoleta.py --conf test.conf --path exception/test_json_error --check a', ErrorCode.SYNTAX_ERROR)
+err, output = execute(fixed + '--path exception/test_json_error --package a --check', ErrorCode.SYNTAX_ERROR)
 
 title(22, 'missing name')
-err, output = execute('./obsoleta.py --conf test.conf --path exception/test_missing_name --check a', ErrorCode.MISSING_INPUT)
+err, output = execute(fixed + '--path exception/test_missing_name --package a --check', ErrorCode.MISSING_INPUT)
 
 title(23, 'missing version')
-err, output = execute('./obsoleta.py --conf test.conf --path exception/test_missing_version --check a', ErrorCode.MISSING_INPUT)
+err, output = execute(fixed + '--path exception/test_missing_version --package a --check', ErrorCode.MISSING_INPUT)
 
 title(24, 'missing package')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_missing_package --check a', ErrorCode.PACKAGE_NOT_FOUND)
+err, output = execute(fixed + '--path test/test_missing_package --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
 title(30, "a anyarch <<< b anyarch <<< c arch is ok")
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_different_arch_dev_dev_arch1 --check a', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_different_arch_dev_dev_arch1 --package a --check', ErrorCode.OK)
 
 title(31, "b requires a c that is missing. There is a c but its a different arch.")
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_different_arch_dev_arch1_arch2 --check a', ErrorCode.PACKAGE_NOT_FOUND)
+err, output = execute(fixed + '--path test/test_different_arch_dev_arch1_arch2 --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
 title(32, "different buildtypes are ok for non-production build")
-err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/test_different_buildtypes', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_different_buildtypes --package a --tree', ErrorCode.OK)
 test("b:testing:anyarch:release:0.1.2" in output)
 
 title(33, "different buildtypes are not ok for production build")
-err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/test_different_buildtypes_production', ErrorCode.PACKAGE_NOT_FOUND)
+err, output = execute(fixed + '--path test/test_different_buildtypes_production --package a --tree', ErrorCode.PACKAGE_NOT_FOUND)
 
 title(35, 'failing since a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_multiple_versions --check a', ErrorCode.MULTIPLE_VERSIONS)
+err, output = execute(fixed + '--path test/test_multiple_versions --package a --check', ErrorCode.MULTIPLE_VERSIONS)
 print(output)
 test("c:anytrack:anyarch:unknown:1.2.3" in output)
 test("c:anytrack:anyarch:unknown:1.2.4" in output)
 
 title(36, 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
-err, output = execute('./obsoleta.py --conf test.conf --path test/test_multiple_versions --check d', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_multiple_versions --package d --check', ErrorCode.OK)
 
 title(37, 'fail to list buildorder as there are a circular dependency')
-err, output = execute('./obsoleta.py --conf test.conf --buildorder all --path test/test_circular_dependency', ErrorCode.CIRCULAR_DEPENDENCY)
+err, output = execute(fixed + '--path test/test_circular_dependency --package \* --buildorder', ErrorCode.CIRCULAR_DEPENDENCY)
 
 title(40, 'find b in version 0.2.0')
-err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/range_find_newest', ErrorCode.OK)
+err, output = execute(fixed + '--path test/range_find_newest --package a --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
 title(41, 'find b in version 0.2.0')
-err, output = execute('./obsoleta.py --conf test.conf --tree c --path test/range_find_newest', ErrorCode.OK)
+err, output = execute(fixed + '--path test/range_find_newest --package c --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
 title(42, 'find b in version 0.2.0')
-err, output = execute('./obsoleta.py --conf test.conf --tree d --path test/range_find_newest', ErrorCode.OK)
+err, output = execute(fixed + '--path test/range_find_newest --package d --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
 title(43, 'find b in version 0.2.0')
-err, output = execute('./obsoleta.py --conf test.conf --tree e --path test/range_find_newest', ErrorCode.OK)
+err, output = execute(fixed + '--path test/range_find_newest --package e --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)
 
 title(50, 'find b in version 0.1.2, higher versions exist but they are discontiued and defective respectively')
-err, output = execute('./obsoleta.py --conf test.conf --tree a --path test/test_discontinued_defective', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_discontinued_defective --package a --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.1.2" in output)
+
+title(100, "testing compact 5:5 (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --package a:development:anyarch:debug:0.1.2 --tree', ErrorCode.OK)
+
+title(101, "testing compact 4:5 (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --package a:development:anyarch:debug --tree', ErrorCode.OK)
+
+title(102, "testing compact 3:5 (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --package a:development:anyarch --tree', ErrorCode.OK)
+
+title(103, "testing compact 2:5 (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --package a:development --tree', ErrorCode.OK)
+
+title(104, "testing compact with package path (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --json test/test_different_buildtypes/a --tree', ErrorCode.OK)
+
 
 print('test suite took %.3f secs' % (time.time() - start_time))
 

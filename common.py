@@ -4,6 +4,9 @@ from enum import Enum
 class IllegalPackage(Exception):
     pass
 
+class NoPackage(Exception):
+    pass
+
 
 class ErrorCode(Enum):
     OK = 0
