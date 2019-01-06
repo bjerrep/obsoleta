@@ -1,11 +1,73 @@
+from log import logger as log
 from enum import Enum
+import os
+import json
 
 
 class IllegalPackage(Exception):
     pass
 
+
 class NoPackage(Exception):
     pass
+
+
+def print_error(message):
+    print(message)
+
+
+def print_message(message):
+    print(message)
+
+
+class Setup:
+    using_track = False
+    using_arch = False
+    using_buildtype = False
+    allow_duplicates = False
+    indent = ''
+    obsoleta_root = None
+    max_depth = 1
+
+    @staticmethod
+    def load_configuration(configuration_file=None):
+        Setup.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
+        paths = []
+        conffile = os.path.join(Setup.obsoleta_root, 'obsoleta.conf')
+        if configuration_file:
+            conffile = configuration_file
+            if not os.path.exists(conffile):
+                print_error('no configuration file "%s" found' % conffile)
+                exit(ErrorCode.MISSING_INPUT.value)
+
+        try:
+            with open(conffile) as f:
+                conf = json.loads(f.read())
+                paths += conf.get('paths')
+                env_paths = conf.get('env_paths')
+                if env_paths:
+                    expanded = os.path.expandvars(env_paths)
+                    log.info('environment search path %s expanded to %s' % (env_paths, expanded))
+                    paths += expanded.split(os.pathsep)
+                Setup.using_arch = conf.get('using_arch') == 'on'
+                Setup.using_track = conf.get('using_track') == 'on'
+                Setup.using_buildtype = conf.get('using_buildtype') == 'on'
+                Setup.allow_duplicates = conf.get('allow_duplicates') == 'yes'
+                try:
+                    Setup.max_depth = int(conf['max_depth'])
+                except KeyError:
+                    pass
+        except FileNotFoundError:
+            log.info('no configuration file %s found - continuing regardless' % conffile)
+        return paths
+
+
+class Indent():
+    def __init__(self):
+        Setup.indent += '  '
+
+    def __del__(self):
+        Setup.indent = Setup.indent[:-3]
 
 
 class ErrorCode(Enum):

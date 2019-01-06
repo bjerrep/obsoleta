@@ -111,6 +111,7 @@ class Version:
     def increase(self, position):
         self.digits[position].increase()
 
+
 if __name__ == "__main__":
     aye = 0
     nay = 0

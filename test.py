@@ -61,6 +61,9 @@ def title(serial, purpose):
 
 fixed = './obsoleta.py --conf test.conf '
 
+title(1, 'first check that this test suite matches the used obsoleta')
+err, output = execute(fixed + '--path test/test_obsoleta:. --package testsuite --check', ErrorCode.OK)
+
 title(10, 'simple sunshine --tree')
 err, output = execute(fixed + '--path test/test_simple --package \* --tree', ErrorCode.OK)
 test(len(output[:-1].split('\n')), 6)
@@ -86,6 +89,9 @@ err, output = execute(fixed + '--path exception/test_missing_version --package a
 
 title(24, 'missing package')
 err, output = execute(fixed + '--path test/test_missing_package --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
+
+title(25, 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
+err, output = execute(fixed + '--path test/test_missing_package_track --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
 title(30, "a anyarch <<< b anyarch <<< c arch is ok")
 err, output = execute(fixed + '--path test/test_different_arch_dev_dev_arch1 --package a --check', ErrorCode.OK)

@@ -1,0 +1,10 @@
+{
+  "name": "testsuite",
+  "version": "0.0.0",
+  "depends": [
+    {
+      "name": "obsoleta",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "name": "",
+    "version": "",
+    "track": "",
+    "arch": "",
+    "buildtype": "",
+    "depends": [
+        {
+            "name": "",
+            "version": "",
+            "track": "",
+            "arch": "",
+            "buildtype": ""
+        }
+    ]
+}
