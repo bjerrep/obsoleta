@@ -11,7 +11,7 @@ import time
 
 start_time = time.time()
 
-obsoleta_root = os.path.dirname(__file__)
+obsoleta_root = os.path.dirname(os.path.abspath(__file__))
 os.chdir(obsoleta_root)
 
 exit_code = ErrorCode.OK
