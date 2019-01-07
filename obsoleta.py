@@ -144,12 +144,12 @@ class Obsoleta:
                 for i in range(len(candidate)):
                     for j in candidate[i+1:]:
                         if candidate[i].matches_without_version(j):
-                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], "with parent %s" % candidate[i].parent)
-                            log.error(Setup.indent + "ERROR: " + err1.to_string())
+                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
+                            log.error(Setup.indent + 'ERROR: ' + err1.to_string())
                             candidate[i].add_error(err1)
 
-                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, "with parent %s" % j.parent)
-                            log.error(Setup.indent + "ERROR: " + err2.to_string())
+                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
+                            log.error(Setup.indent + 'ERROR: ' + err2.to_string())
                             j.add_error(err2)
 
     def get_package_list(self, package, packages):
@@ -237,6 +237,8 @@ parser.add_argument('--json', dest='packagepath',
                     help='the path for the package. See also --package')
 parser.add_argument('--path', action='store', dest='path',
                     help=': separated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
+parser.add_argument('--blacklist_paths', action='store',
+                    help=': separated list of blacklist substrings')
 
 parser.add_argument('--check', action='store_true',
                     help='command: check a specified package')
@@ -278,12 +280,27 @@ try:
 except:
     paths = []
 
+try:
+    blacklist_paths = results.blacklist_paths.split(os.pathsep)
+except:
+    blacklist_paths = []
+blacklist_paths += Setup.blacklist_paths
+
 paths += conf_paths
-paths = [os.path.abspath(p) for p in paths if p]
-paths = set(paths)
+paths = [os.path.abspath(p) for p in paths if p] # fully qualified non-empty paths
+paths = list(set(paths)) # remove any duplicates
+
+if blacklist_paths:
+    log.info('checking paths against blacklist')
+    for path in paths[:]:
+        for blacklisted in blacklist_paths:
+            if blacklisted in path:
+                paths.remove(path)
+                log.info(' - removing "%s" blacklisted with "%s"' % (path, blacklisted))
+                continue
 
 if not paths:
-    print_error('no paths given from commandline and/or conf file, giving up')
+    print_error('no paths to search (commandline path + config path - blacklists), giving up')
     exit(ErrorCode.MISSING_INPUT.value)
 
 log.info('searching %i paths' % len(paths))

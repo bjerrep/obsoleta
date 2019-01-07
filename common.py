@@ -21,6 +21,8 @@ def print_message(message):
 
 
 class Setup:
+    paths = []
+    blacklist_paths = []
     using_track = False
     using_arch = False
     using_buildtype = False
@@ -49,6 +51,10 @@ class Setup:
                     expanded = os.path.expandvars(env_paths)
                     log.info('environment search path %s expanded to %s' % (env_paths, expanded))
                     paths += expanded.split(os.pathsep)
+                Setup.paths = paths
+                blacklist_paths = conf.get('blacklist_paths')
+                if blacklist_paths:
+                    Setup.blacklist_paths = blacklist_paths
                 Setup.using_arch = conf.get('using_arch') == 'on'
                 Setup.using_track = conf.get('using_track') == 'on'
                 Setup.using_buildtype = conf.get('using_buildtype') == 'on'
