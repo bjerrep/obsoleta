@@ -39,6 +39,7 @@ def execute(command, expected_exit_code):
         if e.returncode != expected_exit_code:
             print('  process fail - unexpected exit code (not %i): %s' % (expected_exit_code, str(e)))
             exit_code = ErrorCode.TEST_FAILED
+            exit(exit_code.value)
         else:
             print('  process pass with expected exit code %i %s' % (expected_exit_code, ErrorCode.to_string(expected_exit_code)))
         return e.returncode, output
@@ -65,7 +66,7 @@ title(1, 'first check that this test suite matches the used obsoleta')
 err, output = execute(fixed + '--path test/test_obsoleta:. --package testsuite --check', ErrorCode.OK)
 
 title(10, 'simple sunshine --tree')
-err, output = execute(fixed + '--path test/test_simple --package \* --tree', ErrorCode.OK)
+err, output = execute(fixed + '--path test/test_simple --package \'*\' --tree', ErrorCode.OK)
 test(len(output[:-1].split('\n')), 6)
 
 title(11, 'simple sunshine --list')
@@ -74,6 +75,11 @@ err, output = execute(fixed + '--path test/test_simple --package a --check', Err
 title(12, 'simple sunshine --buildorder')
 err, output = execute(fixed + '--path test/test_simple --package a --buildorder', ErrorCode.OK)
 test(output == ('c:anytrack:anyarch:unknown:0.1.2\nb:anytrack:anyarch:unknown:0.1.2\na:anytrack:anyarch:unknown:0.1.2\n'))
+
+title(13, 'simple sunshine --buildorder --printpaths')
+err, output = execute(fixed + '--path test/test_simple --package a --buildorder --printpaths', ErrorCode.OK)
+test(output == ('/home/claus/src/obsoleta/test/test_simple/c\n/home/claus/src/obsoleta/test/test_simple/b\n'
+                '/home/claus/src/obsoleta/test/test_simple/a\n'))
 
 title(20, 'no json files found (bad path)')
 err, output = execute(fixed + '--path nonexisting --package a --check', ErrorCode.BAD_PATH)
@@ -152,6 +158,30 @@ err, output = execute(fixed + '--path test/test_different_buildtypes --package a
 
 title(104, "testing compact with package path (using different buildtypes are ok for non-production build)")
 err, output = execute(fixed + '--path test/test_different_buildtypes --json test/test_different_buildtypes/a --tree', ErrorCode.OK)
+
+title(104, "testing compact with package path (using different buildtypes are ok for non-production build)")
+err, output = execute(fixed + '--path test/test_different_buildtypes --json test/test_different_buildtypes/a --tree', ErrorCode.OK)
+
+title(200, "duplicate package")
+err, output = execute(fixed + '--path test/test_duplicate_package --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
+
+title(300, "duplicate package - slot test 1, fails since 'a' is not unique enough")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_ok --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
+
+title(301, "duplicate package - slot test 1, fails since 'a' is not unique enough")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_ok --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
+
+title(302, "duplicate package - slot test 1, pass, b in x86 found")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_ok --package a:anytrack:x86 --tree', ErrorCode.OK)
+
+title(303, "duplicate package - slot test 1, fail, b in x86_64 not found")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_ok --package a:anytrack:x86_64 --tree', ErrorCode.PACKAGE_NOT_FOUND)
+
+title(400, "duplicate package - slot test 2, fail, a in x86 not found")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_missing_b --package a:anytrack:x86 --tree', ErrorCode.PACKAGE_NOT_FOUND)
+
+title(401, "duplicate package - slot test 2, fail, b in x86_64 not found")
+err, output = execute(fixed + '--path test/test_duplicate_package_slotted_missing_b --package a:anytrack:x86_64 --tree', ErrorCode.PACKAGE_NOT_FOUND)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))

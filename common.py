@@ -27,7 +27,6 @@ class Setup:
     using_arch = False
     using_buildtype = False
     allow_duplicates = False
-    indent = ''
     obsoleta_root = None
     max_depth = 1
 
@@ -68,18 +67,10 @@ class Setup:
         return paths
 
 
-class Indent():
-    def __init__(self):
-        Setup.indent += '  '
-
-    def __del__(self):
-        Setup.indent = Setup.indent[:-3]
-
-
 class ErrorCode(Enum):
     OK = 0
     UNSET = 1
-    DEPENDENCY_NOT_FOUND = 2
+    SYSTEM_EXIT = 2
     PACKAGE_NOT_FOUND = 3
     ARCH_MISMATCH = 4
     MULTIPLE_VERSIONS = 5
@@ -88,13 +79,17 @@ class ErrorCode(Enum):
     SYNTAX_ERROR = 8
     MISSING_INPUT = 9
     BAD_PATH = 10
+    UNKNOWN_EXCEPTION = 11
+    DEPENDENCY_NOT_FOUND = 12
+    DUPLICATE_PACKAGE = 13
+    SLOT_ERROR = 14
 
     @staticmethod
     def to_string(errorcode):
         ErrorCodeToString = \
            ['Ok',
             'Unset',
-            'Dependency not found',
+            'System exit',
             'Package not found',
             'Mixing different arch',
             'Multiple versions',
@@ -102,7 +97,11 @@ class ErrorCode(Enum):
             'Test failed',
             'Syntax error',
             'Missing input',
-            'Bad path']
+            'Bad path',
+            'Unknown exception',
+            'Dependency not found',
+            'Duplicate package',
+            'Slot error']
 
         return ErrorCodeToString[errorcode]
 

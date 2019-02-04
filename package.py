@@ -1,6 +1,8 @@
 from log import logger as log
+from log import Indent as Indent
+from log import inf, deb, cri, indent
 from version import Version
-from common import Setup, ErrorCode, Error, IllegalPackage, Indent
+from common import Setup, ErrorCode, Error, IllegalPackage
 import json
 import os
 from enum import Enum
@@ -13,7 +15,7 @@ anyarch = 'anyarch'
 class Track(Enum):
     defective = 0
     discontinued = 1
-    ANY = 2
+    anytrack = 2
     development = 3
     testing = 4
     production = 5
@@ -26,21 +28,15 @@ TrackToString = ['defective', 'discontinued', 'anytrack', 'development', 'testin
 
 
 class Package:
-    def __init__(self, packagepath, compact, dictionary):
+    def __init__(self, package_path, compact, dictionary):
         self.parent = None
-        self.packagepath = packagepath
+        self.package_path = package_path
         self.dependencies = None
         self.direct_dependency = True
         self.errors = None
 
-        if packagepath:
-            if not packagepath.endswith('obsoleta.json'):
-                self.packagepath = os.path.join(packagepath, 'obsoleta.json')
-            with open(self.packagepath) as f:
-                log.debug('[parsing file %s]' % self.packagepath)
-                _json = f.read()
-                dictionary = json.loads(_json)
-                self.from_dict(dictionary)
+        if package_path:
+            self.from_package_path(package_path)
         elif compact:
             self.from_compact(compact)
         else:
@@ -51,19 +47,23 @@ class Package:
         return cls(None, None, dictionary)
 
     @classmethod
-    def construct_from_packagepath(cls, packagepath):
-        return cls(packagepath, None, None)
+    def construct_from_package_path(cls, package_path):
+        return cls(package_path, None, None)
 
     @classmethod
     def construct_from_compact(cls, compact):
         return cls(None, compact, None)
 
     def from_dict(self, dictionary):
-        self.name = dictionary['name']
+        path = 'in ' + self.get_obsoleta_json_path() if self.package_path else ''
+        try:
+            self.name = dictionary['name']
+        except:
+            raise IllegalPackage('unable to extract name %s (sure its a json list?)' % path)
         try:
             self.version = Version(dictionary['version'])
         except:
-            raise IllegalPackage('invalid version number in %s' % self.packagepath)
+            raise IllegalPackage('invalid version number %s' % path)
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         if Setup.using_track:
@@ -71,9 +71,9 @@ class Package:
                 try:
                     self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise IllegalPackage('invalid track name "%s" in %s' % (dictionary['track'], self.packagepath))
+                    raise IllegalPackage('invalid track name "%s" %s' % (dictionary['track'], path))
             else:
-                self.track = Track.ANY
+                self.track = Track.anytrack
 
         if Setup.using_arch:
             try:
@@ -86,11 +86,11 @@ class Package:
                 try:
                     self.buildtype = dictionary['buildtype']
                 except:
-                    raise IllegalPackage('invalid buildtype "%s" in %s' % (dictionary['buildtype'], self.packagepath))
+                    raise IllegalPackage('invalid buildtype "%s" %s' % (dictionary['buildtype'], path))
             else:
                 self.buildtype = buildtype_unknown
 
-        log.debug(Setup.indent + '%s' % self.to_extra_string())
+        deb('%s' % self.to_extra_string())
 
         try:
             dependencies = dictionary['depends']
@@ -100,25 +100,25 @@ class Package:
                     self.dependencies = []
                 _i = Indent()
 
-            for dependency in dependencies:
-                package = Package(None, None, dependency)
-                package.parent = self
-                # inherit optionals from the package if they are unspecified. The downside is that they will no
-                # longer look exactly as they appear in the package file, the upside is that they now tell
-                # explicitly what their minimum requirement is.
-                if Setup.using_track:
-                    if package.track == Track.ANY:
-                        package.track = self.track
-                if Setup.using_arch:
-                    if package.arch == anyarch:
-                        package.arch = self.arch
-                    if self.arch != anyarch and package.arch != self.arch:
-                        package.add_error(Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
-                if Setup.using_buildtype:
-                    if package.buildtype == buildtype_unknown:
-                        package.buildtype = self.buildtype
+                for dependency in dependencies:
+                    package = Package(None, None, dependency)
+                    package.parent = self
+                    # inherit optionals from the package if they are unspecified. The downside is that they will no
+                    # longer look exactly as they appear in the package file, the upside is that they now tell
+                    # explicitly what their minimum requirement is.
+                    if Setup.using_track:
+                        if package.track == Track.anytrack:
+                            package.track = self.track
+                    if Setup.using_arch:
+                        if package.arch == anyarch:
+                            package.arch = self.arch
+                        if self.arch != anyarch and package.arch != self.arch:
+                            package.add_error(Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
+                    if Setup.using_buildtype:
+                        if package.buildtype == buildtype_unknown:
+                            package.buildtype = self.buildtype
 
-                self.dependencies.append(package)
+                    self.dependencies.append(package)
 
         except KeyError:
             pass
@@ -126,23 +126,46 @@ class Package:
             log.critical('Package caught %s' % str(e))
             raise e
 
-    def from_packagepath(self, packagepath):
-        if not packagepath.endswith('obsoleta.json'):
-            self.packagepath = os.path.join(packagepath, 'obsoleta.json')
-        with open(self.packagepath) as f:
-            log.debug('[parsing file %s]' % self.packagepath)
-            dictionary = json.loads(f.read())
-            self.construct_from_dict(dictionary)
+    def from_package_path(self, package_path):
+        if package_path.endswith('obsoleta.json'):
+            self.package_path = os.path.dirname(package_path)
+
+        key_file = self.get_obsoleta_key_path()
+        try:
+            with open(key_file) as f:
+                _json = f.read()
+                dictionary = json.loads(_json)
+                key = dictionary['key']
+        except:
+            key = None
+
+        json_file = self.get_obsoleta_json_path()
+        with open(json_file) as f:
+            deb('[parsing file %s, slot %s]' % (json_file, str(key)))
+            _json = f.read()
+            dictionary = json.loads(_json)
+            if key:
+                try:
+                    base = dictionary['base']
+                    slot = dictionary[key]
+                    final = dict(base, **slot)
+                    self.from_dict(final)
+                except TypeError:
+                    cri('failed to look up slot key "%s"' % key, ErrorCode.SLOT_ERROR)
+            else:
+                self.from_dict(dictionary)
 
     def from_compact(self, compact):
         self.name = '*'
         self.version = Version('*')
         if Setup.using_track:
-            self.track = Track.ANY
+            self.track = Track.anytrack
         if Setup.using_arch:
             self.arch = anyarch
         if Setup.using_buildtype:
             self.buildtype = buildtype_unknown
+
+        compact = compact.replace("'*'", '*')
 
         if compact != '*' and compact != 'all':
             entries = compact.split(':')
@@ -155,8 +178,12 @@ class Package:
                 if Setup.using_buildtype:
                     self.buildtype = entries.pop(0)
                 self.version = Version(entries.pop(0))
-            except:
+            except IndexError:
                 pass
+            except KeyError as e:
+                cri('failed to parse %s' % str(e), ErrorCode.SYNTAX_ERROR)
+            except Exception as e:
+                cri(str(e), ErrorCode.UNKNOWN_EXCEPTION)
 
     def to_dict(self):
         dictionary = {
@@ -164,7 +191,7 @@ class Package:
             'version': str(self.version)
         }
 
-        if Setup.using_track and self.track != Track.ANY:
+        if Setup.using_track and self.track != Track.anytrack:
             dictionary['track'] = TrackToString[self.track.value]
 
         if Setup.using_arch and self.arch != anyarch:
@@ -188,7 +215,13 @@ class Package:
         return self.version
 
     def get_path(self):
-        return self.packagepath
+        return self.package_path
+
+    def get_obsoleta_json_path(self):
+        return os.path.join(self.package_path, 'obsoleta.json')
+
+    def get_obsoleta_key_path(self):
+        return os.path.join(self.package_path, 'obsoleta.key')
 
     def to_string(self):
         # The fully unique identifier string for a package
@@ -229,7 +262,7 @@ class Package:
 
         optionals = True
         if Setup.using_track:
-            if other.track != Track.ANY:
+            if other.track != Track.anytrack:
                 optionals = optionals and self.track == other.track
         if Setup.using_arch:
             if other.arch != anyarch:
@@ -270,10 +303,10 @@ class Package:
         return hash(self.to_string())
 
     def dump(self, ret, error):
-        title = Setup.indent + self.to_string()
+        title = Indent.indent() + self.to_string()
         if self.errors:
             for err in self.errors:
-                title += "\n" + Setup.indent + ' - ' + err.to_string()
+                title += "\n" + Indent.indent() + ' - ' + err.to_string()
                 error = err.get_error()
         ret.append(title)
         if self.dependencies:
@@ -285,6 +318,12 @@ class Package:
 
     def get_dependencies(self):
         return self.dependencies
+
+    def add_dependency(self, package):
+        try:
+            self.dependencies.append(package)
+        except:
+            self.dependencies = [package]
 
     def get_root_error(self):
         return self.errors
@@ -312,11 +351,11 @@ class Package:
         if not package_under_test:
             package_under_test = self
         else:
-            log.debug(Setup.indent + 'checking if upstream %s is the same as %s' % (str(self), package_under_test.to_string()))
+            deb('checking if upstream %s is the same as %s' % (str(self), package_under_test.to_string()))
 
         if self.parent:
             if self.parent.get_name() == package_under_test.get_name():
-                log.info(Setup.indent + 'circular dependency found for package ' + package_under_test.to_string())
+                log.info('circular dependency found for package ' + package_under_test.to_string())
                 return True
             else:
                 found = self.parent.search_upstream(package_under_test)

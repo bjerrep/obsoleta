@@ -1,9 +1,25 @@
 import logging
 
+indent = ''
+
+class Indent():
+    def __init__(self):
+        global indent
+        indent += '  '
+
+    def __del__(self):
+        global indent
+        indent = indent[:-3]
+
+    @staticmethod
+    def indent():
+        return indent
+
+
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 # formatter = logging.Formatter('%(asctime)s %(levelname)s (%(module)-10.10s) %(message)s\033[0m')
-formatter = logging.Formatter('%(message)s\033[0m')
+formatter = logging.Formatter(indent + '%(message)s\033[0m')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.ERROR)
@@ -26,3 +42,16 @@ logging.addLevelName(logging.INFO, _LIGHT_GREEN % logging.getLevelName(logging.I
 logging.addLevelName(logging.WARNING, _LIGHT_RED % logging.getLevelName(logging.WARNING))
 logging.addLevelName(logging.ERROR, _LIGHT_RED2 % logging.getLevelName(logging.ERROR))
 logging.addLevelName(logging.CRITICAL, _LIGHT_RED2 % logging.getLevelName(logging.CRITICAL))
+
+
+def deb(msg):
+    logger.debug(indent + msg)
+
+
+def inf(msg):
+    logger.info(indent + msg)
+
+
+def cri(msg, exit_code):
+    logger.critical(msg)
+    exit(exit_code.value)

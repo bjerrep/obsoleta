@@ -24,7 +24,29 @@ Getting the trivial stuff out of the way first. From now on the **a**, **b** and
 - an optional buildtype (free form string e.g. "debug" or "release")
 - an optional 'depends' list, listing other packages
 
-Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page. All the meta data are bundled into a single identifier for each package, used both internally and for console output. It can look like these:
+This is how a obsoleta.json file can look like (generated with dixi.py --printtemplate):
+
+	{
+	    "name": "a",
+	    "version": "0.0.0",
+	    "track": "development",
+	    "arch": "archname",
+	    "buildtype": "buildtype",
+	    "depends": [
+		{
+		    "name": "b",
+		    "version": "0.0.0",
+		    "track": "development",
+		    "arch": "archname",
+		    "buildtype": "buildtype"
+		}
+	    ]
+	}
+
+
+Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page. 
+
+All the meta data for a package can be bundled into a single identifier called compact form, used both internally and for console output. It can look like these:
 
 No optionals enabled:
 
@@ -178,6 +200,53 @@ Buildtype is ignored except for the track 'production' where it is illegal to mi
 ## Search paths
 
 Obsoleta currently have no concept of a default search path and it will fall over if none is given. Search paths can be specified on the command line using '--path' and/or in the configuration file. All paths are concatenated to a single list which is traversed at each invocation (no caching, at least not yet). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
+
+## Slots
+
+Slots is a way to deal with the fact that once the 'arch' attibute is actually used for different architectures then a straight forward package files used so far on this page won't cut it. A use case could be that a developer working on multiple architectures decides to check out the same repository once for each architecture. This could lead to the following file structure:
+
+	├── a_x86
+	├── a_x68_64
+	├── b_x86
+	├── b_x68_64
+	├── c_x86
+	└── c_x68_64
+
+This will result in the same obsoleta.json file (from the SCM) in multiple directories and obsoleta will complain about duplicate packages. 
+
+The current solution is to add a new file alongside obsoleta.json called obsoleta.key defining the so-called slot that the current directory represents. This key file should then -not- be in the SCM. How the key file is made say by a CI that is about to make a clean rebuild should be implemented in the local toolchain. A slotted obsoleta.json and a matching key file could look like
+
+**obsoleta.json**
+
+	{
+	  "base": {
+	    "name": "b",
+	    "version": "0.1.2"
+	  },
+	  "key1": {
+	    "arch": "x86_64"
+	  },
+	  "key2": {
+	    "version": "0.1.3",
+	    "arch": "x86"
+	  }
+	}
+
+**obsoleta.key**
+	
+	{
+	  "key": "key2"
+	}
+
+What happens is that the package definition used by obsoleta will be the 'base' dictionary with additions or rewrites from the given slot. From the above this will yield
+
+	{
+	    "name": "b",
+	    "version": "0.1.3",
+	    "arch": "x86"
+	}
+
+If building for multiple architectures is done in a single directory then the key file suddenly becomes dynamic according to the current architecture. This will probably open a new can of problems that someone should think a little deeper about....
 
 ## Build support
 

@@ -33,7 +33,7 @@ class Packagefile:
         return ErrorCode.OK
 
     def save(self):
-        with open(self.package.packagepath, 'w') as f:
+        with open(self.package.package_path, 'w') as f:
             # Calculate the offset taking into account daylight saving time - https://stackoverflow.com/a/28147286
             utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
             utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
@@ -76,7 +76,7 @@ def print_message(message):
 
 
 parser = argparse.ArgumentParser('dixi')
-parser.add_argument('--json', dest='packagepath',
+parser.add_argument('--json', dest='package_path',
                     help='the path for the package. See also --package')
 parser.add_argument('--print', action='store_true',
                     help='command: pretty print the packagefile')
@@ -105,8 +105,14 @@ parser.add_argument('--verbose', action='store_true',
 results = parser.parse_args()
 
 if results.printtemplate:
-    with open(os.path.join(Setup.obsoleta_root, 'obsoleta.json.template')) as f:
-        print(f.read())
+    Setup.using_arch = True
+    Setup.using_buildtype = True
+    Setup.using_track = True
+    _package = Package.construct_from_compact('a:development:archname:buildtype:0.0.0')
+    _depends = Package.construct_from_compact('b:development:archname:buildtype:0.0.0')
+    _package.add_dependency(_depends)
+    package_file = Packagefile(_package)
+    print(package_file.dump())
     exit(ErrorCode.OK.value)
 
 if results.verbose:
@@ -115,7 +121,7 @@ if results.verbose:
 Setup.load_configuration(results.conffile)
 
 try:
-    package = Package.construct_from_packagepath(results.packagepath)
+    package = Package.construct_from_package_path(results.package_path)
 except FileNotFoundError as e:
     print_error(str(e))
     exit(ErrorCode.PACKAGE_NOT_FOUND.value)

@@ -2,10 +2,12 @@
 import json
 import argparse
 from log import logger as log
+from log import inf, deb, cri
+from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Indent, Setup, ErrorCode, Error, NoPackage, IllegalPackage
+from common import Setup, ErrorCode, Error, NoPackage, IllegalPackage
 from package import Package
 import collections
 
@@ -26,7 +28,7 @@ class Obsoleta:
             self.resolve_dependencies(package)
 
         self.check_for_multiple_versions()
-        log.info('package loading and parsing complete')
+        inf('package loading and parsing complete')
 
     def find_packages_in_path(self, path, maxdepth, results):
         self.dirs_checked += 1
@@ -38,36 +40,39 @@ class Obsoleta:
                     maxdepth += 1
             if entry.name == 'obsoleta.json':
                 results.append(entry.path)
+                inf('   - found package %s' % entry.path)
                 continue
-
         return results
 
     def find_package_files(self, pathlist):
+        inf('searching %i paths' % len(pathlist))
         package_files = []
+        _1 = Indent()
         for path in pathlist:
+            inf('path = %s' % path)
             package_files += self.find_packages_in_path(path, Setup.max_depth, [])
 
-        log.info('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
+        inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         return package_files
 
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
-            package = Package.construct_from_packagepath(file)
+            package = Package.construct_from_package_path(file)
             if package in self.loaded_packages:
-                message = 'duplicate package %s in %s' % (package, package.packagepath)
+                message = 'duplicate package %s in %s' % (package, package.package_path)
                 if Setup.allow_duplicates:
                     log.warning('ignoring ' + message)
                 else:
-                    raise IllegalPackage(message)
+                    cri(message, ErrorCode.DUPLICATE_PACKAGE)
             else:
                 self.loaded_packages.append(package)
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
-            log.debug(Setup.indent + 'resolving root ' + str(package))
+            deb('resolving root ' + str(package))
         else:
-            log.debug(Setup.indent + 'resolving dependency ' + str(package))
+            deb('resolving dependency ' + str(package))
 
         _1 = Indent()
 
@@ -80,7 +85,7 @@ class Obsoleta:
 
             for dependency in dependencies:
                 resolved = self.lookup(dependency)
-                log.debug(Setup.indent + 'lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
+                deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
 
                 _2 = Indent()
 
@@ -109,7 +114,7 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    log.debug(Setup.indent + 'package ' + dependency.to_string() + ' does not exist')
+                    deb('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
         return True
@@ -124,7 +129,7 @@ class Obsoleta:
         return max(candidates)
 
     def check_for_multiple_versions(self):
-        log.info('checking for multiple versions in package tree')
+        inf('checking for multiple versions in package tree')
         _1 = Indent()
 
         for package in self.loaded_packages:
@@ -145,11 +150,11 @@ class Obsoleta:
                     for j in candidate[i+1:]:
                         if candidate[i].matches_without_version(j):
                             err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
-                            log.error(Setup.indent + 'ERROR: ' + err1.to_string())
+                            log.error('ERROR: ' + err1.to_string())
                             candidate[i].add_error(err1)
 
                             err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
-                            log.error(Setup.indent + 'ERROR: ' + err2.to_string())
+                            log.error('ERROR: ' + err2.to_string())
                             j.add_error(err2)
 
     def get_package_list(self, package, packages):
@@ -162,9 +167,13 @@ class Obsoleta:
     def dump_tree(self, root_package):
         ret = []
         error = ErrorCode.OK
+        found = 0
         for package in self.loaded_packages:
             if package == root_package:
+                found += 1
                 error = package.dump(ret, error)
+        if found > 1 and root_package.get_name() != '*':
+            return ret, ErrorCode.DUPLICATE_PACKAGE
         return ret, error
 
     def dump_build_order(self, root_package):
@@ -233,7 +242,7 @@ def print_message(message):
 parser = argparse.ArgumentParser('obsoleta')
 parser.add_argument('--package', dest='compact',
                     help='the package id in compact form or "all". See also --json')
-parser.add_argument('--json', dest='packagepath',
+parser.add_argument('--json', dest='package_path',
                     help='the path for the package. See also --package')
 parser.add_argument('--path', action='store', dest='path',
                     help=': separated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
@@ -263,12 +272,12 @@ if results.verbose:
 
 # go-no-go checks
 
-if not results.compact and not results.packagepath:
-    print_error('no package specified, see --package and --json')
+if not results.compact and not results.package_path:
+    print_error('no package specified (use --package for compact form or --json for path to obsoleta.json)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not results.tree and not results.check and not results.buildorder:
-    print_error('no action specified, see --check, --tree and --buildorder')
+    print_error('no action specified (use --check, --tree or --buildorder)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 # parse configuration file and make the path(s) list
@@ -291,21 +300,18 @@ paths = [os.path.abspath(p) for p in paths if p] # fully qualified non-empty pat
 paths = list(set(paths)) # remove any duplicates
 
 if blacklist_paths:
-    log.info('checking paths against blacklist')
+    inf('checking paths against blacklist')
     for path in paths[:]:
         for blacklisted in blacklist_paths:
             if blacklisted in path:
                 paths.remove(path)
-                log.info(' - removing "%s" blacklisted with "%s"' % (path, blacklisted))
+                inf(' - removing "%s" blacklisted with "%s"' % (path, blacklisted))
                 continue
 
 if not paths:
-    print_error('no paths to search (commandline path + config path - blacklists), giving up')
+    print_error('no search path(s) specified (use --path and/or config file paths)')
     exit(ErrorCode.MISSING_INPUT.value)
 
-log.info('searching %i paths' % len(paths))
-for path in paths:
-    log.info('  path = %s' % path)
 
 # construct obsoleta, load and parse everything in one go
 
@@ -332,9 +338,9 @@ except Exception as e:
 
 exit_code = ErrorCode.UNSET
 
-if results.packagepath:
+if results.package_path:
     try:
-        package = Package.construct_from_packagepath(results.packagepath)
+        package = Package.construct_from_package_path(results.package_path)
     except FileNotFoundError as e:
         print_error(str(e))
         exit(ErrorCode.PACKAGE_NOT_FOUND.value)
@@ -344,7 +350,7 @@ else:
 # and now figure out what to do
 
 if results.check:
-    log.info('checking package "%s"' % package)
+    inf('checking package "%s"' % package)
     errors = obsoleta.get_errors(package)
 
     if errors == ErrorCode.PACKAGE_NOT_FOUND:
@@ -360,7 +366,7 @@ if results.check:
         exit_code = ErrorCode.OK
 
 elif results.tree:
-    log.info('package tree for "%s"' % package)
+    inf('package tree for "%s"' % package)
     dump, error = obsoleta.dump_tree(package)
     if dump:
         print_message("\n".join(dump))
@@ -371,10 +377,10 @@ elif results.tree:
 
 elif results.buildorder:
     exit_code = ErrorCode.OK
-    log.info('packages listed in buildorder')
+    inf('packages listed in buildorder')
     unresolved, resolved = obsoleta.dump_build_order(package)
 
-    log.info('build order')
+    inf('build order')
     if not resolved:
         print_error(' - unable to find somewhere to start')
     for _package in resolved:
