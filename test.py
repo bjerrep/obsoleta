@@ -78,8 +78,10 @@ test(output == ('c:anytrack:anyarch:unknown:0.1.2\nb:anytrack:anyarch:unknown:0.
 
 title(13, 'simple sunshine --buildorder --printpaths')
 err, output = execute(fixed + '--path test/test_simple --package a --buildorder --printpaths', ErrorCode.OK)
-test(output == ('/home/claus/src/obsoleta/test/test_simple/c\n/home/claus/src/obsoleta/test/test_simple/b\n'
-                '/home/claus/src/obsoleta/test/test_simple/a\n'))
+output = output.split('\n')
+test(output[0].endswith('c'))
+test(output[1].endswith('b'))
+test(output[2].endswith('a'))
 
 title(20, 'no json files found (bad path)')
 err, output = execute(fixed + '--path nonexisting --package a --check', ErrorCode.BAD_PATH)
