@@ -1,12 +1,11 @@
 {
   "name": "b",
-  "state": "development",
+  "arch": "beos",
   "version": "0.1.2",
   "depends": [
       {
       "name": "c",
-      "version": "1.2.3",
-      "arch": "linux_x86_64"
+      "version": "1.2.3"
       }
   ]
 }

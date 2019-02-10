@@ -6,6 +6,7 @@ from common import Setup, ErrorCode, Error, IllegalPackage
 import json
 import os
 from enum import Enum
+import copy
 
 
 buildtype_unknown = 'unknown'
@@ -102,6 +103,7 @@ class Package:
 
                 for dependency in dependencies:
                     package = Package(None, None, dependency)
+                    package_copy =  copy.deepcopy(package)
                     package.parent = self
                     # inherit optionals from the package if they are unspecified. The downside is that they will no
                     # longer look exactly as they appear in the package file, the upside is that they now tell
@@ -117,6 +119,9 @@ class Package:
                     if Setup.using_buildtype:
                         if package.buildtype == buildtype_unknown:
                             package.buildtype = self.buildtype
+
+                    if package_copy != package:
+                        deb('%s -> %s (inherited values)' % (package_copy.to_extra_string(), package.to_extra_string()))
 
                     self.dependencies.append(package)
 

@@ -126,6 +126,9 @@ err, output = execute(fixed + '--path test/test_multiple_versions --package d --
 title(37, 'fail to list buildorder as there are a circular dependency')
 err, output = execute(fixed + '--path test/test_circular_dependency --package \* --buildorder', ErrorCode.CIRCULAR_DEPENDENCY)
 
+title(38, 'named architecture -> named architecture -> "anyarch" is ok')
+err, output = execute(fixed + '--path test/test_arch_noarch --package a:anytrack:beos --check', ErrorCode.OK)
+
 title(40, 'find b in version 0.2.0')
 err, output = execute(fixed + '--path test/range_find_newest --package a --tree', ErrorCode.OK)
 test("b:anytrack:anyarch:unknown:0.2.0" in output)

@@ -65,7 +65,7 @@ When everything is in use:
 The name given with the --package argument are split with ':' as delimiter to between 1 to 5 elements depending on enabled optionals. The following are all valid package specifications (for what is also called the compact name) when all optionals are enabled:
 
 - "all"
-- *
+- "*"
 - name:track:arch:buildtype:version
 - name:track:arch:buildtype
 - name:track:arch
@@ -191,7 +191,10 @@ Complaining about the package b:test:anyarch:0.1.2 which is a dummy constructed 
 
 ### Arch
 
-The arch attribute acts as an appendix to the name so e.g. a library can coexist in multiple flavors for the otherwise same name, version, track and buildtype.
+The arch (architecture) attribute acts as an appendix to the name so e.g. a library can coexist in multiple flavors for the otherwise same name, version, track and buildtype.
+
+The default arch name is 'anyarch' which as the name suggests matches any architecture. This perhaps unfortunately gives it kind of two different meanings when dealing with packages producing binaries: The first would be that only one architecture is ever used and no packages bother to define an "arch" attibute and everything then just gets 'anyarch'. The other meaning would be in a multi arch setup where a package using 'anyarch' would be a package without binaries, e.g. a tool/utility package or perhaps an include file only package for c/c++.
+
 
 ### Buildtype
 
@@ -203,7 +206,7 @@ Obsoleta currently have no concept of a default search path and it will fall ove
 
 ## Slots
 
-Slots is a way to deal with the fact that once the 'arch' attibute is actually used for different architectures then a straight forward package files used so far on this page won't cut it. A use case could be that a developer working on multiple architectures decides to check out the same repository once for each architecture. This could lead to the following file structure:
+Slots is a way to deal with the fact that once the 'arch' attibute is actually used for different architectures then the straight forward package files used so far on this page won't cut it. A use case could be that a developer working on multiple architectures decides to check out the same repository once for each architecture. This could lead to the following file structure:
 
 	├── a_x86
 	├── a_x68_64
