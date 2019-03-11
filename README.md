@@ -6,7 +6,9 @@
 
 When there is a few developers then everything is fine up to the point where someone suggests to break the big single build up into smaller entities as build and test execution times starts to get excessive. So now you have e.g. executable **a** depending on library **b** depending on library **c**. That's a splendid idea except for the fact that just about every time someone is making breaking changes in **c** everything else is a pain. The CI might get it right every time, but fellow developers keep wasting time trying to figure out what went wrong. Too often someone updates e.g. the **a** repository alone and then have to figure out why stuff stopped working or the build breaks. Obsoleta tries to be a tool that makes it more transparent what is going on.
 
-There are tonnes of modules, packages, whatever in the world that does the same as is done here. Probably the biggest selling point for Obsoleta is that it is very small and hopefully relatively hackable. 
+There are tonnes of modules, packages, whatever in the world that does the same as is done here. Probably the biggest selling point for Obsoleta is that it is very small and hopefully relatively hackable.
+
+There are two scripts in obsoleta, obsoleta.py itself and a helper script called dixi.py and they have a chapter each. The first part below describe working with obsoleta.
 
 
 ## Status
@@ -44,23 +46,23 @@ This is how a obsoleta.json file can look like (generated with dixi.py --printte
 	}
 
 
-Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page. 
+Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page.
 
 All the meta data for a package can be bundled into a single identifier called compact form, used both internally and for console output. It can look like these:
 
 No optionals enabled:
 
 **name:version**
-	
+
 All optionals enabled but unspecified for a given package (falling back to default values):
 
 **name:anytrack:anyarch:unknown:version**
-	
+
 When everything is in use:
 
 **name:testing:linux_x86_64:release:version**
 
-### Specifying a package 
+### Specifying a package
 
 The name given with the --package argument are split with ':' as delimiter to between 1 to 5 elements depending on enabled optionals. The following are all valid package specifications (for what is also called the compact name) when all optionals are enabled:
 
@@ -103,7 +105,7 @@ Assuming the local workspace contains the package json files as above then a --c
 
 	./obsoleta.py --path test/test_simple --package a --check
 	checking package "a": success
-	
+
 The tree view will also show errors if there are any (which there isn't):
 
 	/obsoleta.py --path test/test_simple  --package a --tree
@@ -122,13 +124,13 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
 
 	  "name": "c", "version": "0.1.2"
-	  
+
 which as might be suspected iznogood:
 
 	./obsoleta.py --path test/test_simple  --package a --check
 	checking package "a": failed, 1 errors found
 	   Package not found: b:anytrack:anyarch:0.2.2 required by a:anytrack:anyarch:0.1.2
-   
+
 which can be seen in the tree as well
 
 	./obsoleta.py --path test/test_simple  --package a --tree
@@ -144,13 +146,13 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 	  "name": "a", "version": "0.2.2",
 		  "depends": [{ "name": "c", "version": "0.>=2.2"  }]
-		  
+
 	  "name": "c",  "version": "0.1.2"
-	  
+
   	  "name": "c",  "version": "0.2.2"
-  	  
+
   	  "name": "c",  "version": "0.3.2"
-		  
+
 where a '--tree a' with some kind of mathematical justice returns
 
 	./obsoleta.py --path test/test_simple2  --package a --tree
@@ -161,13 +163,13 @@ where a '--tree a' with some kind of mathematical justice returns
 
 ### Track
 
-The track is used to add release management life cycles into the mix. The allowed tracks are currently arbitrarily hardcoded as 'anytrack', 'devel', 'test' and 'release'. The catch is that they introduce a binding where pulled in packages need to be at the same track or better than the parent.
+The track is used to add release management life cycles into the mix. The allowed tracks are currently arbitrarily hardcoded as a.o. 'anytrack', 'development', 'testing' and 'production'. The catch is that they introduce a binding where pulled in packages need to be at the same track or better than the parent.
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
 
 	  "name": "b", "track" : "release", "version": "0.1.2"
-	  
+
 This is ok, **b** will be picked up:
 
 	/obsoleta.py --path test/test_simple5 --tree a
@@ -215,7 +217,7 @@ Slots is a way to deal with the fact that once the 'arch' attibute is actually u
 	├── c_x86
 	└── c_x68_64
 
-This will result in the same obsoleta.json file (from the SCM) in multiple directories and obsoleta will complain about duplicate packages. 
+This will result in the same obsoleta.json file (from the SCM) in multiple directories and obsoleta will complain about duplicate packages.
 
 The current solution is to add a new file alongside obsoleta.json called obsoleta.key defining the so-called slot that the current directory represents. This key file should then -not- be in the SCM. How the key file is made say by a CI that is about to make a clean rebuild should be implemented in the local toolchain. A slotted obsoleta.json and a matching key file could look like
 
@@ -236,7 +238,7 @@ The current solution is to add a new file alongside obsoleta.json called obsolet
 	}
 
 **obsoleta.key**
-	
+
 	{
 	  "key": "key2"
 	}
@@ -267,7 +269,7 @@ For automation the paths are more interesting and can be listed using --printpat
 	/home/obsoleta/test/test_simple/b
 	/home/obsoleta/test/test_simple/a
 
-This is as far as this project has made it for now. But conceptually there isn't a long way to a pseudo script that could wrap everything up:
+Conceptually there isn't a long way to a pseudo script that could wrap everything up:
 
 	for path in "--path test/test_simple --package all --buildorder --printpaths"
 		cd path
@@ -275,6 +277,26 @@ This is as far as this project has made it for now. But conceptually there isn't
 		export obsoleta=$obsoleta:path # for the build system to use
 		./build.sh
 
-The start of a utility script intended to make usage easier for both a CI and developers can be found as dixi.py. The purpose of such a script is that it shouldn't normally be required to edit the json files manually once they are made. A developer might use "--increase_minor" and a CI might use'--increase_build' or '--promote a:development:1.2.3 testing'. Stuff like that. The script does nothing yet.
+## dixi
+
+dixi is a utility script intended to make usage easier for both a CI and developers when scripting. The purpose of dixi is that it shouldn't normally be required to edit the json package files manually once they are made and it intends to provide an easy interface for manipulating a package file. Dixi always works on a uniquely specified package file and newer tries to figure out in what contexts the given package is used as opposed to the obsoleta script.
+
+Currently dixi supports the following operations:
+
+	--getversion
+	--setversion x.y.z
+	--incmajor
+	--incminor
+	--incbuild
+	--getarch
+	--setarch arch
+	--gettrack
+	--settrack track
+	--getbuildtype
+	--setbuildtype buildtype
+
+Dixi support for slotted packages are so far limited as it only operates on the resolved package. It can figure out that it needs to write in the base section of a slotted package file but its not clever enough to discover if an entry actually came from a key'ed section. So dixi can work on the version and the track assuming that the values originally were in the base section. This limited thing is just waiting for a proper implementation for it to dissapear.
+
+
 
 

@@ -2,6 +2,7 @@ import logging
 
 indent = ''
 
+
 class Indent():
     def __init__(self):
         global indent

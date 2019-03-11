@@ -28,7 +28,7 @@ class Setup:
     using_buildtype = False
     allow_duplicates = False
     obsoleta_root = None
-    max_depth = 1
+    depth = 1
 
     @staticmethod
     def load_configuration(configuration_file=None):
@@ -44,8 +44,8 @@ class Setup:
         try:
             with open(conffile) as f:
                 conf = json.loads(f.read())
-                paths += conf.get('paths')
-                env_paths = conf.get('env_paths')
+                paths += conf.get('root')
+                env_paths = conf.get('env_root')
                 if env_paths:
                     expanded = os.path.expandvars(env_paths)
                     log.info('environment search path %s expanded to %s' % (env_paths, expanded))
@@ -59,12 +59,17 @@ class Setup:
                 Setup.using_buildtype = conf.get('using_buildtype') == 'on'
                 Setup.allow_duplicates = conf.get('allow_duplicates') == 'yes'
                 try:
-                    Setup.max_depth = int(conf['max_depth'])
+                    Setup.depth = int(conf['depth'])
                 except KeyError:
                     pass
         except FileNotFoundError:
             log.info('no configuration file %s found - continuing regardless' % conffile)
         return paths
+
+    @staticmethod
+    def dump():
+        log.debug('Configuration:')
+        log.debug('  depth = %i' % Setup.depth)
 
 
 class ErrorCode(Enum):

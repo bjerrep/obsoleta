@@ -1,8 +1,8 @@
 {
-  "paths": [
+  "root": [
       ""
       ],
-  "env_paths": "$OBSOLETA_ENV_PATHS",
+  "env_root": "$OBSOLETA_ENV_PATHS",
   "blacklist_paths": [
       ""
       ],

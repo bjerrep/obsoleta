@@ -7,7 +7,7 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, ErrorCode, Error, NoPackage, IllegalPackage
+from common import Setup, ErrorCode, Error, NoPackage
 from package import Package
 import collections
 
@@ -47,10 +47,10 @@ class Obsoleta:
     def find_package_files(self, pathlist):
         inf('searching %i paths' % len(pathlist))
         package_files = []
-        _1 = Indent()
+        _ = Indent()
         for path in pathlist:
             inf('path = %s' % path)
-            package_files += self.find_packages_in_path(path, Setup.max_depth, [])
+            package_files += self.find_packages_in_path(path, Setup.depth, [])
 
         inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         return package_files
@@ -74,7 +74,7 @@ class Obsoleta:
         else:
             deb('resolving dependency ' + str(package))
 
-        _1 = Indent()
+        _ = Indent()
 
         dependencies = package.get_dependencies()
 
@@ -87,7 +87,7 @@ class Obsoleta:
                 resolved = self.lookup(dependency)
                 deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
 
-                _2 = Indent()
+                _ = Indent()
 
                 if resolved:
                     resolved.parent = package
@@ -130,7 +130,7 @@ class Obsoleta:
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
-        _1 = Indent()
+        _ = Indent()
 
         for package in self.loaded_packages:
             package_list = []
@@ -240,12 +240,14 @@ def print_message(message):
 
 
 parser = argparse.ArgumentParser('obsoleta')
-parser.add_argument('--package', dest='compact',
-                    help='the package id in compact form or "all". See also --json')
-parser.add_argument('--json', dest='package_path',
+parser.add_argument('--package',
+                    help='the package in compact form or "all". See also --path')
+parser.add_argument('--path',
                     help='the path for the package. See also --package')
-parser.add_argument('--path', action='store', dest='path',
-                    help=': separated base path. Use this and/or paths in obsoleta.conf (There are no default path)')
+parser.add_argument('--root',
+                    help='search root(s), ":" separated. Use this and/or roots in obsoleta.conf (There are no default search path)')
+parser.add_argument('--depth',
+                    help='search depth relative to root(s). Default 1')
 parser.add_argument('--blacklist_paths', action='store',
                     help=': separated list of blacklist substrings')
 
@@ -272,20 +274,28 @@ if results.verbose:
 
 # go-no-go checks
 
-if not results.compact and not results.package_path:
-    print_error('no package specified (use --package for compact form or --json for path to obsoleta.json)')
+if not results.package and not results.path:
+    print_error('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not results.tree and not results.check and not results.buildorder:
     print_error('no action specified (use --check, --tree or --buildorder)')
     exit(ErrorCode.MISSING_INPUT.value)
 
-# parse configuration file and make the path(s) list
+# parse configuration file
 
 conf_paths = Setup.load_configuration(results.conffile)
 
+if results.depth:
+    # a depth given on the commandline overrules any depth there might have been in the configuration file
+    Setup.depth = int(results.depth)
+
+Setup.dump()
+
+# make the path(s) list
+
 try:
-    paths = results.path.split(os.pathsep)
+    paths = results.root.split(os.pathsep)
 except:
     paths = []
 
@@ -296,8 +306,8 @@ except:
 blacklist_paths += Setup.blacklist_paths
 
 paths += conf_paths
-paths = [os.path.abspath(p) for p in paths if p] # fully qualified non-empty paths
-paths = list(set(paths)) # remove any duplicates
+paths = [os.path.abspath(p) for p in paths if p]  # fully qualified non-empty paths
+paths = list(set(paths))  # remove any duplicates
 
 if blacklist_paths:
     inf('checking paths against blacklist')
@@ -309,7 +319,7 @@ if blacklist_paths:
                 continue
 
 if not paths:
-    print_error('no search path(s) specified (use --path and/or config file paths)')
+    print_error('no root path(s) specified (use --root and/or config file roots)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 
@@ -338,14 +348,14 @@ except Exception as e:
 
 exit_code = ErrorCode.UNSET
 
-if results.package_path:
+if results.path:
     try:
-        package = Package.construct_from_package_path(results.package_path)
+        package = Package.construct_from_package_path(results.path)
     except FileNotFoundError as e:
         print_error(str(e))
         exit(ErrorCode.PACKAGE_NOT_FOUND.value)
 else:
-    package = Package.construct_from_compact(results.compact)
+    package = Package.construct_from_compact(results.package)
 
 # and now figure out what to do
 

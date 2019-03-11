@@ -1,6 +1,6 @@
 from log import logger as log
 from log import Indent as Indent
-from log import inf, deb, cri, indent
+from log import deb, cri
 from version import Version
 from common import Setup, ErrorCode, Error, IllegalPackage
 import json
@@ -35,6 +35,7 @@ class Package:
         self.dependencies = None
         self.direct_dependency = True
         self.errors = None
+        self.key = None
 
         if package_path:
             self.from_package_path(package_path)
@@ -99,11 +100,11 @@ class Package:
             if dependencies:
                 if not self.dependencies:
                     self.dependencies = []
-                _i = Indent()
+                _ = Indent()
 
                 for dependency in dependencies:
                     package = Package(None, None, dependency)
-                    package_copy =  copy.deepcopy(package)
+                    package_copy = copy.deepcopy(package)
                     package.parent = self
                     # inherit optionals from the package if they are unspecified. The downside is that they will no
                     # longer look exactly as they appear in the package file, the upside is that they now tell
@@ -140,23 +141,23 @@ class Package:
             with open(key_file) as f:
                 _json = f.read()
                 dictionary = json.loads(_json)
-                key = dictionary['key']
+                self.key = dictionary['key']
         except:
-            key = None
+            self.key = None
 
         json_file = self.get_obsoleta_json_path()
         with open(json_file) as f:
-            deb('[parsing file %s, slot %s]' % (json_file, str(key)))
+            deb('[parsing file %s, slot %s]' % (json_file, str(self.key)))
             _json = f.read()
             dictionary = json.loads(_json)
-            if key:
+            if self.key:
                 try:
                     base = dictionary['base']
-                    slot = dictionary[key]
+                    slot = dictionary[self.key]
                     final = dict(base, **slot)
                     self.from_dict(final)
                 except TypeError:
-                    cri('failed to look up slot key "%s"' % key, ErrorCode.SLOT_ERROR)
+                    cri('failed to look up slot key "%s"' % self.key, ErrorCode.SLOT_ERROR)
             else:
                 self.from_dict(dictionary)
 
@@ -219,6 +220,12 @@ class Package:
     def get_version(self):
         return self.version
 
+    def set_version(self, version):
+        self.version = version
+
+    def get_track_as_string(self):
+        return TrackToString[self.track.value]
+
     def get_path(self):
         return self.package_path
 
@@ -227,6 +234,9 @@ class Package:
 
     def get_obsoleta_key_path(self):
         return os.path.join(self.package_path, 'obsoleta.key')
+
+    def get_key(self):
+        return self.key
 
     def to_string(self):
         # The fully unique identifier string for a package
@@ -315,10 +325,10 @@ class Package:
                 error = err.get_error()
         ret.append(title)
         if self.dependencies:
-            _i2 = Indent()
+            _ = Indent()
             for dependency in self.dependencies:
                 error = dependency.dump(ret, error)
-            del _i2
+            del _
         return error
 
     def get_dependencies(self):
