@@ -16,7 +16,7 @@ os.chdir(obsoleta_root)
 
 def prepare_local(master):
     execute('rm local/dixi -rf', 0, True)
-    execute('mkdir local/dixi', 0, True)
+    execute('mkdir -p local/dixi', 0, True)
     execute('cp -r test/dixi/' + master + '/* local/dixi', 0, True)
 
 
