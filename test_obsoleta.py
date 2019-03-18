@@ -42,6 +42,10 @@ test(output[0].endswith('c'))
 test(output[1].endswith('b'))
 test(output[2].endswith('a'))
 
+title(14, 'simple sunshine --locate')
+err, output = execute(fixed + '--root test/test_simple --package a --locate', ErrorCode.OK)
+test(output is not None)
+
 title(20, 'no json files found (bad path)')
 err, output = execute(fixed + '--root nonexisting --package a --check', ErrorCode.BAD_PATH)
 
@@ -59,6 +63,11 @@ err, output = execute(fixed + '--root test/test_missing_package --package a --ch
 
 title(25, 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
 err, output = execute(fixed + '--root test/test_missing_package_track --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
+
+title(26, 'no package found, --locate')
+err, output = execute(fixed + '--root test/test_simple --package found --locate', ErrorCode.PACKAGE_NOT_FOUND)
+test(output == "")
+
 
 title(30, "a anyarch <<< b anyarch <<< c arch is ok")
 err, output = execute(fixed + '--root test/test_different_arch_dev_dev_arch1 --package a --check', ErrorCode.OK)

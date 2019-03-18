@@ -20,6 +20,10 @@ def print_message(message):
     print(message)
 
 
+def print_value(message, add_newline=True):
+    print(message, end='\n' if add_newline else '')
+
+
 class Setup:
     paths = []
     blacklist_paths = []

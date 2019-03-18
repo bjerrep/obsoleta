@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from log import logger as log
-from common import ErrorCode, Setup, IllegalPackage
+from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error
 from version import Version
 from package import Package
 import json
@@ -108,18 +108,6 @@ class Packagefile:
         return self.dict.get('buildtype')
 
 # ---------------------------------------------------------------------------------------------
-
-
-def print_error(message):
-    print(message)
-
-
-def print_message(message):
-    print(message)
-
-
-def print_value(message):
-    print(message, end='\n' if results.newline else '')
 
 
 parser = argparse.ArgumentParser('dixi', description='''
@@ -268,7 +256,7 @@ elif not results.print:
     print_error('no command found')
 
 if ret:
-    print_value(ret)
+    print_value(ret, results.newline)
 
 if save_pending:
     if results.dryrun:

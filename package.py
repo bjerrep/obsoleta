@@ -137,17 +137,19 @@ class Package:
             self.package_path = os.path.dirname(package_path)
 
         key_file = self.get_obsoleta_key_path()
+        json_file = self.get_obsoleta_json_path()
+
         try:
             with open(key_file) as f:
                 _json = f.read()
                 dictionary = json.loads(_json)
                 self.key = dictionary['key']
+            deb('[parsing file %s, slot %s]' % (json_file, str(self.key)))
         except:
             self.key = None
+            deb('[parsing file %s]' % json_file)
 
-        json_file = self.get_obsoleta_json_path()
         with open(json_file) as f:
-            deb('[parsing file %s, slot %s]' % (json_file, str(self.key)))
             _json = f.read()
             dictionary = json.loads(_json)
             if self.key:

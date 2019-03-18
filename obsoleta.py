@@ -7,7 +7,7 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, ErrorCode, Error, NoPackage
+from common import Setup, ErrorCode, Error, NoPackage, print_message, print_value, print_error
 from package import Package
 import collections
 
@@ -58,15 +58,21 @@ class Obsoleta:
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
-            package = Package.construct_from_package_path(file)
-            if package in self.loaded_packages:
-                message = 'duplicate package %s in %s' % (package, package.package_path)
-                if Setup.allow_duplicates:
-                    log.warning('ignoring ' + message)
+            try:
+                package = Package.construct_from_package_path(file)
+                if package in self.loaded_packages:
+                    message = 'duplicate package %s in %s' % (package, package.package_path)
+                    if Setup.allow_duplicates:
+                        log.warning('ignoring ' + message)
+                    else:
+                        cri(message, ErrorCode.DUPLICATE_PACKAGE)
                 else:
-                    cri(message, ErrorCode.DUPLICATE_PACKAGE)
-            else:
-                self.loaded_packages.append(package)
+                    self.loaded_packages.append(package)
+            except Exception as e:
+                if results.keepgoing:
+                    inf('keep going is set, ignoring invalid package %s' % file)
+                else:
+                    raise e
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
@@ -231,14 +237,6 @@ class Obsoleta:
 
 # ---------------------------------------------------------------------------------------------
 
-def print_error(message):
-    print(message)
-
-
-def print_message(message):
-    print(message)
-
-
 parser = argparse.ArgumentParser('obsoleta')
 parser.add_argument('--package',
                     help='the package in compact form or "all". See also --path')
@@ -250,6 +248,8 @@ parser.add_argument('--depth',
                     help='search depth relative to root(s). Default 1')
 parser.add_argument('--blacklist_paths', action='store',
                     help=': separated list of blacklist substrings')
+parser.add_argument('--keepgoing', action='store_true',
+                    help='attempt to ignore e.g. packages with otherwise fatal errors')
 
 parser.add_argument('--check', action='store_true',
                     help='command: check a specified package')
@@ -257,6 +257,8 @@ parser.add_argument('--tree', action='store_true',
                     help='command: show tree for a package')
 parser.add_argument('--buildorder', action='store_true',
                     help='command: show dependencies in building order for a package')
+parser.add_argument('--locate', action='store_true',
+                    help='command: get the path for the package given with --package')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
@@ -278,7 +280,7 @@ if not results.package and not results.path:
     print_error('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
-if not results.tree and not results.check and not results.buildorder:
+if not results.tree and not results.check and not results.buildorder and not results.locate:
     print_error('no action specified (use --check, --tree or --buildorder)')
     exit(ErrorCode.MISSING_INPUT.value)
 
@@ -410,8 +412,15 @@ elif results.buildorder:
         for _package in unresolved:
             print_error(' - ' + _package.to_string())
 
+elif results.locate:
+    lookup = obsoleta.lookup(Package.construct_from_compact(results.package))
+    if lookup:
+        print_value(lookup.get_path())
+        exit_code = ErrorCode.OK
+    else:
+        inf('unable to locate %s' % results.locate)
+        exit_code = ErrorCode.PACKAGE_NOT_FOUND
 else:
     log.error("no valid command found")
-
 
 exit(exit_code.value)
