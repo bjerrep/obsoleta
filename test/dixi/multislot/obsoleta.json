@@ -1,0 +1,12 @@
+{
+  "multislot": {
+    "name": "a",
+    "version": "0.1.2"
+  },
+  "build_a": {
+    "arch": "x86_64"
+  },
+  "build_b": {
+    "arch": "x86"
+  }
+}

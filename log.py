@@ -53,6 +53,10 @@ def inf(msg):
     logger.info(indent + msg)
 
 
+def war(msg):
+    logger.warning(indent + msg)
+
+
 def cri(msg, exit_code):
     logger.critical(msg)
     exit(exit_code.value)

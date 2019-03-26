@@ -7,7 +7,7 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, ErrorCode, Error, NoPackage, print_message, print_value, print_error
+from common import Setup, ErrorCode, Error, NoPackage, print_message, print_value, print_error, find_in_path
 from package import Package
 import collections
 
@@ -30,27 +30,14 @@ class Obsoleta:
         self.check_for_multiple_versions()
         inf('package loading and parsing complete')
 
-    def find_packages_in_path(self, path, maxdepth, results):
-        self.dirs_checked += 1
-        for entry in os.scandir(path):
-            if entry.is_dir():
-                if maxdepth:
-                    maxdepth -= 1
-                    self.find_packages_in_path(entry.path, maxdepth, results)
-                    maxdepth += 1
-            if entry.name == 'obsoleta.json':
-                results.append(entry.path)
-                inf('   - found package %s' % entry.path)
-                continue
-        return results
-
     def find_package_files(self, pathlist):
         inf('searching %i paths' % len(pathlist))
         package_files = []
         _ = Indent()
         for path in pathlist:
             inf('path = %s' % path)
-            package_files += self.find_packages_in_path(path, Setup.depth, [])
+            __ = Indent()
+            self.dirs_checked = find_in_path(path, 'obsoleta.json', Setup.depth, package_files)
 
         inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         return package_files
@@ -59,15 +46,24 @@ class Obsoleta:
         json_files = sorted(json_files)
         for file in json_files:
             try:
-                package = Package.construct_from_package_path(file)
-                if package in self.loaded_packages:
-                    message = 'duplicate package %s in %s' % (package, package.package_path)
-                    if Setup.allow_duplicates:
-                        log.warning('ignoring ' + message)
-                    else:
-                        cri(message, ErrorCode.DUPLICATE_PACKAGE)
+                if Package.is_multislot(file):
+                    key_files = []
+                    path = os.path.dirname(file)
+                    find_in_path(path, 'obsoleta.key', 2, key_files)
+                    packages = [Package.construct_from_multislot_package_path(file, key_file) for key_file in key_files]
                 else:
-                    self.loaded_packages.append(package)
+                    packages = [Package.construct_from_package_path(file)]
+
+                for package in packages:
+                    if package in self.loaded_packages:
+                        message = 'duplicate package %s in %s' % (package, package.package_path)
+                        if Setup.ignore_duplicates:
+                            log.warning('ignoring ' + message)
+                        else:
+                            cri(message, ErrorCode.DUPLICATE_PACKAGE)
+                    else:
+                        self.loaded_packages.append(package)
+
             except Exception as e:
                 if results.keepgoing:
                     inf('keep going is set, ignoring invalid package %s' % file)

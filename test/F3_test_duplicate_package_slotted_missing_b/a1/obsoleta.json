@@ -1,5 +1,5 @@
 {
-  "base": {
+  "slot": {
     "name": "a",
     "arch": "slotted",
     "version": "0.1.2",

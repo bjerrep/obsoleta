@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from log import logger as log
-from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error
+from log import cri
+from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error, get_package_filepath, get_key_filepath
 from version import Version
 from package import Package
 import json
@@ -52,15 +53,21 @@ class Packagefile:
     def save(self):
         package_file = os.path.join(self.package.package_path, 'obsoleta.json')
 
+        base_key = None
         if self.package.get_key():
+            base_key = 'slot'
+        elif Package.is_multislot(package_file):
+            base_key = 'multislot'
+
+        if base_key:
             with open(package_file) as f:
                 _dict = json.loads(f.read())
                 if self.new_version:
-                    _dict['base']['version'] = self.dict['version']
+                    _dict[base_key]['version'] = self.dict['version']
                 elif self.new_track:
-                    _dict['base']['track'] = self.dict['track']
+                    _dict[base_key]['track'] = self.dict['track']
                 else:
-                    print_error('can only rewrite version and track in slotted package file, sorry...')
+                    print_error('can only rewrite version and track in slotted or multislotted package file, sorry...')
                     exit(ErrorCode.SLOT_ERROR.value)
         else:
             _dict = self.dict
@@ -112,12 +119,12 @@ class Packagefile:
 
 parser = argparse.ArgumentParser('dixi', description='''
     dixi is used for inquiring and modifying a specific package file.
-    Note that only version and track are supported for slotted package files, and that the changes
+    Note that only version and track are supported for slot/multislot package files, and that the changes
     will be always be written in the base section. The key sections will never be modified even if a version
     or track originally came from one of these.
     ''')
-parser.add_argument('--path', required=True,
-                    help='the path for the package. See also --package')
+parser.add_argument('--path',
+                    help='the path for the package to work on')
 parser.add_argument('--conf', dest='conffile',
                     help='load specified configuration file rather than the default obsoleta.conf')
 
@@ -125,12 +132,17 @@ parser.add_argument('--print', action='store_true',
                     help='command: pretty print the packagefile')
 parser.add_argument('--printtemplate', action='store_true',
                     help='print a blank obsoleta.json')
+parser.add_argument('--printkey',
+                    help='print a blank obsoleta.key. Argument is the key value pair "key:value"')
+
 parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify the package file')
 parser.add_argument('--verbose', action='store_true',
                     help='enable log messages')
 parser.add_argument('--newline', action='store_true',
                     help='the getters default runs without trailing newlines, this one adds them back in')
+parser.add_argument('--keypath',
+                    help='the relative keypath (directory name) to use for a multislotted package')
 
 parser.add_argument('--getversion', action='store_true',
                     help='command: get version')
@@ -172,13 +184,30 @@ if results.printtemplate:
     print(package_file.dump())
     exit(ErrorCode.OK.value)
 
+if results.printkey:
+    key, value = results.printkey.split(':')
+    _json = {key: value}
+    print(json.dumps(_json, indent=4))
+    exit(ErrorCode.OK.value)
+
+if not results.path:
+    cri('need a path to the package to work with, see --path', ErrorCode.MISSING_INPUT)
+
 if results.verbose:
     log.setLevel(logging.DEBUG)
 
 Setup.load_configuration(results.conffile)
 
 try:
-    package = Package.construct_from_package_path(results.path)
+    package_path = get_package_filepath(results.path)
+    if Package.is_multislot(package_path):
+        if not results.keypath:
+            cri('the key directory to use is required for a multislot package', ErrorCode.MULTISLOT_ERROR)
+        key_file = os.path.join(results.path, get_key_filepath(results.keypath))
+        package = Package.construct_from_multislot_package_path(results.path, key_file)
+    else:
+        package = Package.construct_from_package_path(results.path)
+
 except FileNotFoundError as e:
     print_error(str(e))
     exit(ErrorCode.PACKAGE_NOT_FOUND.value)

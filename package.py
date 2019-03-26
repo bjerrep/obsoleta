@@ -1,8 +1,8 @@
 from log import logger as log
 from log import Indent as Indent
-from log import deb, cri
+from log import deb, war, cri
 from version import Version
-from common import Setup, ErrorCode, Error, IllegalPackage
+from common import Setup, ErrorCode, Error, IllegalPackage, get_package_filepath, get_key_filepath
 import json
 import os
 from enum import Enum
@@ -29,7 +29,7 @@ TrackToString = ['defective', 'discontinued', 'anytrack', 'development', 'testin
 
 
 class Package:
-    def __init__(self, package_path, compact, dictionary):
+    def __init__(self, package_path, compact, dictionary, key_file=None):
         self.parent = None
         self.package_path = package_path
         self.dependencies = None
@@ -37,7 +37,9 @@ class Package:
         self.errors = None
         self.key = None
 
-        if package_path:
+        if key_file:
+            self.from_multislot_package_path(package_path, key_file)
+        elif package_path:
             self.from_package_path(package_path)
         elif compact:
             self.from_compact(compact)
@@ -53,11 +55,15 @@ class Package:
         return cls(package_path, None, None)
 
     @classmethod
+    def construct_from_multislot_package_path(cls, package_path, key_file):
+        return cls(package_path, None, None, key_file)
+
+    @classmethod
     def construct_from_compact(cls, compact):
         return cls(None, compact, None)
 
     def from_dict(self, dictionary):
-        path = 'in ' + self.get_obsoleta_json_path() if self.package_path else ''
+        path = 'in ' + get_package_filepath(self.package_path) if self.package_path else ''
         try:
             self.name = dictionary['name']
         except:
@@ -68,6 +74,7 @@ class Package:
             raise IllegalPackage('invalid version number %s' % path)
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
+        pedantic = True
         if Setup.using_track:
             if 'track' in dictionary:
                 try:
@@ -76,12 +83,16 @@ class Package:
                     raise IllegalPackage('invalid track name "%s" %s' % (dictionary['track'], path))
             else:
                 self.track = Track.anytrack
+        elif pedantic and 'track' in dictionary:
+            war('package %s specifies a track which is not enabled in config' % self.name)
 
         if Setup.using_arch:
             try:
                 self.arch = dictionary["arch"]
             except:
                 self.arch = anyarch
+        elif pedantic and 'arch' in dictionary:
+            war('package %s specifies an arch which is not enabled in config' % self.name)
 
         if Setup.using_buildtype:
             if 'buildtype' in dictionary:
@@ -91,6 +102,8 @@ class Package:
                     raise IllegalPackage('invalid buildtype "%s" %s' % (dictionary['buildtype'], path))
             else:
                 self.buildtype = buildtype_unknown
+        elif pedantic and 'buildtype' in dictionary:
+            war('package %s specifies an buildtype which is not enabled in config' % self.name)
 
         deb('%s' % self.to_extra_string())
 
@@ -136,32 +149,57 @@ class Package:
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
 
-        key_file = self.get_obsoleta_key_path()
-        json_file = self.get_obsoleta_json_path()
-
-        try:
-            with open(key_file) as f:
-                _json = f.read()
-                dictionary = json.loads(_json)
-                self.key = dictionary['key']
-            deb('[parsing file %s, slot %s]' % (json_file, str(self.key)))
-        except:
-            self.key = None
-            deb('[parsing file %s]' % json_file)
+        json_file = get_package_filepath(self.package_path)
 
         with open(json_file) as f:
             _json = f.read()
             dictionary = json.loads(_json)
-            if self.key:
+            if 'slot' in dictionary:
                 try:
-                    base = dictionary['base']
-                    slot = dictionary[self.key]
-                    final = dict(base, **slot)
-                    self.from_dict(final)
+                    key_file = get_key_filepath(self.package_path)
                 except TypeError:
                     cri('failed to look up slot key "%s"' % self.key, ErrorCode.SLOT_ERROR)
+
+                key = self.get_key_from_keyfile(key_file)
+                base = dictionary['slot']
+                slot = dictionary[key]
+                final = dict(base, **slot)
+                self.from_dict(final)
+            elif 'multislot' in dictionary:
+                cri('internal error #0170')
             else:
                 self.from_dict(dictionary)
+
+    def from_multislot_package_path(self, package_path, key_file):
+        if package_path.endswith('obsoleta.json'):
+            self.package_path = os.path.dirname(package_path)
+
+        json_file = get_package_filepath(self.package_path)
+
+        with open(json_file) as f:
+            _json = f.read()
+            dictionary = json.loads(_json)
+            key = self.get_key_from_keyfile(key_file)
+            base = dictionary['multislot']
+            slot = dictionary[key]
+            final = dict(base, **slot)
+            self.from_dict(final)
+
+    def get_key_from_keyfile(self, keyfile):
+        with open(keyfile) as f:
+            _json = f.read()
+            dictionary = json.loads(_json)
+            return dictionary['key']
+
+    @staticmethod
+    def is_multislot(package_file):
+        with open(package_file) as f:
+            _json = f.read()
+            dictionary = json.loads(_json)
+            return 'multislot' in dictionary
+
+    def get_slot_packages(self):
+        return self.slot_packages
 
     def from_compact(self, compact):
         self.name = '*'
@@ -230,12 +268,6 @@ class Package:
 
     def get_path(self):
         return self.package_path
-
-    def get_obsoleta_json_path(self):
-        return os.path.join(self.package_path, 'obsoleta.json')
-
-    def get_obsoleta_key_path(self):
-        return os.path.join(self.package_path, 'obsoleta.key')
 
     def get_key(self):
         return self.key
@@ -323,7 +355,7 @@ class Package:
         title = Indent.indent() + self.to_string()
         if self.errors:
             for err in self.errors:
-                title += "\n" + Indent.indent() + ' - ' + err.to_string()
+                title += '\n' + Indent.indent() + ' - ' + err.to_string()
                 error = err.get_error()
         ret.append(title)
         if self.dependencies:
