@@ -148,7 +148,14 @@ class Error:
 
 
 def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
-    for entry in os.scandir(path):
+    scan_list = list(os.scandir(path))
+
+    for entry in scan_list:
+        if entry.name == 'obsoleta.skip':
+            inf('- skip file found, ignoring %s recursively' % entry.path)
+            return dirs_checked
+
+    for entry in scan_list:
         if entry.is_dir():
             if maxdepth:
                 maxdepth -= 1

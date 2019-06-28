@@ -160,10 +160,12 @@ err, output = execute(fixed + '--root test/F3_test_duplicate_package_slotted_mis
 title('F7', "duplicate package - slot test 2, fail, b in x86_64 not found")
 err, output = execute(fixed + '--root test/F3_test_duplicate_package_slotted_missing_b --package a:anytrack:x86_64 --tree', ErrorCode.PACKAGE_NOT_FOUND)
 
+title('F8', "duplicate package - passes since there is a skip file")
+err, output = execute(fixed + '--root test/F4_test_duplicate_package_with_skip_file --package a --tree', ErrorCode.PACKAGE_NOT_FOUND)
 
 
 title('G1', "multislot sunshine")
-err, output = execute(fixed + '--root test/G1_test_duplicate_package_multislot --package a --tree --depth 2', ErrorCode.OK)
+err, output = execute(fixed + '--root test/G1_test_multislot --package a --tree --depth 2', ErrorCode.OK)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))
