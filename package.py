@@ -2,7 +2,8 @@ from log import logger as log
 from log import Indent as Indent
 from log import deb, war, cri
 from version import Version
-from common import Setup, ErrorCode, Error, IllegalPackage, get_package_filepath, get_key_filepath
+from common import Setup, Error, IllegalPackage, get_package_filepath, get_key_filepath
+from errorcodes import ErrorCode
 import json
 import os
 from enum import Enum
@@ -186,10 +187,17 @@ class Package:
             self.from_dict(final)
 
     def get_key_from_keyfile(self, keyfile):
-        with open(keyfile) as f:
-            _json = f.read()
-            dictionary = json.loads(_json)
-            return dictionary['key']
+        try:
+            with open(keyfile) as f:
+                _json = f.read()
+                dictionary = json.loads(_json)
+                return dictionary['key']
+        except FileNotFoundError as e:
+            cri(str(e), ErrorCode.MISSING_KEY_FILE)
+        except json.JSONDecodeError as e:
+            cri(str(e), ErrorCode.INVALID_KEY_FILE)
+        except Exception as e:
+            cri(str(e), ErrorCode.UNKNOWN_EXCEPTION)
 
     @staticmethod
     def is_multislot(package_file):

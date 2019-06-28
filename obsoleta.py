@@ -7,7 +7,8 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, ErrorCode, Error, NoPackage, print_message, print_value, print_error, find_in_path
+from common import Setup, Error, NoPackage, print_message, print_value, print_error, find_in_path
+from errorcodes import ErrorCode
 from package import Package
 import collections
 

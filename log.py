@@ -1,4 +1,5 @@
 import logging
+from errorcodes import ErrorCode
 
 indent = ''
 
@@ -59,4 +60,5 @@ def war(msg):
 
 def cri(msg, exit_code):
     logger.critical(msg)
+    logger.critical('error : ' + ErrorCode.to_string(exit_code.value))
     exit(exit_code.value)

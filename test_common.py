@@ -33,7 +33,7 @@ def execute(command, expected_exit_code=0, quiet=False):
             print("%s" % output)
         if expected_exit_code != ErrorCode.OK.value:
             print('  process fail - didnt return exit code %i' % (expected_exit_code))
-            exit_code = ErrorCode.TEST_FAILED
+            exit(ErrorCode.TEST_FAILED.value)
         return 0, output
     except subprocess.CalledProcessError as e:
         output = e.stdout.decode()
