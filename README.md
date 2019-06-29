@@ -78,7 +78,7 @@ Its deeply unfair but thats all the explanation there is for now. The examples b
 
 ## Example
 
-Given one or more root directories Obsoleta recursively scans for *obsoleta.json* files (currently in max two directory levels). The directory name itself is not used by Obsoleta, the package name is always taken from the json file.
+Given one or more root directories Obsoleta recursively scans for *obsoleta.json* files (with a given limit on the number of recursions, see the depth paragraph). The directory name itself is not used by Obsoleta, the package name is always taken from the json file.
 So seen from a file system view it could look like this:
 
 	test_simple/
@@ -266,9 +266,20 @@ If building for multiple architectures is done out-of-source in a single directo
     │   └── obsoleta.key
     └── build_x86_64/
         └── obsoleta.key
-        
+
 So compared to the slot version above there will now have to be multiple key files, one in each build directory, where all are referring to the same package file. The only difference to the slot section above is that the base key is now called "multislot" rather than just "slot" in the package file.
 
+### Blacklisting and skipping
+
+There are three ways to tell obsoleta to ignore a directory (and any subdirectories) even if there are otherwise valid obsoleta files present.
+
+The simplest one is to add a 'obsoleta.skip' file in any directories that should be ignored.
+
+Alternatively to what might end up as littering skip files throughout the filestructure there is a 'blacklist_paths' entry in the configuration file and a --blacklist_path command line argument. They are joined to one list and are both used.
+
+### Search depth
+
+The default recursive scan depth relative to the specified root directories are 1. It can be changed on the command line with --depth and/or it can be defined in the configuration file with a "depth" entry. A command line depth number overrules any configuration depth number.
 
 ## Build support
 

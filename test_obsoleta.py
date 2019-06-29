@@ -22,7 +22,7 @@ print('\n\n============================= obsoleta ============================='
 fixed = './obsoleta.py --conf test.conf '
 
 title('A1', 'first check that this test suite matches the used obsoleta')
-err, output = execute(fixed + '--root test/A1_test_obsoleta:. --package testsuite --check', ErrorCode.OK)
+err, output = execute(fixed + '--root test/A1_test_obsoleta:. --depth 1 --package testsuite --check', ErrorCode.OK)
 
 title('A2', 'simple sunshine --tree')
 err, output = execute(fixed + '--root test/A2_test_simple --package \'*\' --tree', ErrorCode.OK)
@@ -168,6 +168,14 @@ err, output = execute(fixed + '--root test/F5_test_slotted_missing_key_file --pa
 
 title('F10', "slot - invalid key file")
 err, output = execute(fixed + '--root test/F6_test_slotted_bad_key_file --package a --tree', ErrorCode.INVALID_KEY_FILE)
+
+title('F11', "duplicate package - one path is in blacklist_paths in configuration file")
+err, output = execute(fixed + '--root test/F7_test_duplicate_package_blacklist_paths --package a --tree', ErrorCode.OK)
+
+title('F12', "duplicate package - using blacklist_paths on command line")
+err, output = execute(fixed + '--root test/F8_test_duplicate_package_blacklist_paths_command_line '\
+                              '--blacklist_path F8_test_duplicate_package_blacklist_paths_command_line/a2 '\
+                              '--package a --tree', ErrorCode.OK)
 
 title('G1', "multislot sunshine")
 err, output = execute(fixed + '--root test/G1_test_multislot --package a --tree --depth 2', ErrorCode.OK)

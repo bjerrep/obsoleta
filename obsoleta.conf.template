@@ -6,6 +6,7 @@
   "blacklist_paths": [
       ""
       ],
+  "depth" : 4,
   "using_arch": "on",
   "using_track": "on",
   "using_buildtype": "on",

@@ -300,22 +300,13 @@ except:
 
 try:
     blacklist_paths = results.blacklist_paths.split(os.pathsep)
+    Setup.blacklist_paths += blacklist_paths
 except:
-    blacklist_paths = []
-blacklist_paths += Setup.blacklist_paths
+    pass
 
 paths += conf_paths
 paths = [os.path.abspath(p) for p in paths if p]  # fully qualified non-empty paths
 paths = list(set(paths))  # remove any duplicates
-
-if blacklist_paths:
-    inf('checking paths against blacklist')
-    for path in paths[:]:
-        for blacklisted in blacklist_paths:
-            if blacklisted in path:
-                paths.remove(path)
-                inf(' - removing "%s" blacklisted with "%s"' % (path, blacklisted))
-                continue
 
 if not paths:
     print_error('no root path(s) specified (use --root and/or config file roots)')

@@ -117,11 +117,21 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
 
     for entry in scan_list:
         if entry.is_dir():
+            is_blacklisted = False
+            for blacklist in Setup.blacklist_paths:
+                if blacklist in os.path.join(path, entry.name):
+                    inf('- blacklisted, ignoring %s recursively' % entry.path)
+                    is_blacklisted = True
+
+            if is_blacklisted:
+                continue
+
             if maxdepth:
                 maxdepth -= 1
                 dirs_checked += 1
                 find_in_path(entry.path, filename, maxdepth, results, dirs_checked)
                 maxdepth += 1
+
         if entry.name == filename:
             results.append(entry.path)
             inf('- found %s' % entry.path)
