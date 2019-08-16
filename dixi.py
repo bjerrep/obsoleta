@@ -132,8 +132,8 @@ parser.add_argument('--print', action='store_true',
                     help='command: pretty print the packagefile')
 parser.add_argument('--printtemplate', action='store_true',
                     help='print a blank obsoleta.json')
-parser.add_argument('--printkey',
-                    help='print a blank obsoleta.key. Argument is the key value pair "key:value"')
+parser.add_argument('--printkey', metavar='key:value',
+                    help='print a obsoleta.key on stdout. Argument value is the (multi)slot name')
 
 parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify the package file')

@@ -48,6 +48,10 @@ class Setup:
         try:
             with open(conffile) as f:
                 conf = json.loads(f.read())
+                try:
+                    paths += conf.get('root')
+                except:
+                    pass
                 paths += conf.get('root')
                 env_paths = conf.get('env_root')
                 if env_paths:

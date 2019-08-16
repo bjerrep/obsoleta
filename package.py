@@ -156,14 +156,16 @@ class Package:
             _json = f.read()
             dictionary = json.loads(_json)
             if 'slot' in dictionary:
-                try:
-                    key_file = get_key_filepath(self.package_path)
-                except TypeError:
-                    cri('failed to look up slot key "%s"' % self.key, ErrorCode.SLOT_ERROR)
+                key_file = get_key_filepath(self.package_path)
 
                 key = self.get_key_from_keyfile(key_file)
                 base = dictionary['slot']
-                slot = dictionary[key]
+                try:
+                    slot = dictionary[key]
+                except KeyError:
+                    cri('failed to find slot in package file %s with key "%s"' % (os.path.abspath(json_file), key),
+                        ErrorCode.INVALID_KEY_FILE)
+
                 final = dict(base, **slot)
                 self.from_dict(final)
             elif 'multislot' in dictionary:
@@ -182,7 +184,12 @@ class Package:
             dictionary = json.loads(_json)
             key = self.get_key_from_keyfile(key_file)
             base = dictionary['multislot']
-            slot = dictionary[key]
+            try:
+                slot = dictionary[key]
+            except KeyError:
+                cri('failed to find multislot in package file %s with key "%s"' % (os.path.abspath(json_file), key),
+                    ErrorCode.INVALID_KEY_FILE)
+
             final = dict(base, **slot)
             self.from_dict(final)
 
@@ -193,11 +200,11 @@ class Package:
                 dictionary = json.loads(_json)
                 return dictionary['key']
         except FileNotFoundError as e:
-            cri(str(e), ErrorCode.MISSING_KEY_FILE)
+            cri(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
         except json.JSONDecodeError as e:
-            cri(str(e), ErrorCode.INVALID_KEY_FILE)
+            cri(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
         except Exception as e:
-            cri(str(e), ErrorCode.UNKNOWN_EXCEPTION)
+            cri(str(e) + ' ' + keyfile, ErrorCode.UNKNOWN_EXCEPTION)
 
     @staticmethod
     def is_multislot(package_file):

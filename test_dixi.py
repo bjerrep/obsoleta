@@ -5,6 +5,7 @@ now it is most of all annoying that this makes it impossible to debug obsoleta u
 ./test/ is tests that executes without fatal problems and ./exception/ is for tests that makes Obsoleta give up.
 """
 from test_common import execute, test, title
+from common import ErrorCode
 import os
 import time
 
@@ -69,6 +70,13 @@ err, output = execute(fixed + '--setversion 1.2.3')
 err, output = execute(fixed + '--getversion')
 test(output, '1.2.3')
 
+title('R1B', 'slotted getversion with invalid key')
+prepare_local('slotted_invalid_key')
+err, output = execute(fixed + '--setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
+print(output)
+err, output = execute(fixed + '--getversion', ErrorCode.INVALID_KEY_FILE.value)
+print(output)
+
 title('R2', 'slotted incmajor')
 prepare_local('slotted')
 err, output = execute(fixed + '--incmajor')
@@ -95,6 +103,13 @@ prepare_local('multislot')
 err, output = execute(fixed + '--keypath build_a --setversion 1.2.3')
 err, output = execute(fixed + '--keypath build_a --getversion')
 test(output, '1.2.3')
+
+title('S1B', 'multislot setversion and getversion with invalid key')
+prepare_local('multislot_invalid_key')
+err, output = execute(fixed + '--keypath build_a --setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
+print(output)
+err, output = execute(fixed + '--keypath build_a --getversion', ErrorCode.INVALID_KEY_FILE.value)
+print(output)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))

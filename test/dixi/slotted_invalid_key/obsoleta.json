@@ -1,0 +1,19 @@
+{
+  "slot": {
+    "name": "a",
+    "arch": "slotted",
+    "version": "0.1.2",
+    "depends": [
+      {
+        "name": "b",
+        "version": "0.1.2"
+      }
+    ]
+  },
+  "key1": {
+    "arch": "x86_64"
+  },
+  "key2": {
+    "arch": "x86"
+  }
+}
