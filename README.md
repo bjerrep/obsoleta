@@ -311,6 +311,7 @@ dixi is a utility script intended to make usage easier for both a CI and develop
 
 Currently dixi supports the following operations:
 
+	--getname
 	--getversion
 	--setversion x.y.z
 	--incmajor

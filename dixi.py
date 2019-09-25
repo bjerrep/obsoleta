@@ -144,6 +144,9 @@ parser.add_argument('--newline', action='store_true',
 parser.add_argument('--keypath',
                     help='the relative keypath (directory name) to use for a multislotted package')
 
+parser.add_argument('--getname', action='store_true',
+                    help='command: get name')
+
 parser.add_argument('--getversion', action='store_true',
                     help='command: get version')
 parser.add_argument('--setversion',
@@ -229,7 +232,10 @@ except FileNotFoundError as e:
 save_pending = False
 ret = None
 
-if results.getversion:
+if results.getname:
+    ret = pf.get_package().get_name()
+
+elif results.getversion:
     ret = pf.get_package().get_version()
 
 elif results.setversion:

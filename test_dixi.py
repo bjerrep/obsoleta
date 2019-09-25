@@ -25,6 +25,11 @@ print('\n\n============================= dixi =============================')
 
 fixed = './dixi.py --conf test.conf --path local/dixi '
 
+title('M0', 'getname')
+prepare_local('simple')
+err, output = execute(fixed + '--getname')
+test(output, 'a')
+
 title('M1', 'setversion and getversion')
 prepare_local('simple')
 err, output = execute(fixed + '--setversion 1.2.3')
