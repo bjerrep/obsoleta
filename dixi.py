@@ -146,6 +146,8 @@ parser.add_argument('--keypath',
 
 parser.add_argument('--getname', action='store_true',
                     help='command: get name')
+parser.add_argument('--getcompact', action='store_true',
+                    help='command: get compact name')
 
 parser.add_argument('--getversion', action='store_true',
                     help='command: get version')
@@ -234,6 +236,9 @@ ret = None
 
 if results.getname:
     ret = pf.get_package().get_name()
+
+elif results.getcompact:
+    ret = pf.get_package().to_string()
 
 elif results.getversion:
     ret = pf.get_package().get_version()

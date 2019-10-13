@@ -51,6 +51,11 @@ prepare_local('simple')
 exitcode, output = execute(fixed + '--incbuild')
 test(output, '0.1.3')
 
+title('M5', 'getcompact')
+prepare_local('simple')
+exitcode, output = execute(fixed + '--getcompact')
+test(output, 'a:testing:anyarch:debug:0.1.2')
+
 title('O1', 'settrack and gettrack')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--settrack discontinued')
@@ -112,9 +117,7 @@ test(output, '1.2.3')
 title('S1B', 'multislot setversion and getversion with invalid key')
 prepare_local('multislot_invalid_key')
 exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
-print(output)
 exitcode, output = execute(fixed + '--keypath build_a --getversion', ErrorCode.INVALID_KEY_FILE.value)
-print(output)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))

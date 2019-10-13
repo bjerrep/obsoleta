@@ -39,7 +39,7 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
         return proc.returncode, stderr
 
     elif proc.returncode:
-        print('  process fail with expected exit code %i\n    %s' % (expected_exit_code, stderr))
+        print('  success, process failed with expected exit code %i\n    %s' % (expected_exit_code, stderr))
         return proc.returncode, stderr
 
     else:
