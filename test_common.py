@@ -16,31 +16,34 @@ def title(serial, purpose):
     print('---------------------------------------------')
 
 
-def execute(command, expected_exit_code=0, quiet=False):
+def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
     global exit_code
     try:
         expected_exit_code = expected_exit_code.value
     except:
         pass
 
-    try:
+    if not quiet:
+        print('executing "%s"' % command)
+
+    proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE )
+    output, stderr = proc.communicate()
+    output = output.decode()
+    stderr = stderr.decode()
+
+    if proc.returncode != expected_exit_code:
+        print('  process fail - unexpected exit code (not %i)\n    %s' % (expected_exit_code, stderr))
+        if exitonerror:
+            print('terminating test with a fail since exitonerror=True')
+            exit(proc.returncode)
+        return proc.returncode, stderr
+
+    elif proc.returncode:
+        print('  process fail with expected exit code %i\n    %s' % (expected_exit_code, stderr))
+        return proc.returncode, stderr
+
+    else:
         if not quiet:
-            print('executing "%s"' % command)
-        output = None
-        output = subprocess.check_output(command, shell=True)
-        output = output.decode()
-        if not quiet and output:
-            print("%s" % output)
-        if expected_exit_code != ErrorCode.OK.value:
-            print('  process fail - didnt return exit code %i' % (expected_exit_code))
-            exit(ErrorCode.TEST_FAILED.value)
-        return 0, output
-    except subprocess.CalledProcessError as e:
-        output = e.stdout.decode()
-        if e.returncode != expected_exit_code:
-            print('  process fail - unexpected exit code (not %i): %s' % (expected_exit_code, str(e)))
-            exit_code = ErrorCode.TEST_FAILED
-            exit(exit_code.value)
-        else:
-            print('  process pass with expected exit code %i %s' % (expected_exit_code, ErrorCode.to_string(expected_exit_code)))
-        return e.returncode, output
+            print('  success')
+
+    return proc.returncode, output
