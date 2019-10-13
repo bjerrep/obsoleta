@@ -12,6 +12,10 @@ class NoPackage(Exception):
     pass
 
 
+class InvalidPackage(Exception):
+    pass
+
+
 def print_error(message):
     print(message)
 
@@ -52,7 +56,6 @@ class Setup:
                     paths += conf.get('root')
                 except:
                     pass
-                paths += conf.get('root')
                 env_paths = conf.get('env_root')
                 if env_paths:
                     expanded = os.path.expandvars(env_paths)
