@@ -7,7 +7,8 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, Error, NoPackage, print_message, print_value, print_error, find_in_path
+from common import Setup, Error, NoPackage, InvalidPackage, \
+                   print_message, print_value, print_error, find_in_path
 from errorcodes import ErrorCode
 from package import Package
 import collections
@@ -47,7 +48,12 @@ class Obsoleta:
         json_files = sorted(json_files)
         for file in json_files:
             try:
-                if Package.is_multislot(file):
+                multislot_package = Package.is_multislot(file)
+            except Exception as e:
+                raise InvalidPackage(file + " '" + str(e) + "'")
+
+            try:
+                if multislot_package:
                     key_files = []
                     path = os.path.dirname(file)
                     find_in_path(path, 'obsoleta.key', 2, key_files)
@@ -318,8 +324,8 @@ if not paths:
 try:
     obsoleta = Obsoleta(paths)
 
-except json.decoder.JSONDecodeError as e:
-    log.critical('caught exception: %s' % str(e))
+except InvalidPackage as e:
+    log.critical('caught exception in %s' % str(e))
     exit(ErrorCode.SYNTAX_ERROR.value)
 except FileNotFoundError as e:
     log.critical('directory not found: %s' % str(e))
