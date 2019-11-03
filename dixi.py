@@ -133,10 +133,8 @@ class Packagefile:
 
 
 parser = argparse.ArgumentParser('dixi', description='''
-    dixi is used for inquiring and modifying a specific package file.
-    Note that only version and track are supported for slot/multislot package files, and that the changes
-    will be always be written in the base section. The key sections will never be modified even if a version
-    or track originally came from one of these.
+    dixi is used for inquiring and modifying a specific package file with the intention
+    that it should rarely be necessary to edit a package file directly. 
     ''')
 parser.add_argument('--path',
                     help='the path for the package to work on')
