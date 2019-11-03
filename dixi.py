@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from log import logger as log
 from log import cri
-from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error, get_package_filepath, get_key_filepath
+from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error
+from common import get_package_filepath, get_key_filepath
 from version import Version
-from package import Package
+from package import Layout, Package
 import json
 import os
 import logging
@@ -15,7 +16,7 @@ import argparse
 class Packagefile:
     def __init__(self, package):
         self.package = package
-        self.dict = package.to_dict()
+        self.dict = self.package.to_unmodified_dict()
         self.action = ''
         self.new_version = False
         self.new_track = False
@@ -23,7 +24,7 @@ class Packagefile:
     def dump(self, _dict=None):
         if not _dict:
             _dict = self.dict
-        return json.dumps(_dict, indent=4)
+        return json.dumps(_dict, indent=2)
 
     def get_package(self):
         return self.package
@@ -32,20 +33,44 @@ class Packagefile:
         log.info(action)
         self.action = action
 
+    def getter(self, key):
+        if self.package.layout == Layout.standard:
+            return '', self.dict[key]
+
+        try:
+            return self.package.key, self.dict[self.package.key][key]
+        except:
+            try:
+                return 'slot', self.dict['slot'][key]
+            except:
+                return 'multislot', self.dict['multislot'][key]
+
+    def setter(self, section, key, value):
+        if not section:
+            self.dict[key] = value
+        else:
+            self.dict[section][key] = value
+
     def set_version(self, version):
-        org_version = str(Version(self.dict['version']))
-        self.dict['version'] = version
+        section, ver = self.getter('version')
+        org_version = str(Version(ver))
+        self.setter(section, 'version', version)
         action = 'version increased from %s to %s' % (org_version, version)
+        if section:
+            action += ' (section: %s)' % section
         self.add_action(action)
         self.new_version = True
         return str(version)
 
-    def version_digit_increase(self, position):
-        version = Version(self.dict['version'])
-        org_version = str(version)
+    def version_digit_increment(self, position):
+        section, ver = self.getter('version')
+        version = Version(ver)
+        org_version = version
         version.increase(position)
-        self.dict['version'] = str(version)
+        self.setter(section, 'version', str(version))
         action = 'version increased from %s to %s' % (org_version, version)
+        if section:
+            action += ' (section: %s)' % section
         self.add_action(action)
         self.new_version = True
         return str(version)
@@ -53,66 +78,56 @@ class Packagefile:
     def save(self):
         package_file = os.path.join(self.package.package_path, 'obsoleta.json')
 
-        base_key = None
-        if self.package.get_key():
-            base_key = 'slot'
-        elif Package.is_multislot(package_file):
-            base_key = 'multislot'
-
-        if base_key:
-            with open(package_file) as f:
-                _dict = json.loads(f.read())
-                if self.new_version:
-                    _dict[base_key]['version'] = self.dict['version']
-                elif self.new_track:
-                    _dict[base_key]['track'] = self.dict['track']
-                else:
-                    print_error('can only rewrite version and track in slotted or multislotted package file, sorry...')
-                    exit(ErrorCode.SLOT_ERROR.value)
-        else:
-            _dict = self.dict
-
         with open(package_file, 'w') as f:
-            # Add the modification time with the key 'dixi_modified'.
-            # Calculate the offset taking into account daylight saving time - https://stackoverflow.com/a/28147286
             utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
             utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
             now = datetime.datetime.now()
             local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
-            _dict['dixi_modified'] = local_with_tz
-            _dict['dixi_action'] = self.action
-            f.write(self.dump(_dict))
+            self.dict['dixi_modified'] = local_with_tz
+            self.dict['dixi_action'] = self.action
+            f.write(json.dumps(self.dict, indent=2))
 
     def set_track(self, track):
-        org_track = self.dict.get('track')
-        self.dict['track'] = track
-        action = 'track from %s to %s' % (str(org_track), track)
+        section, org_track = self.getter('track')
+        self.setter(section, 'track', track)
+        action = 'track from %s to %s' % (org_track, track)
+        if section:
+            action += ' (section: %s)' % section
         self.add_action(action)
-        self.new_track = True
+        self.new_version = True
         return track
 
     def get_track(self):
-        return self.dict.get('track')
+        _, track = self.getter('track')
+        return track
 
     def set_arch(self, arch):
-        org_arch = self.dict.get('arch')
-        self.dict['arch'] = arch
-        action = 'arch from %s to %s' % (str(org_arch), arch)
+        section, org_arch = self.getter('arch')
+        self.setter(section, 'arch', arch)
+        action = 'arch from %s to %s' % (org_arch, arch)
+        if section:
+            action += ' (section: %s)' % section
         self.add_action(action)
+        self.new_version = True
         return arch
 
     def get_arch(self):
-        return self.dict.get('arch')
+        _, arch = self.getter('arch')
+        return arch
 
     def set_buildtype(self, buildtype):
-        org_buildtype = self.dict.get('buildtype')
-        self.dict['buildtype'] = buildtype
-        action = 'track from %s to %s' % (str(org_buildtype), buildtype)
+        section, org_buildtype = self.getter('buildtype')
+        self.setter(section, 'buildtype', buildtype)
+        action = 'buildtype from %s to %s' % (org_buildtype, buildtype)
+        if section:
+            action += ' (section: %s)' % section
         self.add_action(action)
+        self.new_version = True
         return buildtype
 
     def get_buildtype(self):
-        return self.dict.get('buildtype')
+        _, buildtype = self.getter('buildtype')
+        return buildtype
 
 # ---------------------------------------------------------------------------------------------
 
@@ -225,6 +240,7 @@ except json.JSONDecodeError as e:
 except Exception as e:
     print_error(str(e))
     exit(ErrorCode.SYNTAX_ERROR.value)
+
 try:
     pf = Packagefile(package)
 except FileNotFoundError as e:
@@ -248,15 +264,15 @@ elif results.setversion:
     save_pending = True
 
 elif results.incmajor:
-    ret = pf.version_digit_increase(0)
+    ret = pf.version_digit_increment(0)
     save_pending = True
 
 elif results.incminor:
-    ret = pf.version_digit_increase(1)
+    ret = pf.version_digit_increment(1)
     save_pending = True
 
 elif results.incbuild:
-    ret = pf.version_digit_increase(2)
+    ret = pf.version_digit_increment(2)
     save_pending = True
 
 elif results.settrack:

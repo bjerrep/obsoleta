@@ -29,6 +29,12 @@ class Track(Enum):
 TrackToString = ['defective', 'discontinued', 'anytrack', 'development', 'testing', 'production']
 
 
+class Layout(Enum):
+    standard = 0
+    slot = 1
+    multislot = 2
+
+
 class Package:
     def __init__(self, package_path, compact, dictionary, key_file=None):
         self.parent = None
@@ -37,6 +43,8 @@ class Package:
         self.direct_dependency = True
         self.errors = None
         self.key = None
+        self.unmodified_dict = None
+        self.layout = Layout.standard
 
         if key_file:
             self.from_multislot_package_path(package_path, key_file)
@@ -155,15 +163,17 @@ class Package:
         with open(json_file) as f:
             _json = f.read()
             dictionary = json.loads(_json)
+            self.unmodified_dict = dictionary
             if 'slot' in dictionary:
+                self.layout = Layout.slot
                 key_file = get_key_filepath(self.package_path)
 
-                key = self.get_key_from_keyfile(key_file)
+                self.key = self.get_key_from_keyfile(key_file)
                 base = dictionary['slot']
                 try:
-                    slot = dictionary[key]
+                    slot = dictionary[self.key]
                 except KeyError:
-                    cri('failed to find slot in package file %s with key "%s"' % (os.path.abspath(json_file), key),
+                    cri('failed to find slot in package file %s with key "%s"' % (os.path.abspath(json_file), self.key),
                         ErrorCode.INVALID_KEY_FILE)
 
                 final = dict(base, **slot)
@@ -174,6 +184,7 @@ class Package:
                 self.from_dict(dictionary)
 
     def from_multislot_package_path(self, package_path, key_file):
+        self.layout = Layout.multislot
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
 
@@ -182,12 +193,14 @@ class Package:
         with open(json_file) as f:
             _json = f.read()
             dictionary = json.loads(_json)
-            key = self.get_key_from_keyfile(key_file)
+            self.unmodified_dict = dictionary
+            self.key = self.get_key_from_keyfile(key_file)
             base = dictionary['multislot']
             try:
-                slot = dictionary[key]
+                slot = dictionary[self.key]
             except KeyError:
-                cri('failed to find multislot in package file %s with key "%s"' % (os.path.abspath(json_file), key),
+                cri('failed to find multislot in package file %s with key "%s"' %
+                    (os.path.abspath(json_file), self.key),
                     ErrorCode.INVALID_KEY_FILE)
 
             final = dict(base, **slot)
@@ -268,6 +281,9 @@ class Package:
             dictionary['depends'] = deps
 
         return dictionary
+
+    def to_unmodified_dict(self):
+        return self.unmodified_dict
 
     def get_name(self):
         return self.name

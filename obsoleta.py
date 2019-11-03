@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import argparse
 from log import logger as log
 from log import inf, deb, cri
@@ -7,8 +6,8 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, Error, NoPackage, InvalidPackage, \
-                   print_message, print_value, print_error, find_in_path
+from common import Setup, Error, NoPackage, InvalidPackage
+from common import print_message, print_value, print_error, find_in_path
 from errorcodes import ErrorCode
 from package import Package
 import collections

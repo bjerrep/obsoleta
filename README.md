@@ -307,7 +307,7 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 
 ## dixi
 
-dixi is a utility script intended to make usage easier for both a CI and developers when scripting. The purpose of dixi is that it shouldn't normally be required to edit the json package files manually once they are made and it intends to provide an easy interface for manipulating a package file. Dixi always works on a uniquely specified package file and newer tries to figure out in what contexts the given package is used as opposed to the obsoleta script.
+dixi is a utility script intended to make usage easier for both a CI and developers when scripting. The purpose of dixi is that it shouldn't normally be required to edit the json package files manually once they are made and it intends to provide an easy interface for manipulating a package file. Dixi always works on a uniquely specified package file and never tries to figure out in what contexts the given package is used as opposed to the obsoleta script.
 
 Currently dixi supports the following operations:
 
@@ -317,15 +317,10 @@ Currently dixi supports the following operations:
 	--incmajor
 	--incminor
 	--incbuild
-	--getarch
-	--setarch arch
 	--gettrack
 	--settrack track
+	--getarch
+	--setarch arch
 	--getbuildtype
 	--setbuildtype buildtype
-
-Dixi support for slotted packages are so far limited as it only operates on the resolved package. It can figure out that it needs to write in the slot section of a slotted package file but its not clever enough to discover if an entry actually came from a key'ed section. So dixi can work on the version and the track assuming that the values originally were in the slot section. This limited thing is just waiting for a proper implementation for it to dissapear.
-
-
-
 
