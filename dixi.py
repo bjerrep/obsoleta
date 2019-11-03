@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from log import logger as log
 from log import cri
-from common import ErrorCode, Setup, IllegalPackage, print_message, print_value, print_error
+from common import ErrorCode, Setup, IllegalPackage, IllegalKey, print_message, print_value, print_error
 from common import get_package_filepath, get_key_filepath
 from version import Version
 from package import Layout, Package
@@ -232,6 +232,9 @@ except FileNotFoundError as e:
 except IllegalPackage as e:
     print_error(str(e))
     exit(ErrorCode.PACKAGE_NOT_FOUND.value)
+except IllegalKey as e:
+    print_error(str(e))
+    exit(ErrorCode.INVALID_KEY_FILE.value)
 except json.JSONDecodeError as e:
     print_error('json error in package file: ' + str(e))
     exit(ErrorCode.SYNTAX_ERROR.value)

@@ -204,7 +204,7 @@ Buildtype is ignored except for the track 'production' where it is illegal to mi
 
 ## Search paths
 
-Obsoleta currently have no concept of a default search path and it will fall over if none is given. Search paths can be specified on the command line using '--path' and/or in the configuration file. All paths are concatenated to a single list which is traversed at each invocation (no caching, at least not yet). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
+Obsoleta will use current working directory as default search root if nothing else is explicitly given. Search paths can be specified on the command line using '--path' and/or in the configuration file. All paths are concatenated to a single list which is traversed at each invocation (no caching, at least not yet). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
 
 ## Slots/multislots
 

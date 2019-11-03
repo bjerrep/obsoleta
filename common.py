@@ -16,6 +16,18 @@ class InvalidPackage(Exception):
     pass
 
 
+class IllegalKey(Exception):
+    pass
+
+
+class MissingKeyFile(Exception):
+    pass
+
+
+class InvalidKeyFile(Exception):
+    pass
+
+
 def print_error(message):
     print(message)
 

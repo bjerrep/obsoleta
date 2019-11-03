@@ -2,7 +2,7 @@ from log import logger as log
 from log import Indent as Indent
 from log import deb, war, cri
 from version import Version
-from common import Setup, Error, IllegalPackage, get_package_filepath, get_key_filepath
+from common import Setup, Error, IllegalPackage, IllegalKey, MissingKeyFile, InvalidKeyFile, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
 import json
 import os
@@ -173,8 +173,8 @@ class Package:
                 try:
                     slot = dictionary[self.key]
                 except KeyError:
-                    cri('failed to find slot in package file %s with key "%s"' % (os.path.abspath(json_file), self.key),
-                        ErrorCode.INVALID_KEY_FILE)
+                    raise IllegalKey('failed to find slot in package file %s with key "%s"' %
+                                     (os.path.abspath(json_file), self.key))
 
                 final = dict(base, **slot)
                 self.from_dict(final)
@@ -199,10 +199,8 @@ class Package:
             try:
                 slot = dictionary[self.key]
             except KeyError:
-                cri('failed to find multislot in package file %s with key "%s"' %
-                    (os.path.abspath(json_file), self.key),
-                    ErrorCode.INVALID_KEY_FILE)
-
+                raise IllegalKey('failed to find multislot in package file %s with key "%s"' %
+                                (os.path.abspath(json_file), self.key))
             final = dict(base, **slot)
             self.from_dict(final)
 
@@ -213,9 +211,9 @@ class Package:
                 dictionary = json.loads(_json)
                 return dictionary['key']
         except FileNotFoundError as e:
-            cri(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
+            raise MissingKeyFile(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
         except json.JSONDecodeError as e:
-            cri(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
+            raise InvalidKeyFile(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
         except Exception as e:
             cri(str(e) + ' ' + keyfile, ErrorCode.UNKNOWN_EXCEPTION)
 
@@ -246,11 +244,23 @@ class Package:
             try:
                 self.name = entries.pop(0)
                 if Setup.using_track:
-                    self.track = Track[entries.pop(0)]
+                    track = entries.pop(0)
+                    if track:
+                        self.track = Track[track]
+                    else:
+                        self.track = Track.anytrack
                 if Setup.using_arch:
-                    self.arch = entries.pop(0)
+                    arch = entries.pop(0)
+                    if arch:
+                        self.arch = arch
+                    else:
+                        self.arch = anyarch
                 if Setup.using_buildtype:
-                    self.buildtype = entries.pop(0)
+                    buildtype = entries.pop(0)
+                    if buildtype:
+                        self.buildtype = buildtype
+                    else:
+                        self.buildtype = buildtype_unknown
                 self.version = Version(entries.pop(0))
             except IndexError:
                 pass

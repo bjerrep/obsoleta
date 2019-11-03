@@ -6,7 +6,7 @@ from log import Indent as Indent
 import logging
 import os
 import copy
-from common import Setup, Error, NoPackage, InvalidPackage
+from common import Setup, Error, NoPackage, InvalidPackage, IllegalKey, MissingKeyFile, InvalidKeyFile
 from common import print_message, print_value, print_error, find_in_path
 from errorcodes import ErrorCode
 from package import Package
@@ -28,7 +28,10 @@ class Obsoleta:
         for package in self.loaded_packages:
             self.resolve_dependencies(package)
 
-        self.check_for_multiple_versions()
+        if not Setup.ignore_duplicates:
+            self.check_for_multiple_versions()
+        else:
+            deb('ignore duplicates, not running "check_for_multiple_versions"')
         inf('package loading and parsing complete')
 
     def find_package_files(self, pathlist):
@@ -49,7 +52,10 @@ class Obsoleta:
             try:
                 multislot_package = Package.is_multislot(file)
             except Exception as e:
-                raise InvalidPackage(file + " '" + str(e) + "'")
+                if results.keepgoing:
+                    inf('keep going is set, ignoring invalid package %s' % file)
+                else:
+                    raise InvalidPackage(file + " '" + str(e) + "'")
 
             try:
                 if multislot_package:
@@ -63,13 +69,25 @@ class Obsoleta:
                 for package in packages:
                     if package in self.loaded_packages:
                         message = 'duplicate package %s in %s' % (package, package.package_path)
-                        if Setup.ignore_duplicates:
+                        if Setup.ignore_duplicates or results.keepgoing:
                             log.warning('ignoring ' + message)
+                            if results.locate:
+                                self.loaded_packages.append(package)
                         else:
                             cri(message, ErrorCode.DUPLICATE_PACKAGE)
                     else:
                         self.loaded_packages.append(package)
 
+            except MissingKeyFile as e:
+                if results.keepgoing:
+                    inf('keep going is set, ignoring missing key file %s' % file)
+                else:
+                    raise e
+            except IllegalKey as e:
+                if results.keepgoing:
+                    inf('keep going is set, ignoring illegal key %s' % file)
+                else:
+                    raise e
             except Exception as e:
                 if results.keepgoing:
                     inf('keep going is set, ignoring invalid package %s' % file)
@@ -127,11 +145,15 @@ class Obsoleta:
             level -= 1
         return True
 
-    def lookup(self, target_package):
+    def lookup(self, target_package, strict=False):
         candidates = []
         for package in self.loaded_packages:
-            if package.equal_or_better(target_package):
-                candidates.append(package)
+            if not strict:
+                if package.equal_or_better(target_package):
+                    candidates.append(package)
+            else:
+                if package == target_package:
+                    candidates.append(package)
         if not candidates:
             return None
         return max(candidates)
@@ -314,9 +336,7 @@ paths = [os.path.abspath(p) for p in paths if p]  # fully qualified non-empty pa
 paths = list(set(paths))  # remove any duplicates
 
 if not paths:
-    print_error('no root path(s) specified (use --root and/or config file roots)')
-    exit(ErrorCode.MISSING_INPUT.value)
-
+    paths = '.'
 
 # construct obsoleta, load and parse everything in one go
 
@@ -337,6 +357,15 @@ except NoPackage:
     for path in paths:
         print_error('  %s' % path)
     exit(ErrorCode.PACKAGE_NOT_FOUND.value)
+except MissingKeyFile as e:
+    log.critical(str(e))
+    exit(ErrorCode.MISSING_KEY_FILE.value)
+except InvalidPackage as e:
+    log.critical(str(e))
+    exit(ErrorCode.MISSING_KEY_FILE.value)
+except InvalidKeyFile as e:
+    log.critical(str(e))
+    exit(ErrorCode.INVALID_KEY_FILE.value)
 except Exception as e:
     log.critical('caught exception: %s' % str(e))
     exit(ErrorCode.MISSING_INPUT.value)
@@ -406,7 +435,7 @@ elif results.buildorder:
             print_error(' - ' + _package.to_string())
 
 elif results.locate:
-    lookup = obsoleta.lookup(Package.construct_from_compact(results.package))
+    lookup = obsoleta.lookup(package, strict=True)
     if lookup:
         print_value(lookup.get_path())
         exit_code = ErrorCode.OK
