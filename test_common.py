@@ -26,22 +26,21 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
     if not quiet:
         print('executing "%s"' % command)
 
-    proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, stderr = proc.communicate()
+    proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output, _ = proc.communicate()
     output = output.decode()
-    stderr = stderr.decode()
 
     if proc.returncode != expected_exit_code:
         print('  process fail - unexpected exit code %i (not %i)\n    %s' %
-              (proc.returncode, expected_exit_code, stderr))
+              (proc.returncode, expected_exit_code, output))
         if exitonerror:
             print('terminating test with a fail since exitonerror=True')
             exit(proc.returncode)
-        return proc.returncode, stderr
+        return proc.returncode, output
 
     elif proc.returncode:
-        print('  success, process failed with expected exit code %i\n    %s' % (expected_exit_code, stderr))
-        return proc.returncode, stderr
+        print('  success, process failed with expected exit code %i\n    %s' % (expected_exit_code, output))
+        return proc.returncode, output
 
     else:
         if not quiet:

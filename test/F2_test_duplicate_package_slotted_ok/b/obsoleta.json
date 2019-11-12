@@ -1,6 +1,7 @@
 {
   "slot": {
-    "name": "b"
+    "name": "b",
+    "track": "development"
   },
   "key1": {
     "version": "0.1.2",

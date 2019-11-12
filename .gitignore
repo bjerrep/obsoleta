@@ -1,4 +1,4 @@
-obsoleta.conf
+*.conf
 
 *.pyc
 __pycache__

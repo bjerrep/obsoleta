@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 import argparse
 from log import logger as log
-from log import inf, deb, cri
+from log import inf, deb, err
 from log import Indent as Indent
-import logging
-import os
-import copy
-from common import Setup, Error, NoPackage, InvalidPackage, IllegalKey, MissingKeyFile, InvalidKeyFile
-from common import print_message, print_value, print_error, find_in_path
+import logging, os, copy
+from common import Setup, Error, Exceptio
+from common import find_in_path
 from errorcodes import ErrorCode
 from package import Package
 import collections
+import traceback
 
 
 class Obsoleta:
@@ -23,7 +22,7 @@ class Obsoleta:
         self.load(self.package_files)
 
         if not self.loaded_packages:
-            raise NoPackage("didn't find any packages")
+            raise Exceptio("didn't find any packages", ErrorCode.PACKAGE_NOT_FOUND)
 
         for package in self.loaded_packages:
             self.resolve_dependencies(package)
@@ -32,18 +31,19 @@ class Obsoleta:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
-        inf('package loading and parsing complete')
+        deb('package loading and parsing complete')
 
     def find_package_files(self, pathlist):
-        inf('searching %i paths' % len(pathlist))
+        deb('searching %i paths' % len(pathlist))
         package_files = []
         _ = Indent()
         for path in pathlist:
-            inf('path = %s' % path)
+            deb('path = %s' % path)
             __ = Indent()
             self.dirs_checked = find_in_path(path, 'obsoleta.json', Setup.depth, package_files)
 
-        inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
+        deb('= found %i package files in %i directories' % (len(package_files), self.dirs_checked))
+        del(_)
         return package_files
 
     def load(self, json_files):
@@ -53,9 +53,9 @@ class Obsoleta:
                 multislot_package = Package.is_multislot(file)
             except Exception as e:
                 if results.keepgoing:
-                    inf('keep going is set, ignoring invalid package %s' % file)
+                    deb('keep going is set, ignoring invalid package %s' % file)
                 else:
-                    raise InvalidPackage(file + " '" + str(e) + "'")
+                    raise Exceptio(file + " '" + str(e) + "'", ErrorCode.BAD_PACKAGE_FILE)
 
             try:
                 if multislot_package:
@@ -74,23 +74,13 @@ class Obsoleta:
                             if results.locate:
                                 self.loaded_packages.append(package)
                         else:
-                            cri(message, ErrorCode.DUPLICATE_PACKAGE)
+                            raise Exceptio(message, ErrorCode.DUPLICATE_PACKAGE)
                     else:
                         self.loaded_packages.append(package)
 
-            except MissingKeyFile as e:
-                if results.keepgoing:
-                    inf('keep going is set, ignoring missing key file %s' % file)
-                else:
-                    raise e
-            except IllegalKey as e:
-                if results.keepgoing:
-                    inf('keep going is set, ignoring illegal key %s' % file)
-                else:
-                    raise e
             except Exception as e:
                 if results.keepgoing:
-                    inf('keep going is set, ignoring invalid package %s' % file)
+                    deb('keep going is set, ignoring invalid package %s' % file)
                 else:
                     raise e
 
@@ -159,7 +149,7 @@ class Obsoleta:
         return max(candidates)
 
     def check_for_multiple_versions(self):
-        inf('checking for multiple versions in package tree')
+        deb('checking for multiple versions in package tree')
         _ = Indent()
 
         for package in self.loaded_packages:
@@ -180,12 +170,12 @@ class Obsoleta:
                     for j in candidate[i+1:]:
                         if candidate[i].matches_without_version(j):
                             err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
-                            log.error('ERROR: ' + err1.to_string())
                             candidate[i].add_error(err1)
-
                             err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
-                            log.error('ERROR: ' + err2.to_string())
                             j.add_error(err2)
+                            if results.verbose:
+                                err('ERROR: ' + err1.to_string())
+                                err('ERROR: ' + err2.to_string())
 
     def get_package_list(self, package, packages):
         packages.append(package)
@@ -301,11 +291,11 @@ if results.verbose:
 # go-no-go checks
 
 if not results.package and not results.path:
-    print_error('no package specified (use --package for compact form or --path for package dir)')
+    err('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not results.tree and not results.check and not results.buildorder and not results.locate:
-    print_error('no action specified (use --check, --tree or --buildorder)')
+    err('no action specified (use --check, --tree or --buildorder)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 # parse configuration file
@@ -343,104 +333,86 @@ if not paths:
 try:
     obsoleta = Obsoleta(paths)
 
-except InvalidPackage as e:
-    log.critical('caught exception in %s' % str(e))
-    exit(ErrorCode.SYNTAX_ERROR.value)
-except FileNotFoundError as e:
-    log.critical('directory not found: %s' % str(e))
-    exit(ErrorCode.BAD_PATH.value)
-except KeyError as e:
-    log.critical('missing entry in package file: %s' % str(e))
-    exit(ErrorCode.MISSING_INPUT.value)
-except NoPackage:
-    print_error('no packages found, giving up. Searched the path(s):')
-    for path in paths:
-        print_error('  %s' % path)
-    exit(ErrorCode.PACKAGE_NOT_FOUND.value)
-except MissingKeyFile as e:
+    if results.path:
+        try:
+            package = Package.construct_from_package_path(results.path)
+        except FileNotFoundError as e:
+            err(str(e))
+            exit(ErrorCode.PACKAGE_NOT_FOUND.value)
+    else:
+        package = Package.construct_from_compact(results.package)
+
+except Exceptio as e:
     log.critical(str(e))
-    exit(ErrorCode.MISSING_KEY_FILE.value)
-except InvalidPackage as e:
-    log.critical(str(e))
-    exit(ErrorCode.MISSING_KEY_FILE.value)
-except InvalidKeyFile as e:
-    log.critical(str(e))
-    exit(ErrorCode.INVALID_KEY_FILE.value)
+    log.critical(ErrorCode.to_string(e.ErrorCode.value))
+    exit(e.ErrorCode.value)
 except Exception as e:
-    log.critical('caught exception: %s' % str(e))
-    exit(ErrorCode.MISSING_INPUT.value)
+    log.critical('caught unexpected exception: %s' % str(e))
+    if results.verbose:
+        print(traceback.format_exc())
+    exit(ErrorCode.UNKNOWN_EXCEPTION.value)
 
 exit_code = ErrorCode.UNSET
-
-if results.path:
-    try:
-        package = Package.construct_from_package_path(results.path)
-    except FileNotFoundError as e:
-        print_error(str(e))
-        exit(ErrorCode.PACKAGE_NOT_FOUND.value)
-else:
-    package = Package.construct_from_compact(results.package)
 
 # and now figure out what to do
 
 if results.check:
-    inf('checking package "%s"' % package)
+    deb('checking package "%s"' % package)
     errors = obsoleta.get_errors(package)
 
     if errors == ErrorCode.PACKAGE_NOT_FOUND:
-        print_error('package "%s" not found' % package)
+        err('package "%s" not found' % package)
         exit_code = errors
     elif errors:
-        print_error('checking package "%s": failed, %i errors found' % (package, len(errors)))
+        err('checking package "%s": failed, %i errors found' % (package, len(errors)))
         for error in errors:
-            print_error('   ' + error.to_string())
+            err('   ' + error.to_string())
             exit_code = error.get_error()
     else:
-        print_message('checking package "%s": success' % package)
+        inf('checking package "%s": success' % package)
         exit_code = ErrorCode.OK
 
 elif results.tree:
     inf('package tree for "%s"' % package)
     dump, error = obsoleta.dump_tree(package)
     if dump:
-        print_message("\n".join(dump))
+        inf("\n".join(dump))
         exit_code = error
     else:
-        print_message("package not found")
+        inf("package '%s'not found" % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
 elif results.buildorder:
     exit_code = ErrorCode.OK
-    inf('packages listed in buildorder')
+    deb('packages listed in buildorder')
     unresolved, resolved = obsoleta.dump_build_order(package)
 
-    inf('build order')
     if not resolved:
-        print_error(' - unable to find somewhere to start')
+        err(' - unable to find somewhere to start')
     for _package in resolved:
         if results.printpaths:
-            print_message(_package.get_path())
+            inf(_package.get_path())
         else:
-            print_message(_package.to_string())
+            inf(_package.to_string())
         errors = _package.get_root_error()
         if errors:
             for error in errors:
                 exit_code = error.get_error()
-                print_error(' - error: ' + error.to_string())
+                err(' - error: ' + error.to_string())
 
     if unresolved:
-        print_error('unable to resolve build order for the following packages (circular dependencies ?)')
+        err('unable to resolve build order for the following packages (circular dependencies ?)')
         exit_code = ErrorCode.CIRCULAR_DEPENDENCY
         for _package in unresolved:
-            print_error(' - ' + _package.to_string())
+            err(' - ' + _package.to_string())
 
 elif results.locate:
     lookup = obsoleta.lookup(package, strict=True)
     if lookup:
-        print_value(lookup.get_path())
+        inf(lookup.get_path())
         exit_code = ErrorCode.OK
     else:
-        inf('unable to locate %s' % results.locate)
+        inf('unable to locate %s' % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
 else:
     log.error("no valid command found")

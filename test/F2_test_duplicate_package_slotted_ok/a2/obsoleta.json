@@ -1,7 +1,9 @@
 {
   "slot": {
     "name": "a",
-    "arch": "slotted",
+    "track": "development",
+    "arch": "x86",
+    "buildtype": "debug",
     "version": "0.1.2",
     "depends": [
       {

@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 from log import logger as log
-from log import cri
-from common import ErrorCode, Setup, IllegalPackage, IllegalKey, print_message, print_value, print_error
+from log import inf, err, cri
+from common import ErrorCode, Setup, Exceptio
 from common import get_package_filepath, get_key_filepath
 from version import Version
 from package import Layout, Package
-import json
-import os
-import logging
-import datetime
-import time
-import argparse
+import json, os, logging, datetime, time, argparse
 
 
 class Packagefile:
@@ -65,7 +60,7 @@ class Packagefile:
     def version_digit_increment(self, position):
         section, ver = self.getter('version')
         version = Version(ver)
-        org_version = version
+        org_version = str(version)
         version.increase(position)
         self.setter(section, 'version', str(version))
         action = 'version increased from %s to %s' % (org_version, version)
@@ -134,7 +129,7 @@ class Packagefile:
 
 parser = argparse.ArgumentParser('dixi', description='''
     dixi is used for inquiring and modifying a specific package file with the intention
-    that it should rarely be necessary to edit a package file directly. 
+    that it should rarely be necessary to edit a package file directly.
     ''')
 parser.add_argument('--path',
                     help='the path for the package to work on')
@@ -226,20 +221,11 @@ try:
     else:
         package = Package.construct_from_package_path(results.path)
 
-except FileNotFoundError as e:
-    print_error(str(e))
-    exit(ErrorCode.PACKAGE_NOT_FOUND.value)
-except IllegalPackage as e:
-    print_error(str(e))
-    exit(ErrorCode.PACKAGE_NOT_FOUND.value)
-except IllegalKey as e:
-    print_error(str(e))
-    exit(ErrorCode.INVALID_KEY_FILE.value)
-except json.JSONDecodeError as e:
-    print_error('json error in package file: ' + str(e))
-    exit(ErrorCode.SYNTAX_ERROR.value)
+except Exceptio as e:
+    log.critical(str(e))
+    exit(e.ErrorCode.value)
 except Exception as e:
-    print_error(str(e))
+    err(str(e))
     exit(ErrorCode.SYNTAX_ERROR.value)
 
 try:
@@ -278,51 +264,51 @@ elif results.incbuild:
 
 elif results.settrack:
     if not Setup.using_track:
-        print_error('track identifier is not enabled, see --conf')
+        err('track identifier is not enabled, see --conf')
     ret = pf.set_track(results.settrack)
     save_pending = True
 
 elif results.gettrack:
     if not Setup.using_track:
-        print_error('track identifier is not enabled, see --conf')
+        err('track identifier is not enabled, see --conf')
     ret = pf.get_track()
 
 elif results.setarch:
     if not Setup.using_arch:
-        print_error('arch identifier is not enabled, see --conf')
+        err('arch identifier is not enabled, see --conf')
     ret = pf.set_arch(results.setarch)
     save_pending = True
 
 elif results.getarch:
     if not Setup.using_arch:
-        print_error('arch identifier is not enabled, see --conf')
+        err('arch identifier is not enabled, see --conf')
     ret = pf.get_arch()
 
 elif results.setbuildtype:
     if not Setup.using_buildtype:
-        print_error('buildtype identifier is not enabled, see --conf')
+        err('buildtype identifier is not enabled, see --conf')
     ret = pf.set_buildtype(results.setbuildtype)
     save_pending = True
 
 elif results.getbuildtype:
     if not Setup.using_buildtype:
-        print_error('buildtype identifier is not enabled, see --conf')
+        err('buildtype identifier is not enabled, see --conf')
     ret = pf.get_buildtype()
 
 elif not results.print:
-    print_error('no command found')
+    err('no command found')
 
 if ret:
-    print_value(ret, results.newline)
+    inf(str(ret), results.newline)
 
 if save_pending:
     if results.dryrun:
-        print_message('dry run, package file is not rewritten')
+        inf('dry run, package file is not rewritten')
     else:
         pf.save()
 
 if results.print:
-    print_message(pf.dump())
+    inf(pf.dump())
 
 
 exit(ErrorCode.OK.value)

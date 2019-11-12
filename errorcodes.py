@@ -4,7 +4,7 @@ from enum import Enum
 class ErrorCode(Enum):
     OK = 0
     UNSET = 1
-    SYSTEM_EXIT = 2
+    INVALID_VERSION_NUMBER = 2
     PACKAGE_NOT_FOUND = 3
     ARCH_MISMATCH = 4
     MULTIPLE_VERSIONS = 5
@@ -14,33 +14,36 @@ class ErrorCode(Enum):
     MISSING_INPUT = 9
     BAD_PATH = 10
     UNKNOWN_EXCEPTION = 11
-    DEPENDENCY_NOT_FOUND = 12
+    BAD_PACKAGE_FILE = 12
     DUPLICATE_PACKAGE = 13
     SLOT_ERROR = 14
     MULTISLOT_ERROR = 15
     MISSING_KEY_FILE = 16
     INVALID_KEY_FILE = 17
+    COMPACT_PARSE_ERROR = 18
 
     @staticmethod
     def to_string(errorcode):
         ErrorCodeToString = \
            ['Ok',
             'Unset',
-            'System exit',
+            'Invalid version number',
             'Package not found',
             'Mixing different arch',
-            'Multiple versions',
+            'Multiple versions used',
             'Circular dependency',
             'Test failed',
             'Syntax error',
             'Missing input',
             'Bad path',
             'Unknown exception',
-            'Dependency not found',
+            'Bad package file',
             'Duplicate package',
             'Slot error',
             'Multislot error',
             'Missing key file',
-            'Invalid key file']
+            'Invalid key file',
+            'Unable to parse compact name'
+        ]
 
         return ErrorCodeToString[errorcode]

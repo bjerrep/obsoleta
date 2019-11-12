@@ -20,11 +20,10 @@ class Indent():
 
 logger = logging.getLogger()
 handler = logging.StreamHandler()
-# formatter = logging.Formatter('%(asctime)s %(levelname)s (%(module)-10.10s) %(message)s\033[0m')
-formatter = logging.Formatter(indent + '%(message)s\033[0m')
+formatter = logging.Formatter(indent + '%(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 RESET = '\033[0m'
 GREY = '\033[0;37m'
@@ -50,12 +49,20 @@ def deb(msg):
     logger.debug(indent + msg)
 
 
-def inf(msg):
+def inf(msg, newline=True):
+    if not newline:
+        handler.terminator = ""
     logger.info(indent + msg)
+    if not newline:
+        handler.terminator = "\n"
 
 
 def war(msg):
     logger.warning(indent + msg)
+
+
+def err(msg):
+    logger.error(indent + msg)
 
 
 def cri(msg, exit_code):

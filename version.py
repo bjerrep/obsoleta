@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from enum import Enum
+from errorcodes import ErrorCode
+from common import Exceptio
 
 
 class Digit:
@@ -58,6 +60,10 @@ class Version:
     def __init__(self, version_string='*.*.*'):
         self.digits = []
         digits = version_string.split('.')
+        if digits != [d for d in digits if d]:
+            raise Exceptio(
+                'Invalid version number %s (try compact name with "" if running from a shell and using e.g. ">")'
+                % version_string, ErrorCode.INVALID_VERSION_NUMBER)
         nof_digits = len(digits)
         if not nof_digits:
             self.digits.append(Digit(version_string))
@@ -111,63 +117,61 @@ class Version:
     def increase(self, position):
         self.digits[position].increase()
 
+    @staticmethod
+    def test():
+        aye = 0
+        nay = 0
 
-if __name__ == "__main__":
-    aye = 0
-    nay = 0
+        v123 = Version('1.2.3')
+        v124 = Version('1.2.4')
 
-    v123 = Version('1.2.3')
-    v124 = Version('1.2.4')
+        aye += v123 < v124
+        nay += v123 == v124
+        nay += v123 > v124
 
-    aye += v123 < v124
-    nay += v123 == v124
-    nay += v123 > v124
+        nay += v124 < v123
+        nay += v124 == v123
+        aye += v124 > v123
 
-    nay += v124 < v123
-    nay += v124 == v123
-    aye += v124 > v123
+        if nay or aye != 2:
+            print('fail (%i)' % aye)
+            return ErrorCode.TEST_FAILED
 
-    if nay or aye != 2:
-        print('fail (%i)' % aye)
-    else:
-        print('pass')
+        aye = 0
 
-    aye = 0
+        aye += Version('1.2.>=3') == Version('1.2.3')
+        aye += Version('1.2.>=3') == Version('1.2.<=3')
+        nay += Version('1.2.>3') == Version('1.2.<=3')
+        aye += Version('*.2.>3') == Version('1.2.<3')
+        aye += Version('1.2.3') == Version('1.*.4')
+        aye += Version('1.>2.3') == Version('1.3.3')
+        aye += Version('1.3.3') == Version('1.>2.3')
+        nay += Version('1.2.3') == Version('1.>2.3')
 
-    aye += Version('1.2.>=3') == Version('1.2.3')
-    aye += Version('1.2.>=3') == Version('1.2.<=3')
-    nay += Version('1.2.>3') == Version('1.2.<=3')
-    aye += Version('*.2.>3') == Version('1.2.<3')
-    aye += Version('1.2.3') == Version('1.*.4')
-    aye += Version('1.>2.3') == Version('1.3.3')
-    aye += Version('1.3.3') == Version('1.>2.3')
-    nay += Version('1.2.3') == Version('1.>2.3')
+        if nay or aye != 6:
+            print('fail simple range equality test (%i/%i)' % (nay, aye))
+            return ErrorCode.TEST_FAILED
 
-    if nay or aye != 6:
-        print('fail simple range equality test (%i/%i)' % (nay, aye))
-    else:
-        print('pass')
+        aye = 0
 
-    aye = 0
+        aye += Version('1.>2.3') == Version('1.3.3')
 
-    aye += Version('1.>2.3') == Version('1.3.3')
+        if nay or aye != 1:
+            print('fail simple range equality test (%i/%i)' % (nay, aye))
+            return ErrorCode.TEST_FAILED
 
-    if nay or aye != 1:
-        print('fail simple range equality test (%i/%i)' % (nay, aye))
-    else:
-        print('pass')
+        aye = 0
 
-    aye = 0
+        aye += Version('*') == Version('1.2.3')
+        aye += Version('1.*') == Version('1.2.3')
+        aye += Version('1.2.*') == Version('1.2.3')
 
-    aye += Version('*') == Version('1.2.3')
-    aye += Version('1.*') == Version('1.2.3')
-    aye += Version('1.2.*') == Version('1.2.3')
+        aye += Version('1.2.3') == Version('*')
+        aye += Version('1.2.3') == Version('1.*')
+        aye += Version('1.2.3') == Version('1.2.*')
 
-    aye += Version('1.2.3') == Version('*')
-    aye += Version('1.2.3') == Version('1.*')
-    aye += Version('1.2.3') == Version('1.2.*')
+        if nay or aye != 6:
+            print('fail wildchar test (%i/%i)' % (nay, aye))
+            return ErrorCode.TEST_FAILED
 
-    if nay or aye != 6:
-        print('fail wildchar test (%i/%i)' % (nay, aye))
-    else:
-        print('pass')
+        return ErrorCode.OK

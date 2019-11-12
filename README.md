@@ -48,33 +48,30 @@ This is how a obsoleta.json file can look like (generated with dixi.py --printte
 
 Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page.
 
-All the meta data for a package can be bundled into a single identifier called compact form, used both internally and for console output. It can look like these:
+### Specifying a package, 'compact name'
 
-No optionals enabled:
+All the meta data for a package can be bundled into a single identifier called compact name, used both in queries and for output. For outputs it may look like these:
 
+No optionals enabled: 
 **name:version**
 
 All optionals enabled but unspecified for a given package (falling back to default values):
+**name:version:anytrack:anyarch:unknown**
 
-**name:anytrack:anyarch:unknown:version**
+When everything is in use it might be something like:
+**name:version:testing:linux_x86_64:release**
 
-When everything is in use:
 
-**name:testing:linux_x86_64:release:version**
+For querying the compact name is parsed from left to right and missing values will be substituted with a * for the version or anytrack/anyarch/unknown for the optionals. So some valid compact names in queries will be
 
-### Specifying a package
+**name**
+**name:version**
+**name:version:testing:linux_x86_64:release**
 
-The name given with the --package argument are split with ':' as delimiter to between 1 to 5 elements depending on enabled optionals. The following are all valid package specifications (for what is also called the compact name) when all optionals are enabled:
+**name::testing**
+**name::::release**
 
-- "all"
-- "*"
-- name:track:arch:buildtype:version
-- name:track:arch:buildtype
-- name:track:arch
-- name:track
-- name
-
-Its deeply unfair but thats all the explanation there is for now. The examples below uses the last version since they are very simple and the name itself is enough for a unique identification.
+The examples below uses the raw name since they are very simple and the name itself is enough for a unique identification.
 
 ## Example
 
@@ -103,17 +100,26 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 Assuming the local workspace contains the package json files as above then a --check will find no problems:
 
-	./obsoleta.py --path test/test_simple --package a --check
-	checking package "a": success
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --check
+	checking package "a:*:anytrack:anyarch:unknown": success
 
 The tree view will also show errors if there are any (which there isn't):
 
-	/obsoleta.py --path test/test_simple  --package a --tree
-	a:anytrack:anyarch:0.1.2
-	  b:anytrack:anyarch:0.1.2
-	    c:anytrack:anyarch:0.1.2
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+        a:0.1.2:anytrack:anyarch:unknown
+          b:0.1.2:anytrack:anyarch:unknown
+            c:0.1.2:anytrack:anyarch:unknown
 
-That was expected. Now someone makes a change in **c**, refreshes the json files with new version numbers and checks in **a**, **b** and **c**.
+The configuration file 'mini.conf' used for the examples are:
+
+          "depth" : 4,
+          "using_arch": "on",
+          "using_track": "on",
+          "using_buildtype": "on",
+          "allow_duplicates": "no"
+
+
+Now someone makes a change in **c**, refreshes the json files with new version numbers and checks in **a**, **b** and **c**. (In the following examples the package files in test/A2_test_simple are modified manually)
 
 A colleague checks out **a** to get the latest and greatest. The json files will now contain
 
@@ -127,17 +133,18 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 which as might be suspected iznogood:
 
-	./obsoleta.py --path test/test_simple  --package a --check
-	checking package "a": failed, 1 errors found
-	   Package not found: b:anytrack:anyarch:0.2.2 required by a:anytrack:anyarch:0.1.2
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --check
+        checking package "a:*:anytrack:anyarch:unknown": failed, 1 errors found
+           Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
 
 which can be seen in the tree as well
 
-	./obsoleta.py --path test/test_simple  --package a --tree
-	a:anytrack:anyarch:0.1.2
-	  b:anytrack:anyarch:0.2.2
-	       - Package not found: b:anytrack:anyarch:0.2.2 required by a:anytrack:anyarch:0.1.2
-
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+        package tree for "a:*:anytrack:anyarch:unknown"
+        a:0.1.2:anytrack:anyarch:unknown
+          b:0.2.2:anytrack:anyarch:unknown
+           - Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
+   
 which suggests that **b** should be updated. Once that is done it will be a proper **c** that is missing.
 
 ## Resolving
@@ -155,9 +162,12 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 where a '--tree a' with some kind of mathematical justice returns
 
-	./obsoleta.py --path test/test_simple2  --package a --tree
-	a:anytrack:anyarch:0.1.2
-	  c:anytrack:anyarch:0.3.2
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	a:0.2.2:anytrack:anyarch:unknown
+	  c:0.3.2:anytrack:anyarch:unknown
+
+If using the operators (at least '>') in the compact name given with the --package switch then remember to use "" around the compact name. The shell used might decide that it should start to redirect things and that makes for some unexpected results.
+
 
 ## Track, Arch & Buildtype
 
@@ -168,14 +178,14 @@ The track is used to add release management life cycles into the mix. The allowe
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
 
-	  "name": "b", "track" : "release", "version": "0.1.2"
+	  "name": "b", "track" : "testing", "version": "0.1.2"
 
 This is ok, **b** will be picked up:
 
-	/obsoleta.py --path test/test_simple5 --tree a
-	a:anytrack:anyarch:0.1.2
-	  b:release:anyarch:0.1.2
-
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	a:0.1.2:anytrack:anyarch:unknown
+	  b:0.1.2:testing:anyarch:unknown
+	  
 But this:
 
 	  "name": "a", "track": "testing", "version": "0.1.2",
@@ -185,11 +195,12 @@ But this:
 
 is not legal:
 
-	a:test:anyarch:0.1.2
-	  b:test:anyarch:0.1.2
-	       - Package not found: b:test:anyarch:0.1.2 required by a:test:anyarch:0.1.2
-
-Complaining about the package b:test:anyarch:0.1.2 which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	a:0.1.2:testing:anyarch:unknown
+	  b:0.1.2:testing:anyarch:unknown
+	   - Package not found: b:0.1.2:testing:anyarch:unknown required by a:0.1.2:testing:anyarch:unknown
+   
+Complaining about the package b:0.1.2:testing:anyarch:unknown which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
 
 ### Arch
 
@@ -285,18 +296,18 @@ The default recursive scan depth relative to the specified root directories are 
 
 The examples above are most of all just intellectual exercises until the information can be used for actual building. For this there is a --buildorder option which does pretty much what it says:
 
-	./obsoleta.py --path test/test_simple --package all --buildorder
-	c:anytrack:anyarch:0.1.2
-	b:anytrack:anyarch:0.1.2
-	a:anytrack:anyarch:0.1.2
+	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --buildorder
+	c:0.1.2:anytrack:anyarch:unknown
+	b:0.1.2:anytrack:anyarch:unknown
+	a:0.1.2:anytrack:anyarch:unknown
 
 For automation the paths are more interesting and can be listed using --printpaths:
 
-	./obsoleta.py --path test/test_simple --package all --buildorder --printpaths
-	/home/obsoleta/test/test_simple/c
-	/home/obsoleta/test/test_simple/b
-	/home/obsoleta/test/test_simple/a
-
+	/obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --buildorder --printpaths
+	/home/obsoleta/src/obsoleta/test/A2_test_simple/c
+	/home/obsoleta/src/obsoleta/test/A2_test_simple/b
+	/home/obsoleta/src/obsoleta/test/A2_test_simple/a
+	
 Conceptually there isn't a long way to a pseudo script that could wrap everything up:
 
 	for path in "--path test/test_simple --package all --buildorder --printpaths"

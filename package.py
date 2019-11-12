@@ -1,8 +1,9 @@
 from log import logger as log
 from log import Indent as Indent
-from log import deb, war, cri
+from log import deb, war
 from version import Version
-from common import Setup, Error, IllegalPackage, IllegalKey, MissingKeyFile, InvalidKeyFile, get_package_filepath, get_key_filepath
+from common import Setup, Error, Exceptio
+from common import get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
 import json
 import os
@@ -76,11 +77,11 @@ class Package:
         try:
             self.name = dictionary['name']
         except:
-            raise IllegalPackage('unable to extract name %s (sure its a json list?)' % path)
+            raise Exceptio('unable to extract name %s (sure its a json list?)' % path, ErrorCode.BAD_PACKAGE_FILE)
         try:
             self.version = Version(dictionary['version'])
         except:
-            raise IllegalPackage('invalid version number %s' % path)
+            raise Exceptio('invalid version number %s' % path, ErrorCode.BAD_PACKAGE_FILE)
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         pedantic = True
@@ -89,7 +90,8 @@ class Package:
                 try:
                     self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise IllegalPackage('invalid track name "%s" %s' % (dictionary['track'], path))
+                    raise Exceptio('invalid track name "%s" %s' %
+                                   (dictionary['track'], path), ErrorCode.COMPACT_PARSE_ERROR)
             else:
                 self.track = Track.anytrack
         elif pedantic and 'track' in dictionary:
@@ -108,7 +110,8 @@ class Package:
                 try:
                     self.buildtype = dictionary['buildtype']
                 except:
-                    raise IllegalPackage('invalid buildtype "%s" %s' % (dictionary['buildtype'], path))
+                    raise Exceptio('invalid buildtype "%s" %s' %
+                                   (dictionary['buildtype'], path), ErrorCode.COMPACT_PARSE_ERROR)
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
@@ -138,7 +141,8 @@ class Package:
                         if package.arch == anyarch:
                             package.arch = self.arch
                         if self.arch != anyarch and package.arch != self.arch:
-                            package.add_error(Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
+                            package.add_error(
+                                Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
                     if Setup.using_buildtype:
                         if package.buildtype == buildtype_unknown:
                             package.buildtype = self.buildtype
@@ -147,6 +151,7 @@ class Package:
                         deb('%s -> %s (inherited values)' % (package_copy.to_extra_string(), package.to_extra_string()))
 
                     self.dependencies.append(package)
+                del(_)
 
         except KeyError:
             pass
@@ -173,15 +178,21 @@ class Package:
                 try:
                     slot = dictionary[self.key]
                 except KeyError:
-                    raise IllegalKey('failed to find slot in package file %s with key "%s"' %
-                                     (os.path.abspath(json_file), self.key))
+                    raise Exceptio('failed to find slot in package file %s with key "%s"' %
+                                   (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
 
                 final = dict(base, **slot)
+                deb('parsing %s:' % package_path)
+                _ = Indent()
                 self.from_dict(final)
+                del (_)
             elif 'multislot' in dictionary:
-                cri('internal error #0170')
+                raise Exceptio('internal error #0170', ErrorCode.UNKNOWN_EXCEPTION)
             else:
+                deb('parsing %s:' % package_path)
+                _ = Indent()
                 self.from_dict(dictionary)
+                del (_)
 
     def from_multislot_package_path(self, package_path, key_file):
         self.layout = Layout.multislot
@@ -199,8 +210,8 @@ class Package:
             try:
                 slot = dictionary[self.key]
             except KeyError:
-                raise IllegalKey('failed to find multislot in package file %s with key "%s"' %
-                                (os.path.abspath(json_file), self.key))
+                raise Exceptio('failed to find multislot in package file %s with key "%s"' %
+                               (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
             final = dict(base, **slot)
             self.from_dict(final)
 
@@ -211,11 +222,11 @@ class Package:
                 dictionary = json.loads(_json)
                 return dictionary['key']
         except FileNotFoundError as e:
-            raise MissingKeyFile(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
+            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
         except json.JSONDecodeError as e:
-            raise InvalidKeyFile(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
+            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
         except Exception as e:
-            cri(str(e) + ' ' + keyfile, ErrorCode.UNKNOWN_EXCEPTION)
+            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.UNKNOWN_EXCEPTION)
 
     @staticmethod
     def is_multislot(package_file):
@@ -230,44 +241,63 @@ class Package:
     def from_compact(self, compact):
         self.name = '*'
         self.version = Version('*')
+        optionals = 0
         if Setup.using_track:
             self.track = Track.anytrack
+            optionals += 1
         if Setup.using_arch:
             self.arch = anyarch
+            optionals += 1
         if Setup.using_buildtype:
             self.buildtype = buildtype_unknown
+            optionals += 1
 
         compact = compact.replace("'*'", '*')
 
         if compact != '*' and compact != 'all':
             entries = compact.split(':')
+            found_entries = len(entries)
+            expected_entries = 2 + optionals
+            if found_entries > expected_entries:
+                raise Exceptio('compact name contains %i fields but expected %i fields (check optionals)' %
+                               (found_entries, expected_entries), ErrorCode.COMPACT_PARSE_ERROR)
             try:
+                current = 'name'
                 self.name = entries.pop(0)
+
+                current = 'version'
+                ver = entries.pop(0)
+                if not ver:
+                    ver = '*'
+                self.version = Version(ver)
+
                 if Setup.using_track:
+                    current = 'track'
                     track = entries.pop(0)
                     if track:
                         self.track = Track[track]
                     else:
                         self.track = Track.anytrack
                 if Setup.using_arch:
+                    current = 'arch'
                     arch = entries.pop(0)
                     if arch:
                         self.arch = arch
                     else:
                         self.arch = anyarch
                 if Setup.using_buildtype:
+                    current = 'buildtype'
                     buildtype = entries.pop(0)
                     if buildtype:
                         self.buildtype = buildtype
                     else:
                         self.buildtype = buildtype_unknown
-                self.version = Version(entries.pop(0))
             except IndexError:
                 pass
             except KeyError as e:
-                cri('failed to parse %s' % str(e), ErrorCode.SYNTAX_ERROR)
+                raise Exceptio('failed to parse %s as %s' % (str(e), current), ErrorCode.COMPACT_PARSE_ERROR)
             except Exception as e:
-                cri(str(e), ErrorCode.UNKNOWN_EXCEPTION)
+                raise Exceptio(str(e), ErrorCode.COMPACT_PARSE_ERROR)
 
     def to_dict(self):
         dictionary = {
@@ -317,12 +347,12 @@ class Package:
         # The fully unique identifier string for a package
         optionals = ''
         if Setup.using_track:
-            optionals = '%s:' % TrackToString[self.track.value]
+            optionals = ':%s' % TrackToString[self.track.value]
         if Setup.using_arch:
-            optionals = '%s%s:' % (optionals, self.arch)
+            optionals = '%s:%s' % (optionals, self.arch)
         if Setup.using_buildtype:
-            optionals = '%s%s:' % (optionals, self.buildtype)
-        return '%s:%s%s' % (self.name, optionals, str(self.version))
+            optionals = '%s:%s' % (optionals, self.buildtype)
+        return '%s:%s%s' % (self.name, str(self.version), optionals)
 
     def to_extra_string(self):
         # As to_string() but adds the errorcount in case there are errors, and dependencies if there are any.
@@ -380,10 +410,13 @@ class Package:
         return optionals
 
     def matches_without_version(self, other):
-        match = self.name == other.name and \
-                self.track == other.track and \
-                self.arch == other.arch and \
-                self.buildtype == other.buildtype
+        match = self.name == other.name
+        if Setup.using_track:
+            match = match and self.track == other.track
+        if Setup.using_arch:
+            match = match and self.arch == other.arch
+        if Setup.using_buildtype:
+            match = match and self.buildtype == other.buildtype
         return match
 
     def __lt__(self, other):

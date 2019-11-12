@@ -4,40 +4,10 @@ import os
 import json
 
 
-class IllegalPackage(Exception):
-    pass
-
-
-class NoPackage(Exception):
-    pass
-
-
-class InvalidPackage(Exception):
-    pass
-
-
-class IllegalKey(Exception):
-    pass
-
-
-class MissingKeyFile(Exception):
-    pass
-
-
-class InvalidKeyFile(Exception):
-    pass
-
-
-def print_error(message):
-    print(message)
-
-
-def print_message(message):
-    print(message)
-
-
-def print_value(message, add_newline=True):
-    print(message, end='\n' if add_newline else '')
+class Exceptio(Exception):
+    def __init__(self, msg, ErrorCode):
+        super().__init__(msg)
+        self.ErrorCode = ErrorCode
 
 
 class Setup:
@@ -58,8 +28,7 @@ class Setup:
         if configuration_file:
             conffile = configuration_file
             if not os.path.exists(conffile):
-                print_error('no configuration file "%s" found' % conffile)
-                exit(ErrorCode.MISSING_INPUT.value)
+                raise Exceptio('no configuration file "%s" found' % conffile, ErrorCode.MISSING_INPUT)
 
         try:
             with open(conffile) as f:
@@ -127,11 +96,14 @@ class Error:
 
 
 def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
-    scan_list = list(os.scandir(path))
+    try:
+        scan_list = list(os.scandir(path))
+    except FileNotFoundError:
+        raise Exceptio('bad path %s' % path, ErrorCode.BAD_PATH)
 
     for entry in scan_list:
         if entry.name == 'obsoleta.skip':
-            inf('- skip file found, ignoring %s recursively' % entry.path)
+            deb('- skip file found, ignoring %s recursively' % entry.path)
             return dirs_checked
 
     for entry in scan_list:
@@ -139,7 +111,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
             is_blacklisted = False
             for blacklist in Setup.blacklist_paths:
                 if blacklist in os.path.join(path, entry.name):
-                    inf('- blacklisted, ignoring %s recursively' % entry.path)
+                    deb('- blacklisted, ignoring %s recursively' % entry.path)
                     is_blacklisted = True
 
             if is_blacklisted:
@@ -153,7 +125,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
 
         if entry.name == filename:
             results.append(entry.path)
-            inf('- found %s' % entry.path)
+            deb('- found %s' % entry.path)
             continue
     return dirs_checked
 
