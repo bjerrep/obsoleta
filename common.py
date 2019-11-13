@@ -40,7 +40,7 @@ class Setup:
                 env_paths = conf.get('env_root')
                 if env_paths:
                     expanded = os.path.expandvars(env_paths)
-                    inf('environment search path %s expanded to %s' % (env_paths, expanded))
+                    deb('environment search path %s expanded to %s' % (env_paths, expanded))
                     paths += expanded.split(os.pathsep)
                 Setup.paths = paths
                 blacklist_paths = conf.get('blacklist_paths')

@@ -1,4 +1,4 @@
-import logging
+import logging, sys
 from errorcodes import ErrorCode
 
 indent = ''
@@ -19,7 +19,7 @@ class Indent():
 
 
 logger = logging.getLogger()
-handler = logging.StreamHandler()
+handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter(indent + '%(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
