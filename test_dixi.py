@@ -165,18 +165,12 @@ test('''{
 
 
 title('T1', 'print')
-exitcode, output = execute('./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print')
+prepare_local('multislot')
+exitcode, output = execute(fixed + '--keypath build_a --print')
 test('''{
-  "name": "b",
-  "version": "1.1.1",
-  "arch": "linux",
-  "depends": [
-    {
-      "name": "c",
-      "version": "2.2.2",
-      "arch": "linux"
-    }
-  ]
+  "name": "a",
+  "version": "0.1.2",
+  "arch": "x86_64"
 }''' in output)
 
 
