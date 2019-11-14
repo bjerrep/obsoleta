@@ -165,7 +165,7 @@ test('''{
 
 
 title('T1', 'print')
-exitcode, output = execute(fixed + '--conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print')
+exitcode, output = execute('./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print')
 test('''{
   "name": "b",
   "version": "1.1.1",
