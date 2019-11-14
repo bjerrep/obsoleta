@@ -64,12 +64,12 @@ When everything is in use it might be something like:
 
 For querying the compact name is parsed from left to right and missing values will be substituted with a * for the version or anytrack/anyarch/unknown for the optionals. So some valid compact names in queries will be
 
-**name**
-**name:version**
-**name:version:testing:linux_x86_64:release**
-
-**name::testing**
-**name::::release**
+    name
+    name:version
+    name:version:testing:linux_x86_64:release
+    
+    name::testing
+    name::::release
 
 The examples below uses the raw name since they are very simple and the name itself is enough for a unique identification.
 
@@ -320,7 +320,7 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 
 dixi is a utility script intended to make usage easier for both a CI and developers when scripting. The purpose of dixi is that it shouldn't normally be required to edit the json package files manually once they are made and it intends to provide an easy interface for manipulating a package file. Dixi always works on a uniquely specified package file and never tries to figure out in what contexts the given package is used as opposed to the obsoleta script.
 
-Currently dixi supports the following operations:
+Currently dixi supports the following get/set operations:
 
 	--getname
 	--getversion
@@ -334,4 +334,22 @@ Currently dixi supports the following operations:
 	--setarch arch
 	--getbuildtype
 	--setbuildtype buildtype
+
+Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere. 
+
+Dixi can also print the merged version of a slotted or multislotted package file if told which key to use. It might be handy if e.g. obsoleta is suspected to do a bad merge. An example:
+
+        ./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
+        {
+            "name": "b",
+            "version": "1.1.1",
+            "arch": "linux",
+            "depends": [
+                {
+                "name": "c",
+                "version": "2.2.2",
+                "arch": "linux"
+                }
+            ]
+        }
 

@@ -11,15 +11,14 @@ import json, os, logging, datetime, time, argparse
 class Packagefile:
     def __init__(self, package):
         self.package = package
-        self.dict = self.package.to_unmodified_dict()
+        self.dict = self.package.to_dict()
+        self.unmodified_dict = self.package.to_unmodified_dict()
         self.action = ''
         self.new_version = False
         self.new_track = False
 
-    def dump(self, _dict=None):
-        if not _dict:
-            _dict = self.dict
-        return json.dumps(_dict, indent=2)
+    def dump(self):
+        return json.dumps(self.dict, indent=2)
 
     def get_package(self):
         return self.package
@@ -30,21 +29,21 @@ class Packagefile:
 
     def getter(self, key):
         if self.package.layout == Layout.standard:
-            return '', self.dict[key]
+            return '', self.unmodified_dict[key]
 
         try:
-            return self.package.key, self.dict[self.package.key][key]
+            return self.package.key, self.unmodified_dict[self.package.key][key]
         except:
             try:
-                return 'slot', self.dict['slot'][key]
+                return 'slot', self.unmodified_dict['slot'][key]
             except:
-                return 'multislot', self.dict['multislot'][key]
+                return 'multislot', self.unmodified_dict['multislot'][key]
 
     def setter(self, section, key, value):
         if not section:
-            self.dict[key] = value
+            self.unmodified_dict[key] = value
         else:
-            self.dict[section][key] = value
+            self.unmodified_dict[section][key] = value
 
     def set_version(self, version):
         section, ver = self.getter('version')
@@ -78,9 +77,9 @@ class Packagefile:
             utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
             now = datetime.datetime.now()
             local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
-            self.dict['dixi_modified'] = local_with_tz
-            self.dict['dixi_action'] = self.action
-            f.write(json.dumps(self.dict, indent=2))
+            self.unmodified_dict['dixi_modified'] = local_with_tz
+            self.unmodified_dict['dixi_action'] = self.action
+            f.write(json.dumps(self.unmodified_dict, indent=2))
 
     def set_track(self, track):
         section, org_track = self.getter('track')
@@ -190,8 +189,8 @@ if results.printtemplate:
     Setup.using_arch = True
     Setup.using_buildtype = True
     Setup.using_track = True
-    _package = Package.construct_from_compact('a:development:archname:buildtype:0.0.0')
-    _depends = Package.construct_from_compact('b:development:archname:buildtype:0.0.0')
+    _package = Package.construct_from_compact('a:0.0.0:development:archname:buildtype')
+    _depends = Package.construct_from_compact('b:0.0.0:development:archname:buildtype')
     _package.add_dependency(_depends)
     package_file = Packagefile(_package)
     print(package_file.dump())
@@ -295,8 +294,12 @@ elif results.getbuildtype:
         err('buildtype identifier is not enabled, see --conf')
     ret = pf.get_buildtype()
 
-elif not results.print:
+elif results.print:
+    inf(pf.dump())
+
+else:
     err('no command found')
+    exit(ErrorCode.MISSING_INPUT.value)
 
 if ret:
     inf(str(ret), results.newline)
@@ -306,9 +309,6 @@ if save_pending:
         inf('dry run, package file is not rewritten')
     else:
         pf.save()
-
-if results.print:
-    inf(pf.dump())
 
 
 exit(ErrorCode.OK.value)

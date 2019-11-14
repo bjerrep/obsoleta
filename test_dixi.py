@@ -144,6 +144,41 @@ prepare_local('multislot_invalid_key')
 exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
 exitcode, output = execute(fixed + '--keypath build_a --getversion', ErrorCode.INVALID_KEY_FILE.value)
 
+title('T1', 'printtemplate')
+exitcode, output = execute(fixed + '--printtemplate')
+test('''{
+  "name": "a",
+  "version": "0.0.0",
+  "track": "development",
+  "arch": "archname",
+  "buildtype": "buildtype",
+  "depends": [
+    {
+      "name": "b",
+      "version": "0.0.0",
+      "track": "development",
+      "arch": "archname",
+      "buildtype": "buildtype"
+    }
+  ]
+}''' in output)
+
+
+title('T1', 'print')
+exitcode, output = execute(fixed + '--conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print')
+test('''{
+  "name": "b",
+  "version": "1.1.1",
+  "arch": "linux",
+  "depends": [
+    {
+      "name": "c",
+      "version": "2.2.2",
+      "arch": "linux"
+    }
+  ]
+}''' in output)
+
 
 print('test suite took %.3f secs' % (time.time() - start_time))
 
