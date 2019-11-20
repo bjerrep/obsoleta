@@ -389,11 +389,17 @@ elif results.buildorder:
 
     if not resolved:
         err(' - unable to find somewhere to start')
+
     for _package in resolved:
         if results.printpaths:
-            inf(_package.get_path())
+            package_path = _package.get_path()
+            if package_path:
+                inf(package_path)
+            else:
+                inf(_package.to_string())
         else:
             inf(_package.to_string())
+
         errors = _package.get_root_error()
         if errors:
             for error in errors:

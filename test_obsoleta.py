@@ -82,13 +82,19 @@ exitcode, output = execute(fixed + '--root exception/B3_test_missing_name --pack
 title('B4', 'missing version')
 exitcode, output = execute(fixed + '--root exception/B4_test_missing_version --package a --check', ErrorCode.BAD_PACKAGE_FILE)
 
-title('B5', 'missing package')
+title('B5', 'missing package --check')
 exitcode, output = execute(fixed + '--root test/B5_test_missing_package --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
-title('B6', 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
+title('B6', 'missing package --buildorder')
+exitcode, output = execute(fixed + '--root test/B5_test_missing_package --package a --buildorder', ErrorCode.PACKAGE_NOT_FOUND)
+
+title('B7', 'missing package --buildorder --printpaths')
+exitcode, output = execute(fixed + '--root test/B5_test_missing_package --package a --buildorder --printpaths', ErrorCode.PACKAGE_NOT_FOUND)
+
+title('B8', 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
 exitcode, output = execute(fixed + '--root test/B6_test_missing_package_track --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
-title('B7', 'no package found, --locate')
+title('B9', 'no package found, --locate')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package found --locate', ErrorCode.PACKAGE_NOT_FOUND)
 test("unable to locate found:*:anytrack:anyarch:unknown" in output)
 
