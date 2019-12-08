@@ -96,16 +96,15 @@ class Obsoleta:
 
         if dependencies:
             package.dependencies = []
-
             level += 1
 
             for dependency in dependencies:
                 resolved = self.lookup(dependency)
-                deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
-
-                _ = Indent()
 
                 if resolved:
+                    resolved = max(resolved)
+                    deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
+                    _1 = Indent()
                     resolved.parent = package
                     resolved = copy.deepcopy(resolved)
                     if level > 1:
@@ -144,9 +143,17 @@ class Obsoleta:
             else:
                 if package == target_package:
                     candidates.append(package)
-        if not candidates:
-            return None
-        return max(candidates)
+        return candidates
+
+    def locate_upstreams(self, target_package):
+        candidates = []
+        for parent in self.loaded_packages:
+            package_deps = parent.get_dependencies()
+            if package_deps:
+                for package in package_deps:
+                    if package == target_package:
+                        candidates.append(parent)
+        return candidates
 
     def check_for_multiple_versions(self):
         deb('checking for multiple versions in package tree')
@@ -273,6 +280,8 @@ parser.add_argument('--buildorder', action='store_true',
                     help='command: show dependencies in building order for a package')
 parser.add_argument('--locate', action='store_true',
                     help='command: get the path for the package given with --package')
+parser.add_argument('--upstream', action='store_true',
+                    help='command: get the path for any upstream package(s) using the package given with --package')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
@@ -294,8 +303,12 @@ if not results.package and not results.path:
     err('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
-if not results.tree and not results.check and not results.buildorder and not results.locate:
-    err('no action specified (use --check, --tree or --buildorder)')
+if (not results.tree and
+    not results.check and
+    not results.buildorder and
+    not results.locate and
+    not results.upstream):
+    err('no action specified (use --check, --tree, --buildorder, --locate or --upstream)')
     exit(ErrorCode.MISSING_INPUT.value)
 
 # parse configuration file
@@ -415,11 +428,21 @@ elif results.buildorder:
 elif results.locate:
     lookup = obsoleta.lookup(package, strict=True)
     if lookup:
-        inf(lookup.get_path())
+        inf("\n".join(p.get_path() for p in lookup), newline=False)
         exit_code = ErrorCode.OK
     else:
         inf('unable to locate %s' % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
+
+elif results.upstream:
+    lookup = obsoleta.locate_upstreams(package)
+    if lookup:
+        inf("\n".join(p.get_path() for p in lookup), newline=False)
+        exit_code = ErrorCode.OK
+    else:
+        inf('unable to locate %s' % package)
+        exit_code = ErrorCode.PACKAGE_NOT_FOUND
+
 else:
     log.error("no valid command found")
 

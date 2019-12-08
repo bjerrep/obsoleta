@@ -9,10 +9,10 @@ import json, os, logging, datetime, time, argparse
 
 
 class Packagefile:
-    def __init__(self, package):
+    def __init__(self, package, depends_package=None):
         self.package = package
+        self.depends_package = depends_package
         self.dict = self.package.to_dict()
-        self.unmodified_dict = self.package.to_unmodified_dict()
         self.action = ''
         self.new_version = False
         self.new_track = False
@@ -21,29 +21,39 @@ class Packagefile:
         return json.dumps(self.dict, indent=2)
 
     def get_package(self):
+        if self.depends_package:
+            return self.package.get_dependency(self.depends_package)
         return self.package
+
+    def get_unmodified_dict(self):
+        try:
+            return self.package.get_dependency(self.depends_package).to_unmodified_dict()
+        except:
+            return self.package.to_unmodified_dict()
 
     def add_action(self, action):
         log.info(action)
         self.action = action
 
     def getter(self, key):
-        if self.package.layout == Layout.standard:
-            return '', self.unmodified_dict[key]
+        unmodified_dict = self.get_unmodified_dict()
+        if self.package.layout == Layout.standard or self.depends_package:
+            return '', unmodified_dict[key]
 
         try:
-            return self.package.key, self.unmodified_dict[self.package.key][key]
+            return self.package.key, unmodified_dict[self.package.key][key]
         except:
             try:
-                return 'slot', self.unmodified_dict['slot'][key]
+                return 'slot', unmodified_dict['slot'][key]
             except:
-                return 'multislot', self.unmodified_dict['multislot'][key]
+                return 'multislot', unmodified_dict['multislot'][key]
 
     def setter(self, section, key, value):
+        unmodified_dict = self.get_unmodified_dict()
         if not section:
-            self.unmodified_dict[key] = value
+            unmodified_dict[key] = value
         else:
-            self.unmodified_dict[section][key] = value
+            unmodified_dict[section][key] = value
 
     def set_version(self, version):
         section, ver = self.getter('version')
@@ -77,9 +87,11 @@ class Packagefile:
             utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
             now = datetime.datetime.now()
             local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
-            self.unmodified_dict['dixi_modified'] = local_with_tz
-            self.unmodified_dict['dixi_action'] = self.action
-            f.write(json.dumps(self.unmodified_dict, indent=2))
+
+            unmodified_dict = self.package.to_unmodified_dict()
+            unmodified_dict['dixi_modified'] = local_with_tz
+            unmodified_dict['dixi_action'] = self.action
+            f.write(json.dumps(unmodified_dict, indent=2))
 
     def set_track(self, track):
         section, org_track = self.getter('track')
@@ -150,6 +162,8 @@ parser.add_argument('--newline', action='store_true',
                     help='the getters default runs without trailing newlines, this one adds them back in')
 parser.add_argument('--keypath',
                     help='the relative keypath (directory name) to use for a multislotted package')
+parser.add_argument('--depends',
+                    help='target is the package in the depends section with the name given with --depends')
 
 parser.add_argument('--getname', action='store_true',
                     help='command: get name')
@@ -230,7 +244,12 @@ except Exception as e:
     exit(ErrorCode.SYNTAX_ERROR.value)
 
 try:
-    pf = Packagefile(package)
+    if results.depends:
+        depends_package = package.get_dependency(results.depends)
+        pf = Packagefile(package, depends_package)
+    else:
+        pf = Packagefile(package)
+
 except FileNotFoundError as e:
     log.critical('caught exception: %s' % str(e))
     exit(ErrorCode.MISSING_INPUT.value)
@@ -310,7 +329,7 @@ if ret:
 
 if save_pending:
     if results.dryrun:
-        inf('dry run, package file is not rewritten')
+        inf('\ndry run, package file is not rewritten')
     else:
         pf.save()
 

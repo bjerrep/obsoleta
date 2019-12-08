@@ -36,6 +36,12 @@ exitcode, output = execute(fixed + '--setversion 1.2.3')
 exitcode, output = execute(fixed + '--getversion')
 test(output, '1.2.3')
 
+title('M1B', 'setversion and getversion in depends section')
+prepare_local('simple')
+exitcode, output = execute(fixed + '--depends b --setversion 3.2.1')
+exitcode, output = execute(fixed + '--depends b --getversion')
+test(output, '3.2.1')
+
 title('M2', 'incmajor')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--incmajor')
@@ -79,6 +85,12 @@ prepare_local('slotted')
 exitcode, output = execute(fixed + '--setversion 1.2.3')
 exitcode, output = execute(fixed + '--getversion')
 test(output, '1.2.3')
+
+title('R1B', 'slotted setversion and getversion in depends section')
+prepare_local('slotted')
+exitcode, output = execute(fixed + '--depends b --setversion 1.1.1')
+exitcode, output = execute(fixed + '--depends b --getversion')
+test(output, '1.1.1')
 
 title('R1B', 'slotted getversion with invalid key')
 prepare_local('slotted_invalid_key')
@@ -139,6 +151,12 @@ exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3')
 exitcode, output = execute(fixed + '--keypath build_a --getversion')
 test(output, '1.2.3')
 
+title('S1B', 'multislot setversion and getversion in depends section')
+prepare_local('multislot')
+exitcode, output = execute(fixed + '--depends b --keypath build_a --setversion 4.4.4')
+exitcode, output = execute(fixed + '--depends b --keypath build_a --getversion')
+test(output, '4.4.4')
+
 title('S1B', 'multislot setversion and getversion with invalid key')
 prepare_local('multislot_invalid_key')
 exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
@@ -164,14 +182,21 @@ test('''{
 }''' in output)
 
 
-title('T1', 'print')
+title('T2', 'print')
 prepare_local('multislot')
 exitcode, output = execute(fixed + '--keypath build_a --print')
-test('''{
+test("""{
   "name": "a",
   "version": "0.1.2",
-  "arch": "x86_64"
-}''' in output)
+  "arch": "x86_64",
+  "depends": [
+    {
+      "name": "b",
+      "version": "0.1.2",
+      "arch": "x86_64"
+    }
+  ]
+}""" in output)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))

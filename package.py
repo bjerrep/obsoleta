@@ -73,6 +73,9 @@ class Package:
         return cls(None, compact, None)
 
     def from_dict(self, dictionary):
+        if not self.unmodified_dict:
+            self.unmodified_dict = dictionary
+
         path = 'in ' + get_package_filepath(self.package_path) if self.package_path else ''
         try:
             self.name = dictionary['name']
@@ -438,6 +441,16 @@ class Package:
                 error = dependency.dump(ret, error)
             del _
         return error
+
+    def get_dependency(self, depends_package):
+        try:
+            depends_package = Package.construct_from_compact(depends_package)
+        except:
+            pass
+        for dependency in self.dependencies:
+            if dependency == depends_package:
+                return dependency
+        return None
 
     def get_dependencies(self):
         return self.dependencies

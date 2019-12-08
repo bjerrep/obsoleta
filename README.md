@@ -335,21 +335,66 @@ Currently dixi supports the following get/set operations:
 	--getbuildtype
 	--setbuildtype buildtype
 
+An simple dixi example:
+
+    ./dixi.py --conf mini.conf --path test/A2_test_simple/a --getversion
+    0.1.2
+
 Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere. 
 
 Dixi can also print the merged version of a slotted or multislotted package file if told which key to use. It might be handy if e.g. obsoleta is suspected to do a bad merge. An example:
 
-        ./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
-        {
-            "name": "b",
-            "version": "1.1.1",
-            "arch": "linux",
-            "depends": [
-                {
+    ./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
+    {
+        "name": "b",
+        "version": "1.1.1",
+        "arch": "linux",
+        "depends": [
+            {
                 "name": "c",
                 "version": "2.2.2",
                 "arch": "linux"
-                }
-            ]
-        }
+            }
+        ]
+    }
+
+Dixi can also generate a slot/multislot key file intended to be redirected to a obsoleta.key file:
+
+    /dixi.py --printkey key:value
+    {
+        "key": "value"
+    }
+
+## Crossovers
+
+Its called a crossover when using obsoleta to find something and then dixi to modify or query it. This is two seperate operations and the task of gluing them together is left for the user to do. Below are some examples that demonstrates that this is not really well thought through. The total effect of both commands are that a package version is bumped everywhere it is found.
+
+Note that the examples below modifies the test resources.
+
+### Bump the version for all packages with the name 'b'
+
+Below the given root find the package 'b', or any slots for 'b', and increase the minor.
+
+    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok/ --package b --locate | xargs -I{} ./dixi.py --conf mini.conf --path {} --incminor --dryrun
+
+    version increased from 2.1.2 to 2.2.2 (section: key2)
+    2.2.2
+
+### Bump package 'b' version anywhere it is listed as a dependency
+
+    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok/ --package b --upstream | xargs -I{} ./dixi.py --conf mini.conf --path {} --depends b --incminor --dryrun
+
+    version increased from 1.1.2 to 1.2.2
+    1.2.2
+    version increased from 2.1.2 to 2.2.2
+    2.2.2
+
+_Lets see if that was a success:_
+
+    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok --package a:*:development:x86 --tree
+    package tree for "a:*:development:x86:unknown"
+    a:0.1.2:development:x86:debug
+      b:2.2.2:development:x86:unknown
+
+Apparently it was. A fresh checkout of test/F2_test_duplicate_package_slotted_ok might be a good idea now.
 

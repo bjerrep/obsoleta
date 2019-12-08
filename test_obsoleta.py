@@ -32,21 +32,20 @@ title('A2', 'simple sunshine --tree')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package \'*\' --tree', ErrorCode.OK)
 
 test("""a:0.1.2:anytrack:anyarch:unknown
-  b:0.1.2:anytrack:anyarch:unknown
-    c:0.1.2:anytrack:anyarch:unknown
-b:0.1.2:anytrack:anyarch:unknown
-  c:0.1.2:anytrack:anyarch:unknown
-c:0.1.2:anytrack:anyarch:unknown""" in output)
+  b:1.1.2:anytrack:anyarch:unknown
+    c:2.1.2:anytrack:anyarch:unknown
+b:1.1.2:anytrack:anyarch:unknown
+  c:2.1.2:anytrack:anyarch:unknown
+c:2.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A3', 'simple sunshine --check')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package a --check', ErrorCode.OK)
 
 title('A4', 'simple sunshine --buildorder')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package a --buildorder', ErrorCode.OK)
-test("""c:0.1.2:anytrack:anyarch:unknown
-b:0.1.2:anytrack:anyarch:unknown
-a:0.1.2:anytrack:anyarch:unknown
-""" in output)
+test("""c:2.1.2:anytrack:anyarch:unknown
+b:1.1.2:anytrack:anyarch:unknown
+a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A5', 'simple sunshine --buildorder --printpaths')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package a --buildorder --printpaths', ErrorCode.OK)
@@ -62,8 +61,8 @@ test(output is not None)
 title('A7', 'simple sunshine --buildorder a::anytrack')
 exitcode, output = execute(fixed + '--root test/A2_test_simple --package a::anytrack --buildorder', ErrorCode.OK)
 print(output)
-test("""c:0.1.2:anytrack:anyarch:unknown
-b:0.1.2:anytrack:anyarch:unknown
+test("""c:2.1.2:anytrack:anyarch:unknown
+b:1.1.2:anytrack:anyarch:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A8', 'simple sunshine with a json error')
