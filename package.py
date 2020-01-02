@@ -162,6 +162,29 @@ class Package:
             log.critical('Package caught %s' % str(e))
             raise e
 
+    def merge(self, slot_section, key_section):
+        '''
+        Add new or replace existing entries in the slot_section with entries from the key_section.
+        The yikes-ness arises when individuel entries in the 'depends' lists are merged as well.
+        '''
+        result = dict(slot_section, **key_section)
+        if key_section.get('depends'):
+            if not slot_section.get('depends'):
+                slot_section['depends'] = []
+            new_entries = copy.copy(key_section['depends'])
+            for key_depends in key_section['depends']:
+                processed = False
+                for slot_depends in slot_section['depends']:
+                    if key_depends['name'] == slot_depends['name']:
+                        new_entries.append(dict(slot_depends, **key_depends))
+                        processed = True
+                        break
+                if not processed:
+                    new_entries.append(slot_depends)
+
+            result['depends'] = new_entries
+        return result
+
     def from_package_path(self, package_path):
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
@@ -177,17 +200,18 @@ class Package:
                 key_file = get_key_filepath(self.package_path)
 
                 self.key = self.get_key_from_keyfile(key_file)
-                base = dictionary['slot']
+                slot_section = dictionary['slot']
                 try:
-                    slot = dictionary[self.key]
+                    key_section = dictionary[self.key]
                 except KeyError:
                     raise Exceptio('failed to find slot in package file %s with key "%s"' %
                                    (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
 
-                final = dict(base, **slot)
+                merged = self.merge(slot_section, key_section)
+
                 deb('parsing %s:' % package_path)
                 _ = Indent()
-                self.from_dict(final)
+                self.from_dict(merged)
                 del (_)
             elif 'multislot' in dictionary:
                 raise Exceptio('internal error #0170', ErrorCode.UNKNOWN_EXCEPTION)
@@ -209,14 +233,14 @@ class Package:
             dictionary = json.loads(_json)
             self.unmodified_dict = dictionary
             self.key = self.get_key_from_keyfile(key_file)
-            base = dictionary['multislot']
+            slot_section = dictionary['multislot']
             try:
-                slot = dictionary[self.key]
+                key_section = dictionary[self.key]
             except KeyError:
                 raise Exceptio('failed to find multislot in package file %s with key "%s"' %
                                (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
-            final = dict(base, **slot)
-            self.from_dict(final)
+            merged = self.merge(slot_section, key_section)
+            self.from_dict(merged)
 
     def get_key_from_keyfile(self, keyfile):
         try:

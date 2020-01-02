@@ -208,6 +208,18 @@ exitcode, output = execute(fixed + '--root test/F8_test_duplicate_package_blackl
 title('G1', "multislot sunshine")
 exitcode, output = execute(fixed + '--root test/G1_test_multislot --package a --tree --depth 2', ErrorCode.OK)
 
+title('G2a', "slot sunshine. nix arch brings in new dependency")
+execute('./dixi.py --printkey key:nix > test/G2_test_slot/a/obsoleta.key')
+exitcode, output = execute(fixed + '--root test/G2_test_slot --path test/G2_test_slot/a --package a --tree --depth 2', ErrorCode.OK)
+test("""a:1.1.1:anytrack:linux:unknown
+  c:3.3.3:anytrack:anyarch:unknown
+  b:2.2.2:anytrack:anyarch:unknown""" in output)
+
+title('G2b', "slot sunshine. win arch brings no new dependency")
+execute('./dixi.py --printkey key:win > test/G2_test_slot/a/obsoleta.key')
+exitcode, output = execute(fixed + '--root test/G2_test_slot --path test/G2_test_slot/a --package a --tree --depth 2', ErrorCode.OK)
+test("""a:1.1.1:anytrack:windows:unknown
+  b:2.2.2:anytrack:anyarch:unknown""" in output)
 
 title('H1', "optionals - all enabled, compact name 'c:1.2.3' is ok")
 exitcode, output = execute(fixed + '--root test/C5_test_multiple_versions/ --locate --package c:1.2.3', ErrorCode.OK)
