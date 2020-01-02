@@ -13,7 +13,7 @@ class Packagefile:
         self.package = package
         self.depends_package = depends_package
         self.dict = self.package.to_dict()
-        self.action = ''
+        self.action = package.to_string() + ' - '
         self.new_version = False
         self.new_track = False
 
@@ -32,8 +32,8 @@ class Packagefile:
             return self.package.to_unmodified_dict()
 
     def add_action(self, action):
-        log.info(action)
-        self.action = action
+        self.action += action
+        log.info(self.action)
 
     def getter(self, key):
         unmodified_dict = self.get_unmodified_dict()
