@@ -264,7 +264,7 @@ parser.add_argument('--package',
 parser.add_argument('--path',
                     help='the path for the package. See also --package')
 parser.add_argument('--root',
-                    help='search root(s), ":" separated. Use this and/or roots in obsoleta.conf (There are no default search path)')
+                    help='search root(s), ":" separated. Use this and/or roots in obsoleta.conf (default runs from current)')
 parser.add_argument('--depth',
                     help='search depth relative to root(s). Default 1')
 parser.add_argument('--blacklist_paths', action='store',
@@ -304,10 +304,10 @@ if not results.package and not results.path:
     exit(ErrorCode.MISSING_INPUT.value)
 
 if (not results.tree and
-    not results.check and
-    not results.buildorder and
-    not results.locate and
-    not results.upstream):
+        not results.check and
+        not results.buildorder and
+        not results.locate and
+        not results.upstream):
     err('no action specified (use --check, --tree, --buildorder, --locate or --upstream)')
     exit(ErrorCode.MISSING_INPUT.value)
 
