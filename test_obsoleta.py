@@ -212,8 +212,10 @@ title('G2a', "slot sunshine. nix arch brings in new dependency")
 execute('./dixi.py --printkey key:nix > test/G2_test_slot/a/obsoleta.key')
 exitcode, output = execute(fixed + '--root test/G2_test_slot --path test/G2_test_slot/a --package a --tree --depth 2', ErrorCode.OK)
 test("""a:1.1.1:anytrack:linux:unknown
-  c:3.3.3:anytrack:anyarch:unknown
-  b:2.2.2:anytrack:anyarch:unknown""" in output)
+  d:4.4.4:anytrack:anyarch:unknown
+  e:5.5.5:anytrack:anyarch:unknown
+  b:2.2.2:anytrack:anyarch:unknown
+  c:3.3.3:anytrack:anyarch:unknown""" in output)
 
 title('G2b', "slot sunshine. win arch brings no new dependency")
 execute('./dixi.py --printkey key:win > test/G2_test_slot/a/obsoleta.key')

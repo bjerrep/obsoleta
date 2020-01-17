@@ -167,20 +167,21 @@ class Package:
         Add new or replace existing entries in the slot_section with entries from the key_section.
         The yikes-ness arises when individuel entries in the 'depends' lists are merged as well.
         '''
+
         result = dict(slot_section, **key_section)
+
         if key_section.get('depends'):
             if not slot_section.get('depends'):
                 slot_section['depends'] = []
-            new_entries = copy.copy(key_section['depends'])
+
+            new_entries = copy.deepcopy(key_section['depends'])
             for key_depends in key_section['depends']:
-                processed = False
                 for slot_depends in slot_section['depends']:
                     if key_depends['name'] == slot_depends['name']:
                         new_entries.append(dict(slot_depends, **key_depends))
-                        processed = True
                         break
-                if not processed:
-                    new_entries.append(slot_depends)
+                    if not slot_depends in new_entries:
+                        new_entries.append(slot_depends)
 
             result['depends'] = new_entries
         return result
