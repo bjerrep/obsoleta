@@ -4,4 +4,7 @@
 __pycache__
 .idea
 
+*.calltree
+*.profile
+
 local

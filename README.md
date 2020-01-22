@@ -67,7 +67,7 @@ For querying the compact name is parsed from left to right and missing values wi
     name
     name:version
     name:version:testing:linux_x86_64:release
-    
+
     name::testing
     name::::release
 
@@ -144,7 +144,7 @@ which can be seen in the tree as well
         a:0.1.2:anytrack:anyarch:unknown
           b:0.2.2:anytrack:anyarch:unknown
            - Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
-   
+
 which suggests that **b** should be updated. Once that is done it will be a proper **c** that is missing.
 
 ## Resolving
@@ -185,7 +185,7 @@ This is ok, **b** will be picked up:
 	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
 	a:0.1.2:anytrack:anyarch:unknown
 	  b:0.1.2:testing:anyarch:unknown
-	  
+
 But this:
 
 	  "name": "a", "track": "testing", "version": "0.1.2",
@@ -199,7 +199,7 @@ is not legal:
 	a:0.1.2:testing:anyarch:unknown
 	  b:0.1.2:testing:anyarch:unknown
 	   - Package not found: b:0.1.2:testing:anyarch:unknown required by a:0.1.2:testing:anyarch:unknown
-   
+
 Complaining about the package b:0.1.2:testing:anyarch:unknown which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
 
 ### Arch
@@ -213,9 +213,11 @@ The default arch name is 'anyarch' which as the name suggests matches any archit
 
 Buildtype is ignored except for the track 'production' where it is illegal to mix different buildtypes. This is a somewhat debatable implementation and it might not hold in the real world.
 
-## Search paths
+## Search roots
 
-Obsoleta will use current working directory as default search root if nothing else is explicitly given. Search paths can be specified on the command line using '--path' and/or in the configuration file. All paths are concatenated to a single list which is traversed at each invocation (no caching, at least not yet). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
+Obsoleta will use current working directory as default search root if nothing else is explicitly given. Search roots can be specified on the command line using '--root' and/or in the configuration file and/or by the environment variable OBSOLETA_ROOT if given. All paths are concatenated to a single list which is traversed at each invocation (see also ([Caching]#Caching)). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
+
+The environment variable OBSOLETA_ROOT is intended to be a last resort solution if say e.g. a specific buildserver has a non standard layout compared to what obsoleta default is configured to use.
 
 ## Slots/multislots
 
@@ -231,7 +233,7 @@ A use case could be that a developer working on multiple architectures decides t
     └── a_x86_64/
         ├── obsoleta.json
         └── obsoleta.key
-    
+
 
 This will result in the same obsoleta.json file (from the SCM) in multiple directories and obsoleta will complain about duplicate packages.
 
@@ -307,7 +309,7 @@ For automation the paths are more interesting and can be listed using --printpat
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/c
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/b
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/a
-	
+
 Conceptually there isn't a long way to a pseudo script that could wrap everything up:
 
 	for path in "--path test/test_simple --package all --buildorder --printpaths"
@@ -316,7 +318,54 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 		export obsoleta=$obsoleta:path # for the build system to use
 		./build.sh
 
-## dixi
+## Python api
+
+The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:
+
+    my_root = 'test/G2_test_slot'
+
+    param = Param()
+    param.set_info(True)
+    param.set_root(my_root)
+
+    obsoleta_api = ObsoletaApi("mini.conf", param)
+
+    success, messages = obsoleta_api.check('e')
+
+When several operations are performed on the same obsoleta object then there is an obvious gain as the full root scan is only made once. The ObsoletaApi wrapper is tested in test_obsoleta_api.py.
+
+There is the start of a dixi_api and test_dixi_api as well.
+
+## Caching
+
+Caching can be enabled by "cache": "on" in the configuration file. If caching is enabled then obsoleta will make the full scan only if there is no cache to be found and it will then write the cachefile. The cache can be cleared by calling obsoleta.py with --clearcache or the cache file can simply be deleted. The cache file is located as ./local/obsoleta.cache.
+
+Caching will make sense in a scenario where a build system ends up calling obsoleta from different scripts and where the performance hit starts to get noticable. And even then the decision has to be between enabling caching or just making obsoleta run faster. Also notice that since there is only a single central cache file, caching might act funny on a build server with concurrent builds.
+
+The cache file is a pretty printed json file and it might give some interesting insights since it summarizes the whole  scan in a single file. It is possible to generate it explicitly regardless of whether caching is enabled or not:
+
+        ./obsoleta.py --conf mini.conf --root testdata/A1_test_obsoleta:. --depth 1 --package testsuite --dumpcache
+        [
+            {
+                "name": "obsoleta",
+                "version": "0.1.0",
+                "path": "/home/user/src/obsoleta"
+            },
+            {
+                "name": "testsuite",
+                "version": "0.0.0",
+                "path": "/home/user/src/obsoleta/testdata/A1_test_obsoleta",
+                "depends": [
+                    {
+                        "name": "obsoleta",
+                        "version": "0.1.0",
+                        "path": "/home/user/src/obsoleta"
+                    }
+                ]
+            }
+        ]
+
+# dixi
 
 dixi is a utility script intended to make usage easier for both a CI and developers when scripting. The purpose of dixi is that it shouldn't normally be required to edit the json package files manually once they are made and it intends to provide an easy interface for manipulating a package file. Dixi always works on a uniquely specified package file and never tries to figure out in what contexts the given package is used as opposed to the obsoleta script.
 
@@ -340,7 +389,7 @@ An simple dixi example:
     ./dixi.py --conf mini.conf --path test/A2_test_simple/a --getversion
     0.1.2
 
-Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere. 
+Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere.
 
 Dixi can also print the merged version of a slotted or multislotted package file if told which key to use. It might be handy if e.g. obsoleta is suspected to do a bad merge. An example:
 
@@ -397,4 +446,6 @@ _Lets see if that was a success:_
       b:2.2.2:development:x86:unknown
 
 Apparently it was. A fresh checkout of test/F2_test_duplicate_package_slotted_ok might be a good idea now.
+
+
 

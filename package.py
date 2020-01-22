@@ -2,7 +2,7 @@ from log import logger as log
 from log import Indent as Indent
 from log import deb, war
 from version import Version
-from common import Setup, Error, Exceptio
+from common import Error, Exceptio
 from common import get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
 import json
@@ -37,7 +37,8 @@ class Layout(Enum):
 
 
 class Package:
-    def __init__(self, package_path, compact, dictionary, key_file=None):
+    def __init__(self, setup, package_path, compact, dictionary, key_file=None):
+        self.setup = setup
         self.parent = None
         self.package_path = package_path
         self.dependencies = None
@@ -57,26 +58,31 @@ class Package:
             self.from_dict(dictionary)
 
     @classmethod
-    def construct_from_dict(cls, dictionary):
-        return cls(None, None, dictionary)
+    def construct_from_dict(cls, setup, dictionary):
+        return cls(setup, None, None, dictionary)
 
     @classmethod
-    def construct_from_package_path(cls, package_path):
-        return cls(package_path, None, None)
+    def construct_from_package_path(cls, setup, package_path):
+        return cls(setup, package_path, None, None)
 
     @classmethod
-    def construct_from_multislot_package_path(cls, package_path, key_file):
-        return cls(package_path, None, None, key_file)
+    def construct_from_multislot_package_path(cls, setup, package_path, key_file):
+        return cls(setup, package_path, None, None, key_file)
 
     @classmethod
-    def construct_from_compact(cls, compact):
-        return cls(None, compact, None)
+    def construct_from_compact(cls, setup, compact):
+        return cls(setup, None, compact, None)
 
     def from_dict(self, dictionary):
         if not self.unmodified_dict:
             self.unmodified_dict = dictionary
 
+        if dictionary.get('path'):
+            # a cache file will have the path added
+            self.package_path = dictionary.get('path')
+
         path = 'in ' + get_package_filepath(self.package_path) if self.package_path else ''
+
         try:
             self.name = dictionary['name']
         except:
@@ -88,7 +94,7 @@ class Package:
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         pedantic = True
-        if Setup.using_track:
+        if self.setup.using_track:
             if 'track' in dictionary:
                 try:
                     self.track = Track[dictionary['track']]
@@ -98,17 +104,17 @@ class Package:
             else:
                 self.track = Track.anytrack
         elif pedantic and 'track' in dictionary:
-            war('package %s specifies a track which is not enabled in config' % self.name)
+            war('package %s specifies a track but track is not currently enabled (check config file)' % self.name)
 
-        if Setup.using_arch:
+        if self.setup.using_arch:
             try:
                 self.arch = dictionary["arch"]
             except:
                 self.arch = anyarch
         elif pedantic and 'arch' in dictionary:
-            war('package %s specifies an arch which is not enabled in config' % self.name)
+            war('package %s specifies an arch but arch is not currently enabled (check config file)' % self.name)
 
-        if Setup.using_buildtype:
+        if self.setup.using_buildtype:
             if 'buildtype' in dictionary:
                 try:
                     self.buildtype = dictionary['buildtype']
@@ -118,7 +124,7 @@ class Package:
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
-            war('package %s specifies an buildtype which is not enabled in config' % self.name)
+            war('package %s specifies an buildtype but buildtype is not currently enabled (check config file)' % self.name)
 
         deb('%s' % self.to_extra_string())
 
@@ -131,22 +137,22 @@ class Package:
                 _ = Indent()
 
                 for dependency in dependencies:
-                    package = Package(None, None, dependency)
-                    package_copy = copy.deepcopy(package)
+                    package = Package(self.setup, None, None, dependency)
+                    package_copy = copy.copy(package)
                     package.parent = self
                     # inherit optionals from the package if they are unspecified. The downside is that they will no
                     # longer look exactly as they appear in the package file, the upside is that they now tell
                     # explicitly what their minimum requirement is.
-                    if Setup.using_track:
+                    if self.setup.using_track:
                         if package.track == Track.anytrack:
                             package.track = self.track
-                    if Setup.using_arch:
+                    if self.setup.using_arch:
                         if package.arch == anyarch:
                             package.arch = self.arch
                         if self.arch != anyarch and package.arch != self.arch:
                             package.add_error(
                                 Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
-                    if Setup.using_buildtype:
+                    if self.setup.using_buildtype:
                         if package.buildtype == buildtype_unknown:
                             package.buildtype = self.buildtype
 
@@ -180,7 +186,7 @@ class Package:
                     if key_depends['name'] == slot_depends['name']:
                         new_entries.append(dict(slot_depends, **key_depends))
                         break
-                    if not slot_depends in new_entries:
+                    if slot_depends not in new_entries:
                         new_entries.append(slot_depends)
 
             result['depends'] = new_entries
@@ -270,13 +276,13 @@ class Package:
         self.name = '*'
         self.version = Version('*')
         optionals = 0
-        if Setup.using_track:
+        if self.setup.using_track:
             self.track = Track.anytrack
             optionals += 1
-        if Setup.using_arch:
+        if self.setup.using_arch:
             self.arch = anyarch
             optionals += 1
-        if Setup.using_buildtype:
+        if self.setup.using_buildtype:
             self.buildtype = buildtype_unknown
             optionals += 1
 
@@ -299,21 +305,21 @@ class Package:
                     ver = '*'
                 self.version = Version(ver)
 
-                if Setup.using_track:
+                if self.setup.using_track:
                     current = 'track'
                     track = entries.pop(0)
                     if track:
                         self.track = Track[track]
                     else:
                         self.track = Track.anytrack
-                if Setup.using_arch:
+                if self.setup.using_arch:
                     current = 'arch'
                     arch = entries.pop(0)
                     if arch:
                         self.arch = arch
                     else:
                         self.arch = anyarch
-                if Setup.using_buildtype:
+                if self.setup.using_buildtype:
                     current = 'buildtype'
                     buildtype = entries.pop(0)
                     if buildtype:
@@ -327,25 +333,28 @@ class Package:
             except Exception as e:
                 raise Exceptio(str(e), ErrorCode.COMPACT_PARSE_ERROR)
 
-    def to_dict(self):
+    def to_dict(self, add_path=False):
         dictionary = {
             'name': self.name,
             'version': str(self.version)
         }
 
-        if Setup.using_track and self.track != Track.anytrack:
+        if self.setup.using_track and self.track != Track.anytrack:
             dictionary['track'] = TrackToString[self.track.value]
 
-        if Setup.using_arch and self.arch != anyarch:
+        if self.setup.using_arch and self.arch != anyarch:
             dictionary['arch'] = self.arch
 
-        if Setup.using_buildtype and self.buildtype != buildtype_unknown:
+        if self.setup.using_buildtype and self.buildtype != buildtype_unknown:
             dictionary['buildtype'] = self.buildtype
+
+        if add_path:
+            dictionary['path'] = self.package_path
 
         if self.dependencies:
             deps = []
             for dependency in self.dependencies:
-                deps.append(dependency.to_dict())
+                deps.append(dependency.to_dict(add_path))
             dictionary['depends'] = deps
 
         return dictionary
@@ -374,11 +383,11 @@ class Package:
     def to_string(self):
         # The fully unique identifier string for a package
         optionals = ''
-        if Setup.using_track:
+        if self.setup.using_track:
             optionals = ':%s' % TrackToString[self.track.value]
-        if Setup.using_arch:
+        if self.setup.using_arch:
             optionals = '%s:%s' % (optionals, self.arch)
-        if Setup.using_buildtype:
+        if self.setup.using_buildtype:
             optionals = '%s:%s' % (optionals, self.buildtype)
         return '%s:%s%s' % (self.name, str(self.version), optionals)
 
@@ -409,13 +418,13 @@ class Package:
                 return False
 
         optionals = True
-        if Setup.using_track:
+        if self.setup.using_track:
             if other.track != Track.anytrack:
                 optionals = optionals and self.track == other.track
-        if Setup.using_arch:
+        if self.setup.using_arch:
             if other.arch != anyarch:
                 optionals = optionals and self.arch == other.arch
-        if Setup.using_buildtype:
+        if self.setup.using_buildtype:
             if other.buildtype != buildtype_unknown:
                 optionals = optionals and self.buildtype == other.buildtype
         return optionals
@@ -426,24 +435,24 @@ class Package:
                 return False
 
         optionals = True
-        if Setup.using_track:
+        if self.setup.using_track:
             if other.track == Track.production:
                 optionals = self.track == Track.production
             else:
                 optionals = optionals and self.track >= other.track
-        if Setup.using_arch:
+        if self.setup.using_arch:
             optionals = optionals and (self.arch == anyarch or self.arch == other.arch)
-        if Setup.using_track and Setup.using_buildtype:
+        if self.setup.using_track and self.setup.using_buildtype:
             optionals = optionals and (self.track != Track.production or self.buildtype == other.buildtype)
         return optionals
 
     def matches_without_version(self, other):
         match = self.name == other.name
-        if Setup.using_track:
+        if self.setup.using_track:
             match = match and self.track == other.track
-        if Setup.using_arch:
+        if self.setup.using_arch:
             match = match and self.arch == other.arch
-        if Setup.using_buildtype:
+        if self.setup.using_buildtype:
             match = match and self.buildtype == other.buildtype
         return match
 
@@ -469,7 +478,7 @@ class Package:
 
     def get_dependency(self, depends_package):
         try:
-            depends_package = Package.construct_from_compact(depends_package)
+            depends_package = Package.construct_from_compact(self.setup, depends_package)
         except:
             pass
         for dependency in self.dependencies:

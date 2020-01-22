@@ -21,29 +21,31 @@ class ErrorCode(Enum):
     MISSING_KEY_FILE = 16
     INVALID_KEY_FILE = 17
     COMPACT_PARSE_ERROR = 18
+    OPTION_DISABLED = 19
 
     @staticmethod
     def to_string(errorcode):
         ErrorCodeToString = \
-           ['Ok',
-            'Unset',
-            'Invalid version number',
-            'Package not found',
-            'Mixing different arch',
-            'Multiple versions used',
-            'Circular dependency',
-            'Test failed',
-            'Syntax error',
-            'Missing input',
-            'Bad path',
-            'Unknown exception',
-            'Bad package file',
-            'Duplicate package',
-            'Slot error',
-            'Multislot error',
-            'Missing key file',
-            'Invalid key file',
-            'Unable to parse compact name'
-        ]
+            ['Ok',
+             'Unset',
+             'Invalid version number',
+             'Package not found',
+             'Mixing different arch',
+             'Multiple versions used',
+             'Circular dependency',
+             'Test failed',
+             'Syntax error',
+             'Missing input',
+             'Bad path',
+             'Unknown exception',
+             'Bad package file',
+             'Duplicate package',
+             'Slot error',
+             'Multislot error',
+             'Missing key file',
+             'Invalid key file',
+             'Unable to parse compact name',
+             'Option disabled'
+             ]
 
         return ErrorCodeToString[errorcode]

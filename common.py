@@ -20,10 +20,8 @@ class Setup:
     obsoleta_root = None
     depth = 1
 
-    @staticmethod
-    def load_configuration(configuration_file=None):
+    def __init__(self, configuration_file=None):
         Setup.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
-        paths = []
         conffile = os.path.join(Setup.obsoleta_root, 'obsoleta.conf')
         if configuration_file:
             conffile = configuration_file
@@ -34,34 +32,43 @@ class Setup:
             with open(conffile) as f:
                 conf = json.loads(f.read())
                 try:
-                    paths += conf.get('root')
+                    self.paths += conf.get('root')
                 except:
                     pass
                 env_paths = conf.get('env_root')
                 if env_paths:
                     expanded = os.path.expandvars(env_paths)
                     deb('environment search path %s expanded to %s' % (env_paths, expanded))
-                    paths += expanded.split(os.pathsep)
-                Setup.paths = paths
+                    self.paths += expanded.split(os.pathsep)
                 blacklist_paths = conf.get('blacklist_paths')
                 if blacklist_paths:
                     Setup.blacklist_paths = blacklist_paths
-                Setup.using_arch = conf.get('using_arch') == 'on'
-                Setup.using_track = conf.get('using_track') == 'on'
-                Setup.using_buildtype = conf.get('using_buildtype') == 'on'
-                Setup.ignore_duplicates = conf.get('allow_duplicates') == 'yes'
+                self.using_arch = conf.get('using_arch') == 'on'
+                self.using_track = conf.get('using_track') == 'on'
+                self.using_buildtype = conf.get('using_buildtype') == 'on'
+                self.ignore_duplicates = conf.get('allow_duplicates') == 'yes'
+                self.cache = conf.get('cache') == 'on'
                 try:
-                    Setup.depth = int(conf['depth'])
+                    self.depth = int(conf['depth'])
                 except KeyError:
                     pass
         except FileNotFoundError:
             inf('no configuration file %s found - continuing regardless' % conffile)
-        return paths
 
-    @staticmethod
-    def dump():
+    def dump(self):
         deb('Configuration:')
-        deb('  depth = %i' % Setup.depth)
+        deb('  depth = %i' % self.depth)
+
+
+class Param:
+    depth = None
+    root = ''
+
+    def set_depth(self, depth):
+        self.depth = depth
+
+    def set_root(self, root):
+        self.root = root
 
 
 class Error:

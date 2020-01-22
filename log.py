@@ -18,35 +18,36 @@ class Indent():
         return indent
 
 
-logger = logging.getLogger()
+RESET = '\033[0m'
+
+logger = logging.getLogger('obsoleta')
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(indent + '%(message)s')
+formatter = logging.Formatter(f'{indent}%(levelname)s %(message)s{RESET}')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
-RESET = '\033[0m'
-GREY = '\033[0;37m'
-WHITE = '\033[1;37m'
-LIGHT_GREEN = '\033[1;32m'
-LIGHT_RED = '\033[1;31m'
-LIGHT_RED2 = '\033[1;37;41m'
+if logging.getLevelName(logging.DEBUG) == 'DEBUG':
+    # don't touch the level names if already done by someone else
+    GREY = '\033[0;37m'
+    WHITE = '\033[1;37m'
+    LIGHT_GREEN = '\033[1;32m'
+    LIGHT_RED = '\033[1;31m'
+    LIGHT_RED2 = '\033[1;37;41m'
 
-_GREY = GREY + '%3.3s'
-_WHITE = WHITE + '%3.3s'
-_LIGHT_GREEN = LIGHT_GREEN + '%3.3s'
-_LIGHT_RED = LIGHT_RED + '%3.3s'
-_LIGHT_RED2 = LIGHT_RED2 + '%3.3s'
-
-logging.addLevelName(logging.DEBUG, _GREY % logging.getLevelName(logging.DEBUG))
-logging.addLevelName(logging.INFO, _LIGHT_GREEN % logging.getLevelName(logging.INFO))
-logging.addLevelName(logging.WARNING, _LIGHT_RED % logging.getLevelName(logging.WARNING))
-logging.addLevelName(logging.ERROR, _LIGHT_RED2 % logging.getLevelName(logging.ERROR))
-logging.addLevelName(logging.CRITICAL, _LIGHT_RED2 % logging.getLevelName(logging.CRITICAL))
+    logging.addLevelName(logging.DEBUG, GREY + '%3.3s' % logging.getLevelName(logging.DEBUG))
+    logging.addLevelName(logging.INFO, LIGHT_GREEN + '%3.3s' % logging.getLevelName(logging.INFO))
+    logging.addLevelName(logging.WARNING, LIGHT_RED + '%3.3s' % logging.getLevelName(logging.WARNING))
+    logging.addLevelName(logging.ERROR, LIGHT_RED2 + '%3.3s' % logging.getLevelName(logging.ERROR))
+    logging.addLevelName(logging.CRITICAL, LIGHT_RED2 + '%3.3s' % logging.getLevelName(logging.CRITICAL))
 
 
-def deb(msg):
+def deb(msg, newline=True):
+    if not newline:
+        handler.terminator = ""
     logger.debug(indent + msg)
+    if not newline:
+        handler.terminator = "\n"
 
 
 def inf(msg, newline=True):
@@ -65,7 +66,22 @@ def err(msg):
     logger.error(indent + msg)
 
 
-def cri(msg, exit_code):
+def cri(msg, exit_code=ErrorCode.UNSET):
     logger.critical(msg)
-    logger.critical('error : ' + ErrorCode.to_string(exit_code.value))
+    logger.critical('exit code : %i, %s' % (exit_code.value, ErrorCode.to_string(exit_code.value)))
     exit(exit_code.value)
+
+
+def print_result(msg, newline=False):
+    '''
+    This should be used for printing results, no additional characters, no colors and
+    default no newline.
+    '''
+    if newline:
+        print(msg)
+    else:
+        print(msg, end='')
+
+
+def print_result_nl(msg):
+    print(msg)

@@ -1,11 +1,25 @@
 from common import ErrorCode
+from log import cri, print_result_nl
+from package import Package
 import subprocess
 
 
-def test(a, b=True):
-    if a != b:
-        print('   assertion failed: %s != %s' % (str(a), str(b)))
+def test_eq(result, expected=True):
+    if result != expected:
+        print('   assertion failed: %s != %s' % (str(result), str(expected)))
         exit(ErrorCode.TEST_FAILED.value)
+
+
+def test_success(success, output):
+    if isinstance(output, list):
+        try:
+            if isinstance(output, Package):
+                output = [p.to_string() for p in output]
+            output = '\n'.join(output)
+        except:
+            output = ''
+    cri(output) if not success else print_result_nl(output)
+    print_result_nl('pass')
 
 
 def title(serial, purpose):
