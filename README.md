@@ -100,12 +100,12 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 Assuming the local workspace contains the package json files as above then a --check will find no problems:
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --check
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
 	checking package "a:*:anytrack:anyarch:unknown": success
 
 The tree view will also show errors if there are any (which there isn't):
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
         a:0.1.2:anytrack:anyarch:unknown
           b:0.1.2:anytrack:anyarch:unknown
             c:0.1.2:anytrack:anyarch:unknown
@@ -133,13 +133,13 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 which as might be suspected iznogood:
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --check
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
         checking package "a:*:anytrack:anyarch:unknown": failed, 1 errors found
            Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
 
 which can be seen in the tree as well
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
         package tree for "a:*:anytrack:anyarch:unknown"
         a:0.1.2:anytrack:anyarch:unknown
           b:0.2.2:anytrack:anyarch:unknown
@@ -162,7 +162,7 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 where a '--tree a' with some kind of mathematical justice returns
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
 	a:0.2.2:anytrack:anyarch:unknown
 	  c:0.3.2:anytrack:anyarch:unknown
 
@@ -182,7 +182,7 @@ The track is used to add release management life cycles into the mix. The allowe
 
 This is ok, **b** will be picked up:
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
 	a:0.1.2:anytrack:anyarch:unknown
 	  b:0.1.2:testing:anyarch:unknown
 
@@ -195,7 +195,7 @@ But this:
 
 is not legal:
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
 	a:0.1.2:testing:anyarch:unknown
 	  b:0.1.2:testing:anyarch:unknown
 	   - Package not found: b:0.1.2:testing:anyarch:unknown required by a:0.1.2:testing:anyarch:unknown
@@ -298,21 +298,21 @@ The default recursive scan depth relative to the specified root directories are 
 
 The examples above are most of all just intellectual exercises until the information can be used for actual building. For this there is a --buildorder option which does pretty much what it says:
 
-	./obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --buildorder
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --buildorder
 	c:0.1.2:anytrack:anyarch:unknown
 	b:0.1.2:anytrack:anyarch:unknown
 	a:0.1.2:anytrack:anyarch:unknown
 
 For automation the paths are more interesting and can be listed using --printpaths:
 
-	/obsoleta.py --conf mini.conf --root test/A2_test_simple --package a --buildorder --printpaths
+	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --buildorder --printpaths
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/c
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/b
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/a
 
 Conceptually there isn't a long way to a pseudo script that could wrap everything up:
 
-	for path in "--path test/test_simple --package all --buildorder --printpaths"
+	for path in "--path testdata/test_simple --package all --buildorder --printpaths"
 		cd path
 		git pull
 		export obsoleta=$obsoleta:path # for the build system to use
@@ -386,14 +386,14 @@ Currently dixi supports the following get/set operations:
 
 An simple dixi example:
 
-    ./dixi.py --conf mini.conf --path test/A2_test_simple/a --getversion
+    ./dixi.py --conf mini.conf --path testdata/A2_test_simple/a --getversion
     0.1.2
 
 Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere.
 
 Dixi can also print the merged version of a slotted or multislotted package file if told which key to use. It might be handy if e.g. obsoleta is suspected to do a bad merge. An example:
 
-    ./dixi.py --conf mini.conf --path test/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
+    ./dixi.py --conf mini.conf --path testdata/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
     {
         "name": "b",
         "version": "1.1.1",
@@ -424,14 +424,14 @@ Note that the examples below modifies the test resources.
 
 Below the given root find the package 'b', or any slots for 'b', and increase the minor.
 
-    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok/ --package b --locate | xargs -I{} ./dixi.py --conf mini.conf --path {} --incminor --dryrun
+    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --locate | xargs -I{} ./dixi.py --conf mini.conf --path {} --incminor
 
     version increased from 2.1.2 to 2.2.2 (section: key2)
     2.2.2
 
 ### Bump package 'b' version anywhere it is listed as a dependency
 
-    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok/ --package b --upstream | xargs -I{} ./dixi.py --conf mini.conf --path {} --depends b --incminor --dryrun
+    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --upstream | xargs -I{} ./dixi.py --conf mini.conf --path {} --depends b --incminor
 
     version increased from 1.1.2 to 1.2.2
     1.2.2
@@ -440,7 +440,7 @@ Below the given root find the package 'b', or any slots for 'b', and increase th
 
 _Lets see if that was a success:_
 
-    ./obsoleta.py --conf mini.conf --root test/F2_test_duplicate_package_slotted_ok --package a:*:development:x86 --tree
+    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok --package a:*:development:x86 --tree
     package tree for "a:*:development:x86:unknown"
     a:0.1.2:development:x86:debug
       b:2.2.2:development:x86:unknown

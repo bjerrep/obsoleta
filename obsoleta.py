@@ -155,7 +155,8 @@ elif args.buildorder:
     unresolved, resolved = obsoleta.dump_build_order(package)
 
     if not resolved:
-        err(' - unable to find somewhere to start')
+        err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
+        exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
 
     for _package in resolved:
         if args.printpaths:

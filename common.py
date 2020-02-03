@@ -17,6 +17,7 @@ class Setup:
     using_arch = False
     using_buildtype = False
     ignore_duplicates = False
+    cache = False
     obsoleta_root = None
     depth = 1
 

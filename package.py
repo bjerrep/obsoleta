@@ -180,7 +180,7 @@ class Package:
             if not slot_section.get('depends'):
                 slot_section['depends'] = []
 
-            new_entries = copy.deepcopy(key_section['depends'])
+            new_entries = copy.copy(key_section['depends'])
             for key_depends in key_section['depends']:
                 for slot_depends in slot_section['depends']:
                     if key_depends['name'] == slot_depends['name']:
@@ -498,13 +498,13 @@ class Package:
     def get_root_error(self):
         return self.errors
 
-    def get_errors(self, errors=[]):
+    def error_list_append(self, error_list):
         if self.errors:
-            errors += self.errors
+            error_list.extend(self.errors)
         if self.dependencies:
             for dependency in self.dependencies:
-                dependency.get_errors(errors)
-        return errors
+                dependency.error_list_append(error_list)
+        return error_list
 
     def add_error(self, error):
         if not self.errors:

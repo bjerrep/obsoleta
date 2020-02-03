@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import deb, inf, war, err, Indent
+from log import deb, inf, war, Indent
 import os, copy, collections, json
 from common import Error, Exceptio
 from common import find_in_path
@@ -16,13 +16,16 @@ class Obsoleta:
         self.package_files = self.find_package_files(roots)
         self.loaded_packages = []
 
-        if setup.cache:
-            try:
-                deb('loading from cache')
-                self.load_cache()
-                return
-            except:
-                deb('loading from cache failed')
+        try:
+            if setup.cache:
+                try:
+                    deb('loading from cache')
+                    self.load_cache()
+                    return
+                except:
+                    deb('loading from cache failed')
+        except:
+            pass
 
         self.load(self.package_files)
 
@@ -36,7 +39,8 @@ class Obsoleta:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
-        inf('package loading and parsing complete')
+
+        inf('package loading and parsing complete with %i errors' % self.get_error_count())
 
         if setup.cache:
             self.write_cache()
@@ -90,20 +94,23 @@ class Obsoleta:
                     key_files = []
                     path = os.path.dirname(file)
                     find_in_path(path, 'obsoleta.key', 2, key_files)
-                    packages = [Package.construct_from_multislot_package_path(self.setup, file, key_file) for key_file in key_files]
+                    packages = [Package.construct_from_multislot_package_path(self.setup, file, key_file)
+                                for key_file in key_files]
                 else:
                     packages = [Package.construct_from_package_path(self.setup, file)]
 
                 for package in packages:
-                    if package in self.loaded_packages:
-                        message = 'duplicate package %s in %s' % (package, package.package_path)
+                    try:
+                        dupe = self.loaded_packages.index(package)
+                        message = 'duplicate package %s in %s and %s' % \
+                                  (package, package.package_path, self.loaded_packages[dupe].package_path)
                         if self.setup.ignore_duplicates or self.args.keepgoing:
                             war('ignoring ' + message)
                             if self.args.locate:
                                 self.loaded_packages.append(package)
                         else:
                             raise Exceptio(message, ErrorCode.DUPLICATE_PACKAGE)
-                    else:
+                    except ValueError:
                         self.loaded_packages.append(package)
 
             except Exception as e:
@@ -191,30 +198,29 @@ class Obsoleta:
         inf('checking for multiple versions in package tree')
         _ = Indent()
 
+        already_flagged = []
+
         for package in self.loaded_packages:
+            # make a list of package names occurring more than once in the list for 'package'
             package_list = []
             self.get_package_list(package, package_list)
-            unique_packages = set(package_list)
-
-            names = [p.get_name() for p in unique_packages]
+            names = [p.get_name() for p in package_list]
             names = [name for name, count in collections.Counter(names).items() if count > 1]
 
             for name in names:
-                candidate = []
-                for _package in unique_packages:
+                candidates = set()
+                for _package in package_list:
                     if _package.get_name() == name:
-                        candidate.append(_package)
+                        candidates.add(_package)
 
-                for i in range(len(candidate)):
-                    for j in candidate[i + 1:]:
-                        if candidate[i].matches_without_version(j):
-                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
-                            candidate[i].add_error(err1)
-                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
-                            j.add_error(err2)
-                            if self.args.verbose:
-                                err('ERROR: ' + err1.to_string())
-                                err('ERROR: ' + err2.to_string())
+                for duplicate in candidates:
+                    entry = (duplicate, duplicate.parent)
+                    if entry not in already_flagged:
+                        error = Error(ErrorCode.MULTIPLE_VERSIONS, duplicate, 'with parent %s' % duplicate.parent)
+                        duplicate.add_error(error)
+                        if self.args.verbose:
+                            war(error.to_string())
+                        already_flagged.append(entry)
 
     def get_package_list(self, package, packages):
         packages.append(package)
@@ -278,18 +284,25 @@ class Obsoleta:
         if self.loaded_packages:
             for loaded_package in self.loaded_packages:
                 if loaded_package == package:
-                    errors += loaded_package.get_errors()
+                    loaded_package.error_list_append(errors)
                     package_list = []
                     package_list = set(self.get_package_list(loaded_package, package_list))
                     for _package in package_list:
                         for loaded_package in self.loaded_packages:
                             if loaded_package.get_name() == _package.get_name():
-                                errors += loaded_package.get_errors()
+                                loaded_package.error_list_append(errors)
                                 _package.errors = loaded_package.errors
 
                     return list(set(errors))
 
         return ErrorCode.PACKAGE_NOT_FOUND
+
+    def get_error_count(self):
+        errors = 0
+        if self.loaded_packages:
+            for loaded_package in self.loaded_packages:
+                errors += len(loaded_package.error_list_append([]))
+        return errors
 
     def serialize(self):
         return [package.to_dict(True) for package in self.loaded_packages]
