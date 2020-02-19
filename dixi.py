@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import inf, err, cri, print_result, logger
+from log import deb, inf, err, cri, print_result, logger
 from common import ErrorCode, Setup, Exceptio
 from common import get_package_filepath, get_key_filepath
 from package import Package
@@ -92,13 +92,14 @@ if args.printkey:
     print(json.dumps(_json, indent=4))
     exit(ErrorCode.OK.value)
 
-if not args.path:
-    cri('need a path to the package to work with, see --path', ErrorCode.MISSING_INPUT)
-
 if args.verbose:
     logger.setLevel(logging.DEBUG)
 elif args.info:
     logger.setLevel(logging.INFO)
+
+if not args.path:
+    deb('no path given, using current directory')
+    args.path = '.'
 
 setup = Setup(args.conffile)
 
