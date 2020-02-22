@@ -48,6 +48,7 @@ class Setup:
                 self.using_track = conf.get('using_track') == 'on'
                 self.using_buildtype = conf.get('using_buildtype') == 'on'
                 self.ignore_duplicates = conf.get('allow_duplicates') == 'yes'
+                self.keepgoing = conf.get('keepgoing') == 'true'
                 self.cache = conf.get('cache') == 'on'
                 try:
                     self.depth = int(conf['depth'])

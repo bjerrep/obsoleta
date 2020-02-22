@@ -67,7 +67,7 @@ For querying the compact name is parsed from left to right and missing values wi
     name
     name:version
     name:version:testing:linux_x86_64:release
-
+    
     name::testing
     name::::release
 
@@ -90,10 +90,10 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-
+	
 	  "name": "c", "version": "0.1.2"
 
 ## Checking
@@ -106,9 +106,9 @@ Assuming the local workspace contains the package json files as above then a --c
 The tree view will also show errors if there are any (which there isn't):
 
 	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
-        a:0.1.2:anytrack:anyarch:unknown
-          b:0.1.2:anytrack:anyarch:unknown
-            c:0.1.2:anytrack:anyarch:unknown
+	    a:0.1.2:anytrack:anyarch:unknown
+	      b:0.1.2:anytrack:anyarch:unknown
+	        c:0.1.2:anytrack:anyarch:unknown
 
 The configuration file 'mini.conf' used for the examples are:
 
@@ -125,25 +125,25 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.2.2"  }]
-
+	
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-
+	
 	  "name": "c", "version": "0.1.2"
 
 which as might be suspected iznogood:
 
 	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
-        checking package "a:*:anytrack:anyarch:unknown": failed, 1 errors found
-           Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
+	    checking package "a:*:anytrack:anyarch:unknown": failed, 1 errors found
+	       Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
 
 which can be seen in the tree as well
 
 	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
-        package tree for "a:*:anytrack:anyarch:unknown"
-        a:0.1.2:anytrack:anyarch:unknown
-          b:0.2.2:anytrack:anyarch:unknown
-           - Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
+	    package tree for "a:*:anytrack:anyarch:unknown"
+	    a:0.1.2:anytrack:anyarch:unknown
+	      b:0.2.2:anytrack:anyarch:unknown
+	       - Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
 
 which suggests that **b** should be updated. Once that is done it will be a proper **c** that is missing.
 
@@ -153,7 +153,7 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 	  "name": "a", "version": "0.2.2",
 		  "depends": [{ "name": "c", "version": "0.>=2.2"  }]
-
+	
 	  "name": "c",  "version": "0.1.2"
 
   	  "name": "c",  "version": "0.2.2"
@@ -168,6 +168,12 @@ where a '--tree a' with some kind of mathematical justice returns
 
 If using the operators (at least '>') in the compact name given with the --package switch then remember to use "" around the compact name. The shell used might decide that it should start to redirect things and that makes for some unexpected results.
 
+### Keepgoing
+
+By default obsoleta makes a full scan and a full resolve of everything at each invocation. The upside is that if it doesn't complain then everything should be in working order in all scanned packages and every operation is good to go. The downside is that a rogue package for say for an architecture for which you couldn't care less now can make the whole thing fall apart. For this there is a --keepgoing option that ignores unresolvable packages so the only errors encountered will be if the current operation is actually impossible to resolve. A default keepgoing value can be set in the configuration file (see obsoleta.conf.template) and a --keepgoing argument will overrule it.
+
+
+
 
 ## Track, Arch & Buildtype
 
@@ -177,7 +183,7 @@ The track is used to add release management life cycles into the mix. The allowe
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "track" : "testing", "version": "0.1.2"
 
 This is ok, **b** will be picked up:
@@ -190,7 +196,7 @@ But this:
 
 	  "name": "a", "track": "testing", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "track" : "development", "version": "0.1.2"
 
 is not legal:
@@ -323,13 +329,13 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:
 
     my_root = 'test/G2_test_slot'
-
+    
     param = Param()
     param.set_info(True)
     param.set_root(my_root)
-
+    
     obsoleta_api = ObsoletaApi("mini.conf", param)
-
+    
     success, messages = obsoleta_api.check('e')
 
 When several operations are performed on the same obsoleta object then there is an obvious gain as the full root scan is only made once. The ObsoletaApi wrapper is tested in test_obsoleta_api.py.
@@ -425,14 +431,14 @@ Note that the examples below modifies the test resources.
 Below the given root find the package 'b', or any slots for 'b', and increase the minor.
 
     ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --locate | xargs -I{} ./dixi.py --conf mini.conf --path {} --incminor
-
+    
     version increased from 2.1.2 to 2.2.2 (section: key2)
     2.2.2
 
 ### Bump package 'b' version anywhere it is listed as a dependency
 
     ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --upstream | xargs -I{} ./dixi.py --conf mini.conf --path {} --depends b --incminor
-
+    
     version increased from 1.1.2 to 1.2.2
     1.2.2
     version increased from 2.1.2 to 2.2.2

@@ -215,15 +215,12 @@ class Package:
                                    (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
 
                 merged = self.merge(slot_section, key_section)
-
-                deb('parsing %s:' % package_path)
                 _ = Indent()
                 self.from_dict(merged)
                 del (_)
             elif 'multislot' in dictionary:
                 raise Exceptio('internal error #0170', ErrorCode.UNKNOWN_EXCEPTION)
             else:
-                deb('parsing %s:' % package_path)
                 _ = Indent()
                 self.from_dict(dictionary)
                 del (_)

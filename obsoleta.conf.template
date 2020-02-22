@@ -10,5 +10,6 @@
   "using_arch": "on",
   "using_track": "on",
   "using_buildtype": "on",
-  "allow_duplicates": "no"
+  "allow_duplicates": "no",
+  "keepgoing": "false"
 }

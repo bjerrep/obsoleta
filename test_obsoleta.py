@@ -66,9 +66,13 @@ test_eq("""c:2.1.2:anytrack:anyarch:unknown
 b:1.1.2:anytrack:anyarch:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
-title('A8', 'simple sunshine with a json error')
+title('A8', 'simple sunshine with a json error in unused c')
 exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --locate', ErrorCode.BAD_PACKAGE_FILE)
 test_eq('A3_test_simple_bad_json/c/obsoleta.json' in output)
+
+title('A9', 'simple sunshine with a json error in unused c and keepgoing')
+exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --locate --keepgoing', ErrorCode.OK)
+test_eq('A3_test_simple_bad_json/a' in output)
 
 title('B1', 'no json files found (bad path)')
 exitcode, output = execute(fixed + '--root nonexisting --package a --check', ErrorCode.BAD_PATH)

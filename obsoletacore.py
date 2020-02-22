@@ -81,10 +81,11 @@ class Obsoleta:
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
+            deb('parsing %s:' % file)
             try:
                 multislot_package = Package.is_multislot(file)
             except Exception as e:
-                if self.args.keepgoing:
+                if self.setup.keepgoing:
                     deb('keep going is set, ignoring invalid package %s' % file)
                 else:
                     raise Exceptio(file + " '" + str(e) + "'", ErrorCode.BAD_PACKAGE_FILE)
@@ -104,7 +105,7 @@ class Obsoleta:
                         dupe = self.loaded_packages.index(package)
                         message = 'duplicate package %s in %s and %s' % \
                                   (package, package.package_path, self.loaded_packages[dupe].package_path)
-                        if self.setup.ignore_duplicates or self.args.keepgoing:
+                        if self.setup.ignore_duplicates or self.setup.keepgoing:
                             war('ignoring ' + message)
                             if self.args.locate:
                                 self.loaded_packages.append(package)
@@ -114,7 +115,7 @@ class Obsoleta:
                         self.loaded_packages.append(package)
 
             except Exception as e:
-                if self.args.keepgoing:
+                if self.setup.keepgoing:
                     inf('keep going is set, ignoring invalid package %s' % file)
                 else:
                     raise e

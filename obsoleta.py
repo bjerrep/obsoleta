@@ -86,6 +86,8 @@ setup = Setup(args.conffile)
 if args.depth:
     # a depth given on the commandline overrules any depth there might have been in the configuration file
     setup.depth = int(args.depth)
+if args.keepgoing:
+    setup.keepgoing = True
 
 if args.dumpcache:
     setup.cache = True
