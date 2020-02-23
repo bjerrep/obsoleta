@@ -56,7 +56,8 @@ if args.verbose:
 elif args.info:
     logger.setLevel(logging.INFO)
 
-valid_command = args.tree or args.check or args.buildorder or args.locate or args.upstream or args.dumpcache
+valid_package_action = args.tree or args.check or args.buildorder or args.locate or args.upstream
+valid_command = valid_package_action or args.dumpcache
 
 if args.clearcache:
     # clearcache can be used as standalone command
@@ -75,7 +76,7 @@ if not valid_command:
     err('no action specified (use --check, --tree, --buildorder, --locate, --upstream or --dumpcache')
     exit(ErrorCode.MISSING_INPUT.value)
 
-if not args.package and not args.path:
+if not args.dumpcache and not args.package and not args.path:
     err('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
@@ -102,6 +103,8 @@ try:
 
     if args.dumpcache:
         print_result_nl(json.dumps(obsoleta.serialize(), indent=4))
+        if not valid_package_action:
+            exit(ErrorCode.OK.value)
 
     if args.path:
         try:
@@ -115,8 +118,6 @@ try:
 except Exceptio as e:
     err(str(e))
     exit_code = e.ErrorCode
-#    err(ErrorCode.to_string(e.ErrorCode.value))
-#    exit(e.ErrorCode.value)
 except Exception as e:
     err('caught unexpected exception: %s' % str(e))
     if args.verbose:
