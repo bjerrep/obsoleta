@@ -175,16 +175,13 @@ exitcode, output = execute(fixed + '--root testdata/C3_test_different_buildtypes
 title('F1', "duplicate package")
 exitcode, output = execute(fixed + '--root testdata/F1_test_duplicate_package --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
 
-title('F2', "duplicate package - slot test 1, fails since 'a' is not unique enough")
-exitcode, output = execute(fixed + '--root testdata/F2_test_duplicate_package_slotted_ok --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
+title('F2', "duplicate package - slot test 1, fails since 'a' is not unique")
+exitcode, output = execute(fixed + '--root testdata/F2_test_duplicate_package_slotted_ok --package a --tree', ErrorCode.PACKAGE_NOT_UNIQUE)
 
-title('F3', "duplicate package - slot test 1, fails since 'a' is not unique enough")
-exitcode, output = execute(fixed + '--root testdata/F2_test_duplicate_package_slotted_ok --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
-
-title('F4', "duplicate package - slot test 1, pass, b in x86 found")
+title('F4', "duplicate package - slot test 1, pass since 'a:*:development:x86' is unique")
 exitcode, output = execute(fixed + '--root testdata/F2_test_duplicate_package_slotted_ok --package a:*:development:x86 --tree', ErrorCode.OK)
 
-title('F5', "duplicate package - slot test 1, fail, b in x86_64 not found")
+title('F5', "duplicate package - slot test 1, fail, a in x86_64 not found")
 exitcode, output = execute(fixed + '--root testdata/F2_test_duplicate_package_slotted_ok --package a:*:anytrack:x86_64 --tree', ErrorCode.PACKAGE_NOT_FOUND)
 
 title('F6', "duplicate package - slot test 2, fail, a in x86 not found")

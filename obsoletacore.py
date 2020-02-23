@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import deb, inf, war, Indent
+from log import deb, inf, war, err, Indent
 import os, copy, collections, json
 from common import Error, Exceptio
 from common import find_in_path
@@ -103,11 +103,16 @@ class Obsoleta:
                 for package in packages:
                     try:
                         dupe = self.loaded_packages.index(package)
-                        message = 'duplicate package %s in %s and %s' % \
+                        message = 'duplicate package %s in %s, already exists as %s' % \
                                   (package, package.package_path, self.loaded_packages[dupe].package_path)
                         if self.setup.ignore_duplicates or self.setup.keepgoing:
-                            war('ignoring ' + message)
-                            if self.args.locate:
+                            reason = ''
+                            if self.setup.ignore_duplicates:
+                                reason = ' (ignore duplicates)'
+                            if self.setup.keepgoing:
+                                reason += ' (keepgoing)'
+                            war('ignoring ' + message + reason)
+                            if self.args.locate or self.setup.keepgoing:
                                 self.loaded_packages.append(package)
                         else:
                             raise Exceptio(message, ErrorCode.DUPLICATE_PACKAGE)
@@ -165,7 +170,7 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    deb('package ' + dependency.to_string() + ' does not exist')
+                    err('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
         return True
@@ -199,29 +204,30 @@ class Obsoleta:
         inf('checking for multiple versions in package tree')
         _ = Indent()
 
-        already_flagged = []
-
         for package in self.loaded_packages:
-            # make a list of package names occurring more than once in the list for 'package'
             package_list = []
             self.get_package_list(package, package_list)
-            names = [p.get_name() for p in package_list]
+            unique_packages = set(package_list)
+
+            names = [p.get_name() for p in unique_packages]
             names = [name for name, count in collections.Counter(names).items() if count > 1]
 
             for name in names:
-                candidates = set()
-                for _package in package_list:
+                candidate = []
+                for _package in unique_packages:
                     if _package.get_name() == name:
-                        candidates.add(_package)
+                        candidate.append(_package)
 
-                for duplicate in candidates:
-                    entry = (duplicate, duplicate.parent)
-                    if entry not in already_flagged:
-                        error = Error(ErrorCode.MULTIPLE_VERSIONS, duplicate, 'with parent %s' % duplicate.parent)
-                        duplicate.add_error(error)
-                        if self.args.verbose:
-                            war(error.to_string())
-                        already_flagged.append(entry)
+                for i in range(len(candidate)):
+                    for j in candidate[i+1:]:
+                        if candidate[i].matches_without_version(j):
+                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
+                            candidate[i].add_error(err1)
+                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
+                            j.add_error(err2)
+                            if self.args.verbose:
+                                err('ERROR: ' + err1.to_string())
+                                err('ERROR: ' + err2.to_string())
 
     def get_package_list(self, package, packages):
         packages.append(package)
@@ -241,7 +247,7 @@ class Obsoleta:
         if not found:
             return ret, ErrorCode.PACKAGE_NOT_FOUND
         if found > 1 and root_package.get_name() != '*':
-            return ret, ErrorCode.DUPLICATE_PACKAGE
+            return ret, ErrorCode.PACKAGE_NOT_UNIQUE
         return ret, error
 
     def dump_build_order(self, root_package):

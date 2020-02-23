@@ -93,6 +93,7 @@ if args.dumpcache:
     setup.cache = True
 
 setup.dump()
+exit_code = ErrorCode.OK
 
 # construct obsoleta, load and parse everything in one go
 
@@ -113,19 +114,21 @@ try:
 
 except Exceptio as e:
     err(str(e))
-    err(ErrorCode.to_string(e.ErrorCode.value))
-    exit(e.ErrorCode.value)
+    exit_code = e.ErrorCode
+#    err(ErrorCode.to_string(e.ErrorCode.value))
+#    exit(e.ErrorCode.value)
 except Exception as e:
     err('caught unexpected exception: %s' % str(e))
     if args.verbose:
         print(traceback.format_exc())
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)
 
-exit_code = ErrorCode.UNSET
-
 # and now figure out what to do
 
-if args.check:
+if exit_code != ErrorCode.OK:
+    pass
+
+elif args.check:
     deb('checking package "%s"' % package)
     errors = obsoleta.get_errors(package)
 
@@ -143,10 +146,10 @@ if args.check:
 
 elif args.tree:
     inf('package tree for "%s"' % package)
-    dump, error = obsoleta.dump_tree(package)
+    dump, error_code = obsoleta.dump_tree(package)
     if dump:
         print_result("\n".join(dump))
-        exit_code = error
+        exit_code = error_code
     else:
         inf("package '%s'not found" % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
@@ -205,5 +208,9 @@ elif args.dumpcache:
 
 else:
     err("no valid command found")
+
+if exit_code != ErrorCode.OK:
+    print()
+    err('failed with error: %s' % ErrorCode.to_string(exit_code.value))
 
 exit(exit_code.value)
