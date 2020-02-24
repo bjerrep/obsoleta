@@ -75,6 +75,19 @@ class Dixi:
         self.new_version = True
         return str(version)
 
+    def version_digit_set(self, position, value):
+        section, ver = self.getter('version')
+        version = Version(ver)
+        org_version = str(version)
+        version.set(position, value)
+        self.setter(section, 'version', str(version))
+        action = 'version changed from %s to %s' % (org_version, version)
+        if section:
+            action += ' (section: %s)' % section
+        self.add_action(action)
+        self.new_version = True
+        return str(version)
+
     def save(self):
         package_file = os.path.join(self.package.package_path, 'obsoleta.json')
 

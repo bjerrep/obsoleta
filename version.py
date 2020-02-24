@@ -117,6 +117,9 @@ class Version:
     def increase(self, position):
         self.digits[position].increase()
 
+    def set(self, position, value):
+        self.digits[position] = Digit(value)
+
     @staticmethod
     def test():
         aye = 0

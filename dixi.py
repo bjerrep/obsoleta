@@ -42,13 +42,11 @@ parser.add_argument('--getname', action='store_true',
                     help='command: get name')
 parser.add_argument('--getcompact', action='store_true',
                     help='command: get compact name')
-parser.add_argument('--delimiter',
-                    help='delimiter used for getcompact (default ":"')
+parser.add_argument('--delimiter', help='delimiter used for getcompact (default ":"')
 
 parser.add_argument('--getversion', action='store_true',
                     help='command: get version')
-parser.add_argument('--setversion',
-                    help='command: set the version to SETVERSION')
+parser.add_argument('--setversion', help='command: set the version to SETVERSION')
 
 parser.add_argument('--incmajor', action='store_true',
                     help='command: increase the major with one')
@@ -57,18 +55,19 @@ parser.add_argument('--incminor', action='store_true',
 parser.add_argument('--incbuild', action='store_true',
                     help='command: increase the buildnumber with one')
 
-parser.add_argument('--settrack',
-                    help='command: set track')
+parser.add_argument('--setmajor', help='command: set the major number')
+parser.add_argument('--setminor', help='command: set the minor number')
+parser.add_argument('--setbuild', help='command: set the build number')
+
+parser.add_argument('--settrack', help='command: set track')
 parser.add_argument('--gettrack', action='store_true',
                     help='command: get track')
 
-parser.add_argument('--setarch',
-                    help='command: set arch')
+parser.add_argument('--setarch', help='command: set arch')
 parser.add_argument('--getarch', action='store_true',
                     help='command: get arch')
 
-parser.add_argument('--setbuildtype',
-                    help='command: set buildtype (e.g. release, debug)')
+parser.add_argument('--setbuildtype', help='command: set buildtype (e.g. release, debug)')
 parser.add_argument('--getbuildtype', action='store_true',
                     help='command: get buildtype (e.g. release, debug)')
 
@@ -159,6 +158,18 @@ elif args.incminor:
 
 elif args.incbuild:
     ret = pf.version_digit_increment(2)
+    save_pending = True
+
+elif args.setmajor:
+    ret = pf.version_digit_set(0, args.setmajor)
+    save_pending = True
+
+elif args.setminor:
+    ret = pf.version_digit_set(1, args.setminor)
+    save_pending = True
+
+elif args.setbuild:
+    ret = pf.version_digit_set(2, args.setbuild)
     save_pending = True
 
 elif args.settrack:

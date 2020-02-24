@@ -350,7 +350,7 @@ Caching will make sense in a scenario where a build system ends up calling obsol
 
 The cache file is a pretty printed json file and it might give some interesting insights since it summarizes the whole  scan in a single file. It is possible to generate it explicitly regardless of whether caching is enabled or not:
 
-        ./obsoleta.py --conf mini.conf --root testdata/A1_test_obsoleta:. --depth 1 --package testsuite --dumpcache
+        ./obsoleta.py --conf mini.conf --root testdata/A1_test_obsoleta:. --depth 1 --dumpcache
         [
             {
                 "name": "obsoleta",
@@ -383,6 +383,9 @@ Currently dixi supports the following get/set operations:
 	--incmajor
 	--incminor
 	--incbuild
+	--setmajor x
+	--setminor y
+	--setbuild z
 	--gettrack
 	--settrack track
 	--getarch
