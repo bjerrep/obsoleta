@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 from log import deb, inf, err, cri, print_result, logger
 from common import ErrorCode, Setup, Exceptio
-from common import get_package_filepath, get_key_filepath
+from common import Position
 from package import Package
 from dixicore import Dixi
-import json, os, logging, argparse
+import json, logging, argparse
 
 # ---------------------------------------------------------------------------------------------
 
@@ -81,8 +81,8 @@ if args.printtemplate:
     _package = Package.construct_from_compact(setup, 'a:0.0.0:development:archname:buildtype')
     _depends = Package.construct_from_compact(setup, 'b:0.0.0:development:archname:buildtype')
     _package.add_dependency(_depends)
-    package_file = Dixi(_package)
-    print(package_file.dump())
+    dixi = Dixi(_package)
+    print(dixi.to_merged_json())
     exit(ErrorCode.OK.value)
 
 if args.printkey:
@@ -103,15 +103,7 @@ if not args.path:
 setup = Setup(args.conffile)
 
 try:
-    package_path = get_package_filepath(args.path)
-    if Package.is_multislot(package_path):
-        if not args.keypath:
-            cri('the key directory to use is required for a multislot package', ErrorCode.MULTISLOT_ERROR)
-        key_file = os.path.join(args.path, get_key_filepath(args.keypath))
-        package = Package.construct_from_multislot_package_path(setup, args.path, key_file)
-    else:
-        package = Package.construct_from_package_path(setup, args.path)
-
+    package = Package.construct_from_package_path(setup, args.path, args.keypath)
 except Exceptio as e:
     err(str(e))
     exit(e.ErrorCode.value)
@@ -122,9 +114,9 @@ except Exception as e:
 try:
     if args.depends:
         depends_package = package.get_dependency(args.depends)
-        pf = Dixi(package, depends_package)
+        dx = Dixi(package, depends_package)
     else:
-        pf = Dixi(package)
+        dx = Dixi(package)
 
 except FileNotFoundError as e:
     err('caught exception: %s' % str(e))
@@ -134,79 +126,79 @@ save_pending = False
 ret = None
 
 if args.getname:
-    ret = pf.get_package().get_name()
+    ret = dx.get_package().get_name()
 
 elif args.getcompact:
-    ret = pf.get_package().to_string()
+    ret = dx.get_package().to_string()
     if args.delimiter:
         ret = ret.replace(':', args.delimiter)
 
 elif args.getversion:
-    ret = pf.get_package().get_version()
+    ret = dx.get_package().get_version()
 
 elif args.setversion:
-    ret = pf.set_version(args.setversion)
+    ret = dx.set_version(args.setversion)
     save_pending = True
 
 elif args.incmajor:
-    ret = pf.version_digit_increment(0)
+    ret = dx.version_digit_increment(Position.MAJOR)
     save_pending = True
 
 elif args.incminor:
-    ret = pf.version_digit_increment(1)
+    ret = dx.version_digit_increment(Position.MINOR)
     save_pending = True
 
 elif args.incbuild:
-    ret = pf.version_digit_increment(2)
+    ret = dx.version_digit_increment(Position.BUILD)
     save_pending = True
 
 elif args.setmajor:
-    ret = pf.version_digit_set(0, args.setmajor)
+    ret = dx.version_digit_set(Position.MAJOR, args.setmajor)
     save_pending = True
 
 elif args.setminor:
-    ret = pf.version_digit_set(1, args.setminor)
+    ret = dx.version_digit_set(Position.MINOR, args.setminor)
     save_pending = True
 
 elif args.setbuild:
-    ret = pf.version_digit_set(2, args.setbuild)
+    ret = dx.version_digit_set(Position.BUILD, args.setbuild)
     save_pending = True
 
 elif args.settrack:
     if not setup.using_track:
         cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.set_track(args.settrack)
+    ret = dx.set_track(args.settrack)
     save_pending = True
 
 elif args.gettrack:
     if not setup.using_track:
         cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.get_track()
+    ret = dx.get_track()
 
 elif args.setarch:
     if not setup.using_arch:
         cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.set_arch(args.setarch)
+    ret = dx.set_arch(args.setarch)
     save_pending = True
 
 elif args.getarch:
     if not setup.using_arch:
         cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.get_arch()
+    ret = dx.get_arch()
 
 elif args.setbuildtype:
     if not setup.using_buildtype:
         cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.set_buildtype(args.setbuildtype)
+    ret = dx.set_buildtype(args.setbuildtype)
     save_pending = True
 
 elif args.getbuildtype:
     if not setup.using_buildtype:
         cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = pf.get_buildtype()
+    ret = dx.get_buildtype()
 
 elif args.print:
-    print_result(pf.dump())
+    print_result(dx.to_merged_json())
 
 else:
     err('no command found')
@@ -219,6 +211,6 @@ if save_pending:
     if args.dryrun:
         inf('\ndry run, package file is not rewritten')
     else:
-        pf.save()
+        dx.save()
 
 exit(ErrorCode.OK.value)

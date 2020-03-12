@@ -2,13 +2,10 @@ from log import logger as log
 from log import Indent as Indent
 from log import deb, war
 from version import Version
-from common import Error, Exceptio
-from common import get_package_filepath, get_key_filepath
+from common import Error, Exceptio, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
-import json
-import os
 from enum import Enum
-import copy
+import json, os, copy
 
 
 buildtype_unknown = 'unknown'
@@ -48,10 +45,8 @@ class Package:
         self.unmodified_dict = None
         self.layout = Layout.standard
 
-        if key_file:
-            self.from_multislot_package_path(package_path, key_file)
-        elif package_path:
-            self.from_package_path(package_path)
+        if package_path:
+            self.from_package_path(package_path, key_file)
         elif compact:
             self.from_compact(compact)
         else:
@@ -62,11 +57,9 @@ class Package:
         return cls(setup, None, None, dictionary)
 
     @classmethod
-    def construct_from_package_path(cls, setup, package_path):
-        return cls(setup, package_path, None, None)
-
-    @classmethod
-    def construct_from_multislot_package_path(cls, setup, package_path, key_file):
+    def construct_from_package_path(cls, setup, package_path, key_file=None):
+        """ Returns the package object for package at the given path. A multislot package
+            requires the specific keyfile to use (there might be more than one) """
         return cls(setup, package_path, None, None, key_file)
 
     @classmethod
@@ -192,7 +185,7 @@ class Package:
             result['depends'] = new_entries
         return result
 
-    def from_package_path(self, package_path):
+    def from_package_path(self, package_path, multislot_key_file):
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
 
@@ -202,6 +195,7 @@ class Package:
             _json = f.read()
             dictionary = json.loads(_json)
             self.unmodified_dict = dictionary
+            _ = Indent()
             if 'slot' in dictionary:
                 self.layout = Layout.slot
                 key_file = get_key_filepath(self.package_path)
@@ -215,36 +209,24 @@ class Package:
                                    (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
 
                 merged = self.merge(slot_section, key_section)
-                _ = Indent()
                 self.from_dict(merged)
-                del (_)
             elif 'multislot' in dictionary:
-                raise Exceptio('internal error #0170', ErrorCode.UNKNOWN_EXCEPTION)
+                self.layout = Layout.multislot
+                multislot_key_file = get_key_filepath(multislot_key_file)
+                try:
+                    self.key = self.get_key_from_keyfile(multislot_key_file)
+                except:
+                    self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
+                slot_section = dictionary['multislot']
+                try:
+                    key_section = dictionary[self.key]
+                except KeyError:
+                    raise Exceptio('failed to find multislot in package file %s with key "%s"' %
+                                   (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
+                merged = self.merge(slot_section, key_section)
+                self.from_dict(merged)
             else:
-                _ = Indent()
                 self.from_dict(dictionary)
-                del (_)
-
-    def from_multislot_package_path(self, package_path, key_file):
-        self.layout = Layout.multislot
-        if package_path.endswith('obsoleta.json'):
-            self.package_path = os.path.dirname(package_path)
-
-        json_file = get_package_filepath(self.package_path)
-
-        with open(json_file) as f:
-            _json = f.read()
-            dictionary = json.loads(_json)
-            self.unmodified_dict = dictionary
-            self.key = self.get_key_from_keyfile(key_file)
-            slot_section = dictionary['multislot']
-            try:
-                key_section = dictionary[self.key]
-            except KeyError:
-                raise Exceptio('failed to find multislot in package file %s with key "%s"' %
-                               (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
-            merged = self.merge(slot_section, key_section)
-            self.from_dict(merged)
 
     def get_key_from_keyfile(self, keyfile):
         try:
@@ -265,9 +247,6 @@ class Package:
             _json = f.read()
             dictionary = json.loads(_json)
             return 'multislot' in dictionary
-
-    def get_slot_packages(self):
-        return self.slot_packages
 
     def from_compact(self, compact):
         self.name = '*'
@@ -345,7 +324,7 @@ class Package:
         if self.setup.using_buildtype and self.buildtype != buildtype_unknown:
             dictionary['buildtype'] = self.buildtype
 
-        if add_path:
+        if add_path and self.package_path:
             dictionary['path'] = self.package_path
 
         if self.dependencies:
@@ -356,7 +335,7 @@ class Package:
 
         return dictionary
 
-    def to_unmodified_dict(self):
+    def get_original_dict(self):
         return self.unmodified_dict
 
     def get_name(self):
@@ -368,11 +347,14 @@ class Package:
     def set_version(self, version):
         self.version = version
 
-    def get_track_as_string(self):
-        return TrackToString[self.track.value]
-
     def get_path(self):
         return self.package_path
+
+    def get_parent(self):
+        return self.parent
+
+    def get_depends_path(self, depends_package):
+        return self.get_dependency(depends_package).package_path
 
     def get_key(self):
         return self.key
@@ -438,7 +420,7 @@ class Package:
             else:
                 optionals = optionals and self.track >= other.track
         if self.setup.using_arch:
-            optionals = optionals and (self.arch == anyarch or self.arch == other.arch)
+            optionals = optionals and (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch)
         if self.setup.using_track and self.setup.using_buildtype:
             optionals = optionals and (self.track != Track.production or self.buildtype == other.buildtype)
         return optionals
@@ -464,7 +446,8 @@ class Package:
         if self.errors:
             for err in self.errors:
                 title += '\n' + Indent.indent() + ' - ' + err.to_string()
-                error = err.get_error()
+                if error == ErrorCode.OK:
+                    error = err.get_error()
         ret.append(title)
         if self.dependencies:
             _ = Indent()

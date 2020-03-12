@@ -423,38 +423,28 @@ Dixi can also generate a slot/multislot key file intended to be redirected to a 
         "key": "value"
     }
 
-## Crossovers
+## Bump
 
-Its called a crossover when using obsoleta to find something and then dixi to modify or query it. This is two seperate operations and the task of gluing them together is left for the user to do. Below are some examples that demonstrates that this is not really well thought through. The total effect of both commands are that a package version is bumped everywhere it is found.
+A bump is the operation of updating the version for a given package anywhere it is found, in both  downstream and upstream packages.  Its a crossover between using obsoleta to find something and dixi to modify or query it. Since it therefore doesn't belong as a command in either, but should be in one anyway, it for now exists as an command for obsoleta as the --bump command with a mandatory --version argument.
 
-Note that the examples below modifies the test resources.
+Lets try it out. Copy the contents from *testdata/F2_test_duplicate_package_slotted_ok* to *local/temp* in order not to mess with the original testdata.
 
-### Bump the version for all packages with the name 'b'
+Check that the x86 arch is ok (in this testset there is a x86_64 arch which is missing a 'b'):
 
-Below the given root find the package 'b', or any slots for 'b', and increase the minor.
+`./obsoleta.py --conf testdata/test.conf --root local/temp --check --package a:::x86`
 
-    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --locate | xargs -I{} ./dixi.py --conf mini.conf --path {} --incminor
-    
-    version increased from 2.1.2 to 2.2.2 (section: key2)
-    2.2.2
+Due to the absence of complaints it is. Now bump b for arch x86:
 
-### Bump package 'b' version anywhere it is listed as a dependency
+`/obsoleta.py --conf testdata/test.conf --root local/temp --bump --package b:::x86 --version 7.9.13`
 
-    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok/ --package b --upstream | xargs -I{} ./dixi.py --conf mini.conf --path {} --depends b --incminor
-    
-    version increased from 1.1.2 to 1.2.2
-    1.2.2
-    version increased from 2.1.2 to 2.2.2
-    2.2.2
+which gives
 
-_Lets see if that was a success:_
+`bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"`
+`bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2"`
 
-    ./obsoleta.py --conf mini.conf --root testdata/F2_test_duplicate_package_slotted_ok --package a:*:development:x86 --tree
-    package tree for "a:*:development:x86:unknown"
-    a:0.1.2:development:x86:debug
-      b:2.2.2:development:x86:unknown
+Sounds about right. A new --check will tell that the x86 arch still adds up . And the version of 'b' from above is now:
 
-Apparently it was. A fresh checkout of test/F2_test_duplicate_package_slotted_ok might be a good idea now.
+`./dixi.py --conf testdata/test.conf --path local/temp/b --getversion`
 
-
+`7.9.13`
 

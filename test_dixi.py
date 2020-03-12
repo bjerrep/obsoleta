@@ -46,33 +46,33 @@ title('M2', 'incmajor')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--incmajor')
 print(output)
-test_eq('1.1.2' in output)
+test_eq(output == '(\'0.1.2\', \'1.1.2\')')
 
 title('M3', 'incminor')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--incminor')
-test_eq('0.2.2' in output)
+test_eq(output == '(\'0.1.2\', \'0.2.2\')')
 
 title('M4', 'incbuild')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--incbuild')
-test_eq('0.1.3' in output)
+test_eq(output == '(\'0.1.2\', \'0.1.3\')')
 
 title('M5a', 'setmajor')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--setmajor 99')
 print(output)
-test_eq('99.1.2' in output)
+test_eq(output == '(\'0.1.2\', \'99.1.2\')')
 
 title('M5b', 'setminor')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--setminor 88')
-test_eq('0.88.2' in output)
+test_eq(output == '(\'0.1.2\', \'0.88.2\')')
 
 title('M5c', 'setbuild')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--setbuild 77')
-test_eq('0.1.77' in output)
+test_eq(output == '(\'0.1.2\', \'0.1.77\')')
 
 title('M6', 'getcompact')
 prepare_local('simple')
@@ -214,7 +214,6 @@ test_eq("""{
     }
   ]
 }""" in output)
-
 
 print('test suite took %.3f secs' % (time.time() - start_time))
 

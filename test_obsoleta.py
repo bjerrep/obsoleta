@@ -2,15 +2,16 @@
 """
 Black-box test suite. Initially it seemed like a good idea to write a test suite like this,
 now it is most of all annoying that this makes it impossible to debug obsoleta using the test directly...
-testdata/testdata/ is tests that executes without fatal problems and testdata/exception/ is for tests that makes Obsoleta give up.
+./testdata is tests that executes without fatal problems and ./exception/ is for tests that makes Obsoleta give up.
 In case a test fails then the program exits immediately.
+
+Tests that need to modify the testdata should use populate_local_temp() to get a temporary copy to work on.
 """
 # flake8: noqa E502
 from common import ErrorCode
-from test_common import execute, test_eq, title
+from test_common import execute, test_eq, title, populate_local_temp
 import os
 import time
-from version import Version
 
 start_time = time.time()
 
@@ -22,9 +23,6 @@ exit_code = ErrorCode.OK
 print('\n\n============================= obsoleta =============================')
 
 fixed = './obsoleta.py --conf testdata/test.conf '
-
-title('1', 'version number selftest')
-test_eq(Version.test(), ErrorCode.OK)
 
 title('A1', 'first check that this test suite matches the used obsoleta')
 exitcode, output = execute(fixed + '--root testdata/A1_test_obsoleta:.. --depth 1 --package testsuite --check', ErrorCode.OK)
@@ -55,8 +53,8 @@ test_eq(output[0].endswith('c'))
 test_eq(output[1].endswith('b'))
 test_eq(output[2].endswith('a'))
 
-title('A6', 'simple sunshine --locate')
-exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --locate', ErrorCode.OK)
+title('A6', 'simple sunshine --upstream')
+exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --upstream', ErrorCode.OK)
 test_eq(output is not None)
 
 title('A7', 'simple sunshine --buildorder a::anytrack')
@@ -67,11 +65,11 @@ b:1.1.2:anytrack:anyarch:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A8', 'simple sunshine with a json error in unused c')
-exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --locate', ErrorCode.BAD_PACKAGE_FILE)
+exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --upstream', ErrorCode.BAD_PACKAGE_FILE)
 test_eq('A3_test_simple_bad_json/c/obsoleta.json' in output)
 
 title('A9', 'simple sunshine with a json error in unused c and keepgoing')
-exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --locate --keepgoing', ErrorCode.OK)
+exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --upstream --keepgoing', ErrorCode.OK)
 test_eq('A3_test_simple_bad_json/a' in output)
 
 title('B1', 'no json files found (bad path)')
@@ -98,9 +96,9 @@ exitcode, output = execute(fixed + '--root testdata/B5_test_missing_package --pa
 title('B8', 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
 exitcode, output = execute(fixed + '--root testdata/B6_test_missing_package_track --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
-title('B9', 'no package found, --locate')
-exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package found --locate', ErrorCode.PACKAGE_NOT_FOUND)
-test_eq("unable to locate found:*:anytrack:anyarch:unknown" in output)
+title('B9', 'no package found, --upstream')
+exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package found --upstream', ErrorCode.PACKAGE_NOT_FOUND)
+test_eq("unable to locate upstream found:*:anytrack:anyarch:unknown" in output)
 
 
 title('C1', "a anyarch <<< b anyarch <<< c arch is ok")
@@ -207,6 +205,7 @@ exitcode, output = execute(fixed + '--root testdata/F8_test_duplicate_package_bl
                               '--blacklist_path F8_test_duplicate_package_blacklist_paths_command_line/a2 '
                               '--package a --tree', ErrorCode.OK)
 
+
 title('G1', "multislot sunshine")
 exitcode, output = execute(fixed + '--root testdata/G1_test_multislot --package a --tree --depth 2', ErrorCode.OK)
 
@@ -220,22 +219,55 @@ test_eq("""a:1.1.1:anytrack:linux:unknown
   c:3.3.3:anytrack:anyarch:unknown""" in output)
 
 title('G2b', "slot sunshine. win arch brings no new dependency")
-execute('./dixi.py --printkey key:win > testdata/G2_test_slot/a/obsoleta.key')
-exitcode, output = execute(fixed + '--root testdata/G2_test_slot --path testdata/G2_test_slot/a --package a --tree --depth 2', ErrorCode.OK)
+root = populate_local_temp('testdata/G2_test_slot')
+execute('./dixi.py --printkey key:win > %s/a/obsoleta.key' % root)
+exitcode, output = execute(fixed + '--root %s --path %s/a --package a --tree --depth 2' % (root, root), ErrorCode.OK)
 test_eq("""a:1.1.1:anytrack:windows:unknown
   b:2.2.2:anytrack:anyarch:unknown""" in output)
 
-title('H1', "optionals - all enabled, compact name 'c:1.2.3' is ok")
-exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --locate --package c:1.2.3', ErrorCode.OK)
+title('G3', "duplicates in depends")
+exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
 
-title('H2', "optionals - all enabled, compact name 'c:1.2.3:::' works")
-exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --locate --package c:1.2.3:::', ErrorCode.OK)
+title('H1', "optionals - all enabled, upstream compact name 'c:1.2.3' is ok")
+exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --upstream --package c:1.2.3', ErrorCode.OK)
 
-title('H3', "optionals - none enabled, compact name 'c:1.2.3' works")
-exitcode, output = execute('./obsoleta.py --conf testdata/test_no_optionals.conf --root testdata/C5_test_multiple_versions/ --locate --package c:1.2.3', ErrorCode.OK)
+title('H2', "optionals - all enabled, upstream compact name 'c:1.2.3:::' works")
+exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --upstream --package c:1.2.3:::', ErrorCode.OK)
 
-title('H4', "optionals - none enabled, compact name 'c::::1.2.3' fails")
-exitcode, output = execute('./obsoleta.py --conf testdata/test_no_optionals.conf --root testdata/C5_test_multiple_versions/ --locate --package c::::1.2.3', ErrorCode.COMPACT_PARSE_ERROR)
+title('H3', "optionals - none enabled, upstream compact name 'c:1.2.3' works")
+exitcode, output = execute('./obsoleta.py --conf testdata/test_no_optionals.conf --root testdata/C5_test_multiple_versions/ --upstream --package c:1.2.3', ErrorCode.OK)
+
+title('H4', "optionals - none enabled, upstream compact name 'c::::1.2.3' fails")
+exitcode, output = execute('./obsoleta.py --conf testdata/test_no_optionals.conf --root testdata/C5_test_multiple_versions/ --upstream --package c::::1.2.3', ErrorCode.COMPACT_PARSE_ERROR)
+
+title('I1', "optionals - all enabled, upstream compact name 'c:1.2.3' finds b")
+exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --downstream --package c:1.2.3', ErrorCode.OK)
+test_eq("C5_test_multiple_versions/b" in output)
+
+
+title('J1', "bump a downstream package")
+root = populate_local_temp('testdata/G2_test_slot')
+exitcode, output = execute(fixed + '--root %s --bump --package a --version 7.9.13' % root, ErrorCode.OK)
+print(output)
+test_eq("""bumped upstream {a:1.1.1:anytrack:linux:unknown} from 1.1.1 to 7.9.13 in "a"
+no {a:*:anytrack:anyarch:unknown} downstream packages found""" in output)
+exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
+
+title('J1b', "bump d from slot")
+root = populate_local_temp('testdata/G2_test_slot')
+exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13' % root, ErrorCode.OK)
+print(output)
+test_eq("""bumped upstream {d:4.4.4:anytrack:anyarch:unknown} from 4.4.4 to 7.9.13 in "d"
+bumped downstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "a\"""" in output)
+exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
+
+title('J2', "bump b from slot (bump example in readme)")
+root = populate_local_temp('testdata/F2_test_duplicate_package_slotted_ok')
+exitcode, output = execute(fixed + '--root %s --bump --package b:::x86 --version 7.9.13' % root, ErrorCode.OK)
+print(output)
+test_eq("""bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"
+bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2\"""" in output)
+exitcode, output = execute(fixed + '--root %s --package a:::x86 --check' % root, ErrorCode.OK)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))

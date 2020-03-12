@@ -23,6 +23,7 @@ class ErrorCode(Enum):
     COMPACT_PARSE_ERROR = 18
     OPTION_DISABLED = 19
     PACKAGE_NOT_UNIQUE = 20
+    RESOLVE_ERROR = 21
 
     @staticmethod
     def to_string(errorcode):
@@ -47,7 +48,12 @@ class ErrorCode(Enum):
              'Invalid key file',
              'Unable to parse compact name',
              'Option disabled',
-             'Package not unique'
+             'Package not unique',
+             'Resolve error'
              ]
 
         return ErrorCodeToString[errorcode]
+
+
+def is_ok(errorcode):
+    return errorcode == ErrorCode.OK

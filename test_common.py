@@ -1,25 +1,56 @@
 from common import ErrorCode
-from log import cri, print_result_nl
+from log import print_result, print_result_nl
 from package import Package
-import subprocess
+import subprocess, shutil
 
 
 def test_eq(result, expected=True):
     if result != expected:
         print('   assertion failed: %s != %s' % (str(result), str(expected)))
+        print('\nTEST FAILED\n')
         exit(ErrorCode.TEST_FAILED.value)
 
 
-def test_success(success, output):
-    if isinstance(output, list):
-        try:
-            if isinstance(output, Package):
-                output = [p.to_string() for p in output]
-            output = '\n'.join(output)
-        except:
-            output = ''
-    cri(output) if not success else print_result_nl(output)
-    print_result_nl('pass')
+def test_ok(errorcode, output=None):
+    if output:
+        if isinstance(output, list):
+            try:
+                if isinstance(output, Package):
+                    output = [p.to_string() for p in output]
+                output = '\n'.join(output)
+            except:
+                output = ''
+        print_result(output)
+    if errorcode != ErrorCode.OK:
+        print_result_nl(' - failed with "%s' % ErrorCode.to_string(errorcode.value))
+        exit(1)
+    else:
+        print_result_nl(' - pass')
+
+
+def test_true(success, output=None):
+    if output:
+        if isinstance(output, list):
+            try:
+                if isinstance(output, Package):
+                    output = [p.to_string() for p in output]
+                output = '\n'.join(output)
+            except:
+                output = ''
+        print_result(output)
+    if not success:
+        print_result_nl(' - failed')
+        exit(1)
+    else:
+        print_result_nl(' - pass')
+
+
+def test_error(errorcode, expected_error, output=None):
+    if errorcode != expected_error:
+        print_result_nl('expected "%s" but got "%s"' %
+                        (ErrorCode.to_string(errorcode.value),
+                         ErrorCode.to_string(expected_error.value)))
+    test_true(errorcode == expected_error, output)
 
 
 def title(serial, purpose):
@@ -61,3 +92,9 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
             print('  success')
 
     return proc.returncode, output
+
+
+def populate_local_temp(src):
+    shutil.rmtree('local/temp', True)
+    shutil.copytree(src, 'local/temp')
+    return 'local/temp'

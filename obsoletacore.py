@@ -12,8 +12,8 @@ class Obsoleta:
         self.setup = setup
         self.args = args
         self.dirs_checked = 0
-        roots = self.construct_root_list()
-        self.package_files = self.find_package_files(roots)
+        self.roots = self.construct_root_list()
+        self.package_files = self.find_package_files(self.roots)
         self.loaded_packages = []
 
         try:
@@ -40,7 +40,7 @@ class Obsoleta:
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
 
-        inf('package loading and parsing complete with %i errors' % self.get_error_count())
+        inf('loading and parsing complete with %i errors' % self.get_error_count())
 
         if setup.cache:
             self.write_cache()
@@ -74,9 +74,16 @@ class Obsoleta:
             __ = Indent()
             self.dirs_checked = find_in_path(path, 'obsoleta.json', self.setup.depth, package_files)
 
-        inf('= found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         del(_)
+        inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         return package_files
+
+    def get_duplicates(self, package_list):
+        if not package_list:
+            return []
+        names = [p.get_name() for p in package_list]
+        names = [name for name, count in collections.Counter(names).items() if count > 1]
+        return names
 
     def load(self, json_files):
         json_files = sorted(json_files)
@@ -95,12 +102,17 @@ class Obsoleta:
                     key_files = []
                     path = os.path.dirname(file)
                     find_in_path(path, 'obsoleta.key', 2, key_files)
-                    packages = [Package.construct_from_multislot_package_path(self.setup, file, key_file)
+                    packages = [Package.construct_from_package_path(self.setup, file, key_file)
                                 for key_file in key_files]
                 else:
-                    packages = [Package.construct_from_package_path(self.setup, file)]
+                    packages = [Package.construct_from_package_path(self.setup, file), ]
 
+                # multislot packages have more than one package from construction above
                 for package in packages:
+                    duplicates = self.get_duplicates(package.get_dependencies())
+                    if duplicates:
+                        raise Exceptio('%s have duplicate packages in its dependency list (%s)' %
+                                       (str(package), str(duplicates)), ErrorCode.DUPLICATE_PACKAGE)
                     try:
                         dupe = self.loaded_packages.index(package)
                         message = 'duplicate package %s in %s, already exists as %s' % \
@@ -140,7 +152,7 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                resolved = self.lookup(dependency)
+                errorcode, resolved = self.lookup(dependency)
 
                 if resolved:
                     resolved = max(resolved)
@@ -170,7 +182,7 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    err('package ' + dependency.to_string() + ' does not exist')
+                    deb('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
         return True
@@ -184,9 +196,11 @@ class Obsoleta:
             else:
                 if package == target_package:
                     candidates.append(package)
-        return candidates
+        if candidates:
+            return ErrorCode.OK, candidates
+        return ErrorCode.PACKAGE_NOT_FOUND, candidates
 
-    def locate_upstreams(self, target_package, strict=True):
+    def locate_downstreams(self, target_package, strict=True):
         candidates = []
         for parent in self.loaded_packages:
             package_deps = parent.get_dependencies()
@@ -198,7 +212,9 @@ class Obsoleta:
                     else:
                         if package == target_package:
                             candidates.append(parent)
-        return candidates
+        if candidates:
+            return ErrorCode.OK, candidates
+        return ErrorCode.PACKAGE_NOT_FOUND, candidates
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
@@ -209,8 +225,7 @@ class Obsoleta:
             self.get_package_list(package, package_list)
             unique_packages = set(package_list)
 
-            names = [p.get_name() for p in unique_packages]
-            names = [name for name, count in collections.Counter(names).items() if count > 1]
+            names = self.get_duplicates(unique_packages)
 
             for name in names:
                 candidate = []
@@ -219,11 +234,15 @@ class Obsoleta:
                         candidate.append(_package)
 
                 for i in range(len(candidate)):
-                    for j in candidate[i+1:]:
+                    for j in candidate[i + 1:]:
                         if candidate[i].matches_without_version(j):
-                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS, candidate[i], 'with parent %s' % candidate[i].parent)
+                            err1 = Error(ErrorCode.MULTIPLE_VERSIONS,
+                                         candidate[i],
+                                         'with parent %s' % candidate[i].parent)
                             candidate[i].add_error(err1)
-                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS, j, 'with parent %s' % j.parent)
+                            err2 = Error(ErrorCode.MULTIPLE_VERSIONS,
+                                         j,
+                                         'with parent %s' % j.parent)
                             j.add_error(err2)
                             if self.args.verbose:
                                 err('ERROR: ' + err1.to_string())
@@ -245,10 +264,10 @@ class Obsoleta:
                 found += 1
                 error = package.dump(ret, error)
         if not found:
-            return ret, ErrorCode.PACKAGE_NOT_FOUND
+            return ErrorCode.PACKAGE_NOT_FOUND, ret
         if found > 1 and root_package.get_name() != '*':
-            return ret, ErrorCode.PACKAGE_NOT_UNIQUE
-        return ret, error
+            return ErrorCode.PACKAGE_NOT_UNIQUE, ret
+        return error, ret
 
     def dump_build_order(self, root_package):
         packages_build_order = []
@@ -295,14 +314,16 @@ class Obsoleta:
                     package_list = []
                     package_list = set(self.get_package_list(loaded_package, package_list))
                     for _package in package_list:
-                        for loaded_package in self.loaded_packages:
-                            if loaded_package.get_name() == _package.get_name():
-                                loaded_package.error_list_append(errors)
-                                _package.errors = loaded_package.errors
+                        for loaded in self.loaded_packages:
+                            if loaded == _package:
+                                loaded.error_list_append(errors)
+                                _package.errors = loaded.errors
 
-                    return list(set(errors))
+                    if errors:
+                        return ErrorCode.DUPLICATE_PACKAGE, list(set(errors))
+                    return ErrorCode.OK, errors
 
-        return ErrorCode.PACKAGE_NOT_FOUND
+        return ErrorCode.PACKAGE_NOT_FOUND, errors
 
     def get_error_count(self):
         errors = 0

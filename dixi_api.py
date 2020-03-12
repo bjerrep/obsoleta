@@ -1,28 +1,35 @@
-from common import Setup, Param, get_package_filepath, get_key_filepath
-from errorcodes import ErrorCode
+from common import Param
 from package import Package
-import os
+from dixicore import Dixi
 
 
 class DixiApi:
-    def __init__(self, conf, param=Param()):
-        self.setup = Setup(conf)
+    """ Python api for dixi.
+        Might in time just be merged into dixicore and then there will just be 'dixi'.
+    """
+    def __init__(self, setup, param=Param()):
+        """ Notice that the constructor does not give a usable DixiApi since it isn't told what package
+            to work with. It should always be followed by a call to load()
+        """
+        self.setup = setup
         self.args = param
+        self.dixi = None
 
-    def make_package(self, path=None):
-        if not path:
-            path = self.setup.paths
-        package_path = get_package_filepath(path)
-        if Package.is_multislot(package_path):
-            if not self.args.keypath:
-                raise Exception('the key directory to use is required for a multislot package', ErrorCode.MULTISLOT_ERROR)
-            key_file = os.path.join(path, get_key_filepath(self.args.keypath))
-            return Package.construct_from_multislot_package_path(self.setup, path, key_file)
+    def load(self, path_or_package, depends_package=None):
+        if isinstance(path_or_package, Package):
+            self.dixi = Dixi(path_or_package, depends_package)
         else:
-            return Package.construct_from_package_path(self.setup, path)
+            self.dixi = Dixi(Package.construct_from_package_path(self.setup, path_or_package), depends_package)
 
-    def get_compact(self, path=None):
-        try:
-            return True, self.make_package(path).to_string()
-        except Exception as e:
-            return False, str(e)
+    def get_package(self):
+        return self.dixi.get_package()
+
+    def set_version(self, version):
+        return self.dixi.set_version(version)
+
+    def get_version(self):
+        slot, version = self.dixi.getter('version')
+        return version
+
+    def save(self):
+        self.dixi.save()

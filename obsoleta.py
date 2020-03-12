@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-import argparse, json
 from log import logger
 from log import inf, deb, err, print_result, print_result_nl
-import logging, os, traceback
 from common import Setup, Exceptio
-from errorcodes import ErrorCode
+from errorcodes import ErrorCode, is_ok
 from package import Package
 from obsoletacore import Obsoleta
+from obsoleta_api import ObsoletaApi
+import argparse, json, logging, os, traceback
 
+# This is the script for calling obsoleta from the command line.
+# It predates the python obsoleta_api so it calls the obsoletacore script directly. Thats a pending change.
 
 parser = argparse.ArgumentParser('obsoleta')
 parser.add_argument('--package',
@@ -29,10 +31,16 @@ parser.add_argument('--tree', action='store_true',
                     help='command: show tree for a package')
 parser.add_argument('--buildorder', action='store_true',
                     help='command: show dependencies in building order for a package')
-parser.add_argument('--locate', action='store_true',
-                    help='command: get the path for the package given with --package')
 parser.add_argument('--upstream', action='store_true',
-                    help='command: get the path for any upstream package(s) using the package given with --package')
+                    help='command: get the paths for the packages matching --package. Notice that the "last package '
+                         'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
+parser.add_argument('--downstream', action='store_true',
+                    help='command: get the paths for packages using the package given with --package')
+
+parser.add_argument('--bump', action='store_true',
+                    help='command: bump the version for --package, both downstream and upstream. Requires --version')
+parser.add_argument('--version',
+                    help='the new version x.y.z, used with --bump')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
@@ -56,7 +64,12 @@ if args.verbose:
 elif args.info:
     logger.setLevel(logging.INFO)
 
-valid_package_action = args.tree or args.check or args.buildorder or args.locate or args.upstream
+valid_package_action = args.tree or \
+                       args.check or \
+                       args.buildorder or \
+                       args.upstream or \
+                       args.downstream or \
+                       args.bump
 valid_command = valid_package_action or args.dumpcache
 
 if args.clearcache:
@@ -73,7 +86,7 @@ if args.clearcache:
 # go-no-go checks
 
 if not valid_command:
-    err('no action specified (use --check, --tree, --buildorder, --locate, --upstream or --dumpcache')
+    err('no action specified (use --check, --tree, --buildorder, --upstream, --downstream or --dumpcache')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not args.dumpcache and not args.package and not args.path:
@@ -90,16 +103,13 @@ if args.depth:
 if args.keepgoing:
     setup.keepgoing = True
 
-if args.dumpcache:
-    setup.cache = True
-
 setup.dump()
 exit_code = ErrorCode.OK
 
 # construct obsoleta, load and parse everything in one go
 
 try:
-    obsoleta = Obsoleta(setup, args)
+    obsoleta = ObsoletaApi(setup, args)
 
     if args.dumpcache:
         print_result_nl(json.dumps(obsoleta.serialize(), indent=4))
@@ -131,12 +141,12 @@ if exit_code != ErrorCode.OK:
 
 elif args.check:
     deb('checking package "%s"' % package)
-    errors = obsoleta.get_errors(package)
+    errorcode, errors = obsoleta.get_errors(package)
 
-    if errors == ErrorCode.PACKAGE_NOT_FOUND:
+    if errorcode == ErrorCode.PACKAGE_NOT_FOUND:
         err('package "%s" not found' % package)
-        exit_code = errors
-    elif errors:
+        exit_code = errorcode
+    elif errorcode != ErrorCode.OK:
         err('checking package "%s": failed, %i errors found' % (package, len(errors)))
         for error in errors:
             err('   ' + error.to_string())
@@ -147,30 +157,25 @@ elif args.check:
 
 elif args.tree:
     inf('package tree for "%s"' % package)
-    dump, error_code = obsoleta.dump_tree(package)
-    if dump:
-        print_result("\n".join(dump))
-        exit_code = error_code
+    errorcode, result = obsoleta.tree(package)
+    if errorcode == ErrorCode.OK:
+        print_result("\n".join(result))
     else:
         inf("package '%s'not found" % package)
-        exit_code = ErrorCode.PACKAGE_NOT_FOUND
+    exit_code = errorcode
 
 elif args.buildorder:
     exit_code = ErrorCode.OK
     deb('packages listed in buildorder')
-    unresolved, resolved = obsoleta.dump_build_order(package)
+    errorcode, resolved = obsoleta.buildorder(package)
 
-    if not resolved:
+    if errorcode != ErrorCode.OK:
         err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
         exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
 
     for _package in resolved:
         if args.printpaths:
-            package_path = _package.get_path()
-            if package_path:
-                print_result(package_path, True)
-            else:
-                print_result(_package.to_string(), True)
+            print_result(_package.get_path(), True)
         else:
             print_result(_package.to_string(), True)
 
@@ -180,32 +185,38 @@ elif args.buildorder:
                 exit_code = error.get_error()
                 err(' - error: ' + error.to_string())
 
-    if unresolved:
-        err('unable to resolve build order for the following packages (circular dependencies ?)')
-        exit_code = ErrorCode.CIRCULAR_DEPENDENCY
-        for _package in unresolved:
-            err(' - ' + _package.to_string())
-
-elif args.locate:
-    lookup = obsoleta.lookup(package, strict=True)
-    if lookup:
+elif args.upstream:
+    errorcode, lookup = obsoleta.upstreams(package)
+    if is_ok(errorcode):
         print_result("\n".join(p.get_path() for p in lookup))
         exit_code = ErrorCode.OK
     else:
-        err('unable to locate %s' % package)
+        err('unable to locate upstream %s' % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
-elif args.upstream:
-    lookup = obsoleta.locate_upstreams(package)
-    if lookup:
+elif args.downstream:
+    errorcode, lookup = obsoleta.downstreams(package)
+    if is_ok(errorcode):
         print_result("\n".join(p.get_path() for p in lookup))
         exit_code = ErrorCode.OK
     else:
-        err('unable to locate %s' % package)
+        err('unable to locate downstream %s' % package)
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
 elif args.dumpcache:
     pass
+
+elif args.bump:
+    if not args.version:
+        exit_code = ErrorCode.MISSING_INPUT
+    else:
+        errorcode, messages = obsoleta.bump(package, args.version)
+        if is_ok(errorcode):
+            print_result_nl("\n".join(line for line in messages))
+            exit_code = ErrorCode.OK
+        else:
+            err('unable to locate %s' % package)
+            exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
 else:
     err("no valid command found")

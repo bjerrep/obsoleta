@@ -22,7 +22,7 @@ RESET = '\033[0m'
 
 logger = logging.getLogger('obsoleta')
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(f'{indent}%(levelname)s %(message)s{RESET}')
+formatter = logging.Formatter('%(levelname)s %(message)s\033[0m')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.WARNING)

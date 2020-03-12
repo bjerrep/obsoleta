@@ -2,6 +2,7 @@
 from enum import Enum
 from errorcodes import ErrorCode
 from common import Exceptio
+import copy
 
 
 class Digit:
@@ -57,16 +58,19 @@ class Digit:
 
 
 class Version:
-    def __init__(self, version_string='*.*.*'):
+    def __init__(self, version='*.*.*'):
+        if isinstance(version, Version):
+            self.digits = copy.deepcopy(version.digits)
+            return
         self.digits = []
-        digits = version_string.split('.')
+        digits = version.split('.')
         if digits != [d for d in digits if d]:
             raise Exceptio(
                 'Invalid version number %s (try compact name with "" if running from a shell and using e.g. ">")'
-                % version_string, ErrorCode.INVALID_VERSION_NUMBER)
+                % version, ErrorCode.INVALID_VERSION_NUMBER)
         nof_digits = len(digits)
         if not nof_digits:
-            self.digits.append(Digit(version_string))
+            self.digits.append(Digit(version))
         else:
             for digit in digits:
                 self.digits.append(Digit(digit))
@@ -115,66 +119,8 @@ class Version:
         return True
 
     def increase(self, position):
-        self.digits[position].increase()
+        self.digits[position.value].increase()
+        return self
 
     def set(self, position, value):
-        self.digits[position] = Digit(value)
-
-    @staticmethod
-    def test():
-        aye = 0
-        nay = 0
-
-        v123 = Version('1.2.3')
-        v124 = Version('1.2.4')
-
-        aye += v123 < v124
-        nay += v123 == v124
-        nay += v123 > v124
-
-        nay += v124 < v123
-        nay += v124 == v123
-        aye += v124 > v123
-
-        if nay or aye != 2:
-            print('fail (%i)' % aye)
-            return ErrorCode.TEST_FAILED
-
-        aye = 0
-
-        aye += Version('1.2.>=3') == Version('1.2.3')
-        aye += Version('1.2.>=3') == Version('1.2.<=3')
-        nay += Version('1.2.>3') == Version('1.2.<=3')
-        aye += Version('*.2.>3') == Version('1.2.<3')
-        aye += Version('1.2.3') == Version('1.*.4')
-        aye += Version('1.>2.3') == Version('1.3.3')
-        aye += Version('1.3.3') == Version('1.>2.3')
-        nay += Version('1.2.3') == Version('1.>2.3')
-
-        if nay or aye != 6:
-            print('fail simple range equality test (%i/%i)' % (nay, aye))
-            return ErrorCode.TEST_FAILED
-
-        aye = 0
-
-        aye += Version('1.>2.3') == Version('1.3.3')
-
-        if nay or aye != 1:
-            print('fail simple range equality test (%i/%i)' % (nay, aye))
-            return ErrorCode.TEST_FAILED
-
-        aye = 0
-
-        aye += Version('*') == Version('1.2.3')
-        aye += Version('1.*') == Version('1.2.3')
-        aye += Version('1.2.*') == Version('1.2.3')
-
-        aye += Version('1.2.3') == Version('*')
-        aye += Version('1.2.3') == Version('1.*')
-        aye += Version('1.2.3') == Version('1.2.*')
-
-        if nay or aye != 6:
-            print('fail wildchar test (%i/%i)' % (nay, aye))
-            return ErrorCode.TEST_FAILED
-
-        return ErrorCode.OK
+        self.digits[position.value] = Digit(value)

@@ -1,13 +1,19 @@
 from log import deb, inf
 from errorcodes import ErrorCode
-import os
-import json
+import os, json
+from enum import Enum
 
 
 class Exceptio(Exception):
     def __init__(self, msg, ErrorCode):
         super().__init__(msg)
         self.ErrorCode = ErrorCode
+
+
+class Position(Enum):
+    MAJOR = 0
+    MINOR = 1
+    BUILD = 2
 
 
 class Setup:
@@ -75,8 +81,8 @@ class Param:
 
 
 class Error:
-    def __init__(self, error_type, package, message=''):
-        self.error_type = error_type
+    def __init__(self, errorcode, package, message=''):
+        self.errorcode = errorcode
         self.package = package
         if message:
             self.message = message
@@ -86,13 +92,13 @@ class Error:
             self.message = ''
 
     def get_error(self):
-        return self.error_type
+        return self.errorcode
 
     def __str__(self):
-        return ErrorCode.to_string(self.error_type.value) + ': ' + self.package.to_string()
+        return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string()
 
     def to_string(self):
-        return ErrorCode.to_string(self.error_type.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
+        return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
 
     def __repr__(self):
         return str(self)
