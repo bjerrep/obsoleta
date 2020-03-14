@@ -52,7 +52,7 @@ Wether or not the optional track, arch and buildtype are globally enabled is def
 
 All the meta data for a package can be bundled into a single identifier called compact name, used both in queries and for output. For outputs it may look like these:
 
-No optionals enabled: 
+No optionals enabled:
 **name:version**
 
 All optionals enabled but unspecified for a given package (falling back to default values):
@@ -67,7 +67,7 @@ For querying the compact name is parsed from left to right and missing values wi
     name
     name:version
     name:version:testing:linux_x86_64:release
-    
+
     name::testing
     name::::release
 
@@ -90,10 +90,10 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-	
+
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-	
+
 	  "name": "c", "version": "0.1.2"
 
 ## Checking
@@ -113,10 +113,10 @@ The tree view will also show errors if there are any (which there isn't):
 The configuration file 'mini.conf' used for the examples are:
 
           "depth" : 4,
-          "using_arch": "on",
-          "using_track": "on",
-          "using_buildtype": "on",
-          "allow_duplicates": "no"
+          "using_arch": "true",
+          "using_track": "true",
+          "using_buildtype": "true",
+          "allow_duplicates": "false"
 
 
 Now someone makes a change in **c**, refreshes the json files with new version numbers and checks in **a**, **b** and **c**. (In the following examples the package files in test/A2_test_simple are modified manually)
@@ -125,10 +125,10 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.2.2"  }]
-	
+
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-	
+
 	  "name": "c", "version": "0.1.2"
 
 which as might be suspected iznogood:
@@ -153,7 +153,7 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 	  "name": "a", "version": "0.2.2",
 		  "depends": [{ "name": "c", "version": "0.>=2.2"  }]
-	
+
 	  "name": "c",  "version": "0.1.2"
 
   	  "name": "c",  "version": "0.2.2"
@@ -183,7 +183,7 @@ The track is used to add release management life cycles into the mix. The allowe
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-	
+
 	  "name": "b", "track" : "testing", "version": "0.1.2"
 
 This is ok, **b** will be picked up:
@@ -196,7 +196,7 @@ But this:
 
 	  "name": "a", "track": "testing", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-	
+
 	  "name": "b", "track" : "development", "version": "0.1.2"
 
 is not legal:
@@ -221,13 +221,13 @@ Buildtype is ignored except for the track 'production' where it is illegal to mi
 
 ## Search roots
 
-Obsoleta will use current working directory as default search root if nothing else is explicitly given. Search roots can be specified on the command line using '--root' and/or in the configuration file and/or by the environment variable OBSOLETA_ROOT if given. All paths are concatenated to a single list which is traversed at each invocation (see also ([Caching]#Caching)). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
+Obsoleta will use current working directory as default search root if nothing else is explicitly given. Search roots can be specified on the command line using '--root' and/or in the configuration file and/or by the environment variable OBSOLETA_ROOT if given. All paths are concatenated to a single list which is traversed at each invocation (see also [caching](#caching)). The configuration file have a 'paths' which is just a json array, and a 'env_paths' string which is shell expanded (it can contain environment variables in $ style). Both '--path' and 'env_paths' can be : separated lists.
 
 The environment variable OBSOLETA_ROOT is intended to be a last resort solution if say e.g. a specific buildserver has a non standard layout compared to what obsoleta default is configured to use.
 
 ## Slots/multislots
 
-Slot and multislots are a way to deal with the fact that once the 'arch' attibute is actually used for different architectures then the straight forward package files used so far on this page won't cut it. 
+Slot and multislots are a way to deal with the fact that once the 'arch' attibute is actually used for different architectures then the straight forward package files used so far on this page won't cut it.
 
 ### Slots
 
@@ -300,6 +300,12 @@ Alternatively to what might end up as littering skip files throughout the filest
 
 The default recursive scan depth relative to the specified root directories are 1. It can be changed on the command line with --depth and/or it can be defined in the configuration file with a "depth" entry. A command line depth number overrules any configuration depth number.
 
+## Semantic versioning
+
+If having 3 numbers in the version number is considered good enough, then yes. The real answer is no, for no other reason that support for semantic versioning haven't been implemented since just about everything seemed more interesting to do at any given time. There is however a 'semver' setting in the configuration file which enforces the requirement that lower version numbers should be implicitly reset whenever a major or minor number is increased. Which makes perfect sense and was simple to add.
+
+
+
 ## Build support
 
 The examples above are most of all just intellectual exercises until the information can be used for actual building. For this there is a --buildorder option which does pretty much what it says:
@@ -329,13 +335,13 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:
 
     my_root = 'test/G2_test_slot'
-    
+
     param = Param()
     param.set_info(True)
     param.set_root(my_root)
-    
+
     obsoleta_api = ObsoletaApi("mini.conf", param)
-    
+
     success, messages = obsoleta_api.check('e')
 
 When several operations are performed on the same obsoleta object then there is an obvious gain as the full root scan is only made once. The ObsoletaApi wrapper is tested in test_obsoleta_api.py.
@@ -440,6 +446,7 @@ Due to the absence of complaints it is. Now bump b for arch x86:
 which gives
 
 `bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"`
+
 `bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2"`
 
 Sounds about right. A new --check will tell that the x86 arch still adds up . And the version of 'b' from above is now:

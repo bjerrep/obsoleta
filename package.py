@@ -212,11 +212,19 @@ class Package:
                 self.from_dict(merged)
             elif 'multislot' in dictionary:
                 self.layout = Layout.multislot
-                multislot_key_file = get_key_filepath(multislot_key_file)
+
                 try:
-                    self.key = self.get_key_from_keyfile(multislot_key_file)
+                    multislot_key_file = get_key_filepath(multislot_key_file)
                 except:
+                    raise Exceptio('missing or invalid keyfile "%s"' % multislot_key_file,
+                                   ErrorCode.INVALID_KEY_FILE)
+
+                try:
+                    multislot_key_file = get_key_filepath(multislot_key_file)
+                    self.key = self.get_key_from_keyfile(multislot_key_file)
+                except Exception as e:
                     self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
+
                 slot_section = dictionary['multislot']
                 try:
                     key_section = dictionary[self.key]

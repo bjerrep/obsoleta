@@ -16,6 +16,13 @@ class Position(Enum):
     BUILD = 2
 
 
+_setup = None
+
+
+def get_setup():
+    return _setup
+
+
 class Setup:
     paths = []
     blacklist_paths = []
@@ -27,14 +34,18 @@ class Setup:
     cache = False
     obsoleta_root = None
     depth = 1
+    semver = False
 
     def __init__(self, configuration_file=None):
+        global _setup
+        _setup = self
+
         Setup.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
-        conffile = os.path.join(Setup.obsoleta_root, 'obsoleta.conf')
+
         if configuration_file:
             conffile = configuration_file
-            if not os.path.exists(conffile):
-                raise Exceptio('no configuration file "%s" found' % conffile, ErrorCode.MISSING_INPUT)
+        else:
+            conffile = os.path.join(Setup.obsoleta_root, 'obsoleta.conf')
 
         try:
             with open(conffile) as f:
@@ -51,12 +62,13 @@ class Setup:
                 blacklist_paths = conf.get('blacklist_paths')
                 if blacklist_paths:
                     Setup.blacklist_paths = blacklist_paths
-                self.using_arch = conf.get('using_arch') == 'on'
-                self.using_track = conf.get('using_track') == 'on'
-                self.using_buildtype = conf.get('using_buildtype') == 'on'
-                self.ignore_duplicates = conf.get('allow_duplicates') == 'yes'
+                self.using_arch = conf.get('using_arch') == 'true'
+                self.using_track = conf.get('using_track') == 'true'
+                self.using_buildtype = conf.get('using_buildtype') == 'true'
+                self.ignore_duplicates = conf.get('allow_duplicates') == 'false'
                 self.keepgoing = conf.get('keepgoing') == 'true'
-                self.cache = conf.get('cache') == 'on'
+                self.cache = conf.get('cache') == 'true'
+                self.semver = conf.get('semver') == 'true'
                 try:
                     self.depth = int(conf['depth'])
                 except KeyError:

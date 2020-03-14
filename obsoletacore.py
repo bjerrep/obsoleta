@@ -2,6 +2,7 @@
 from log import deb, inf, war, err, Indent
 import os, copy, collections, json
 from common import Error, Exceptio
+import common
 from common import find_in_path
 from errorcodes import ErrorCode
 from package import Package
@@ -9,6 +10,7 @@ from package import Package
 
 class Obsoleta:
     def __init__(self, setup, args):
+        common._setup = setup
         self.setup = setup
         self.args = args
         self.dirs_checked = 0

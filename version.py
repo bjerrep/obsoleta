@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from enum import Enum
 from errorcodes import ErrorCode
-from common import Exceptio
+from common import Exceptio, Position
+import common
 import copy
 
 
@@ -55,6 +56,9 @@ class Digit:
 
     def increase(self):
         self.number += 1
+
+    def reset(self):
+        self.number = 0
 
 
 class Version:
@@ -120,6 +124,12 @@ class Version:
 
     def increase(self, position):
         self.digits[position.value].increase()
+        if common.get_setup().semver:
+            if position == Position.MINOR:
+                self.digits[Position.BUILD.value].reset()
+            elif position == Position.MAJOR:
+                self.digits[Position.MINOR.value].reset()
+                self.digits[Position.BUILD.value].reset()
         return self
 
     def set(self, position, value):
