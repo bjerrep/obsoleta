@@ -1,0 +1,25 @@
+#include "obsoleta.h"
+#include "obsoleta_#OBSOLETA_NAME#.h"
+#include <string>
+
+
+std::string Obsoleta_#OBSOLETA_NAME#::info()
+{
+    return std::string(obsoleta_entry_#OBSOLETA_NAME#(OBSOLETA_INFO));
+}
+
+std::string Obsoleta_#OBSOLETA_NAME#::name()
+{
+    return std::string(obsoleta_entry_#OBSOLETA_NAME#(OBSOLETA_NAME));
+}
+
+std::string Obsoleta_#OBSOLETA_NAME#::version()
+{
+    return std::string(obsoleta_entry_#OBSOLETA_NAME#(OBSOLETA_VERSION));
+}
+
+std::string Obsoleta_#OBSOLETA_NAME#::check()
+{
+    return std::string(obsoleta_entry_#OBSOLETA_NAME#(OBSOLETA_CHECK));
+}
+

@@ -45,8 +45,9 @@ This is how a obsoleta.json file can look like (generated with dixi.py --printte
 	    ]
 	}
 
+Whether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page.
 
-Wether or not the optional track, arch and buildtype are globally enabled is defined in a configuration file loaded by Obsoleta. Even if they are enabled they are optional in the json files which might be the reason for any small inconsistencies further down this page.
+A package file can contain any custom information next to the obsoleta data which will be preserved by dixi (further down this page) when it is updating package files, and that can be queried by dixi as well if given the key. If the package file would be the right place to say keep extra information for e.g. the build system to use, then its a possibility.
 
 ### Specifying a package, 'compact name'
 
@@ -67,7 +68,7 @@ For querying the compact name is parsed from left to right and missing values wi
     name
     name:version
     name:version:testing:linux_x86_64:release
-
+    
     name::testing
     name::::release
 
@@ -90,10 +91,10 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-
+	
 	  "name": "c", "version": "0.1.2"
 
 ## Checking
@@ -125,10 +126,10 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.2.2"  }]
-
+	
 	  "name": "b", "version": "0.1.2",
 		  "depends": [{ "name": "c", "version": "0.1.2"  }]
-
+	
 	  "name": "c", "version": "0.1.2"
 
 which as might be suspected iznogood:
@@ -153,7 +154,7 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 	  "name": "a", "version": "0.2.2",
 		  "depends": [{ "name": "c", "version": "0.>=2.2"  }]
-
+	
 	  "name": "c",  "version": "0.1.2"
 
   	  "name": "c",  "version": "0.2.2"
@@ -183,7 +184,7 @@ The track is used to add release management life cycles into the mix. The allowe
 
 	  "name": "a", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "track" : "testing", "version": "0.1.2"
 
 This is ok, **b** will be picked up:
@@ -196,7 +197,7 @@ But this:
 
 	  "name": "a", "track": "testing", "version": "0.1.2",
 		  "depends": [{ "name": "b", "version": "0.1.2"  }]
-
+	
 	  "name": "b", "track" : "development", "version": "0.1.2"
 
 is not legal:
@@ -335,13 +336,13 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:
 
     my_root = 'test/G2_test_slot'
-
+    
     param = Param()
     param.set_info(True)
     param.set_root(my_root)
-
+    
     obsoleta_api = ObsoletaApi("mini.conf", param)
-
+    
     success, messages = obsoleta_api.check('e')
 
 When several operations are performed on the same obsoleta object then there is an obvious gain as the full root scan is only made once. The ObsoletaApi wrapper is tested in test_obsoleta_api.py.
@@ -398,6 +399,7 @@ Currently dixi supports the following get/set operations:
 	--setarch arch
 	--getbuildtype
 	--setbuildtype buildtype
+	--getvalue key
 
 An simple dixi example:
 
@@ -429,7 +431,7 @@ Dixi can also generate a slot/multislot key file intended to be redirected to a 
         "key": "value"
     }
 
-## Bump
+# Bump
 
 A bump is the operation of updating the version for a given package anywhere it is found, in both  downstream and upstream packages.  Its a crossover between using obsoleta to find something and dixi to modify or query it. Since it therefore doesn't belong as a command in either, but should be in one anyway, it for now exists as an command for obsoleta as the --bump command with a mandatory --version argument.
 
@@ -454,4 +456,8 @@ Sounds about right. A new --check will tell that the x86 arch still adds up . An
 `./dixi.py --conf testdata/test.conf --path local/temp/b --getversion`
 
 `7.9.13`
+
+# Generators
+
+Dixi has experimental support for auto generating C source files making it possible to add runtime version checking to a C/C++ based system. More [here](GENERATORS.md)
 

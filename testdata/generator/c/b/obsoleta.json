@@ -1,0 +1,11 @@
+{
+  "name": "b",
+  "version": "2.3.4",
+  "depends": [
+      {
+      "name": "c",
+      "version": ">3.4.5"
+      }
+  ],
+  "language": "C"
+}

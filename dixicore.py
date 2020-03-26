@@ -1,4 +1,4 @@
-from log import logger as log
+from log import inf
 from version import Version
 from package import Layout
 import json, os, datetime, time
@@ -33,7 +33,7 @@ class Dixi:
 
     def add_action(self, action):
         self.action += action
-        log.info(self.action)
+        inf(self.action)
 
     def getter(self, key):
         unmodified_dict = self.get_original_dict()

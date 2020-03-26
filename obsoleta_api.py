@@ -66,14 +66,14 @@ class ObsoletaApi:
             result = resolved
         return ErrorCode.OK, result
 
-    def upstreams(self, package_or_compact, as_path_list=False, strict=True):
+    def upstreams(self, package_or_compact, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages matching the name)
             Param: 'package_or_compact' is a Package object or a string with compact name.
             Param: 'as_path_list' if default false return Package objects else path strings.
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, result = self.obsoleta.lookup(package_or_compact, strict)
+        errorcode, result = self.obsoleta.lookup(package_or_compact)
         if errorcode != ErrorCode.OK:
             return errorcode, 'unable to locate %s' % package_or_compact
         if as_path_list:
@@ -87,7 +87,7 @@ class ObsoletaApi:
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, result = self.obsoleta.locate_downstreams(package_or_compact, False)
+        errorcode, result = self.obsoleta.locate_downstreams(package_or_compact)
         if not is_ok(errorcode):
             return errorcode, 'unable to locate upstreams for %s' % package_or_compact
         if as_path_list:

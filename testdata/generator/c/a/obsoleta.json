@@ -1,0 +1,11 @@
+{
+  "name": "a",
+  "version": "1.2.3",
+  "depends": [
+    {
+      "name": "b",
+      "version": ">=2.3.4"
+    }
+  ],
+  "language": "C++"
+}

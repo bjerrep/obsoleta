@@ -84,6 +84,7 @@ class Setup:
 class Param:
     depth = None
     root = ''
+    verbose = False
 
     def set_depth(self, depth):
         self.depth = depth

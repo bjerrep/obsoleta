@@ -1,6 +1,6 @@
 from log import logger as log
 from log import Indent as Indent
-from log import deb, war
+from log import deb, inf, war
 from version import Version
 from common import Error, Exceptio, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
@@ -80,6 +80,7 @@ class Package:
             self.name = dictionary['name']
         except:
             raise Exceptio('unable to extract name %s (sure its a json list?)' % path, ErrorCode.BAD_PACKAGE_FILE)
+
         try:
             self.version = Version(dictionary['version'])
         except:
@@ -195,6 +196,13 @@ class Package:
             _json = f.read()
             dictionary = json.loads(_json)
             self.unmodified_dict = dictionary
+
+            try:
+                name = dictionary['name']
+            except:
+                name = 'not found'
+            inf('parsing \'%s\' in %s' % (name, package_path))
+
             _ = Indent()
             if 'slot' in dictionary:
                 self.layout = Layout.slot
@@ -222,7 +230,7 @@ class Package:
                 try:
                     multislot_key_file = get_key_filepath(multislot_key_file)
                     self.key = self.get_key_from_keyfile(multislot_key_file)
-                except Exception as e:
+                except Exception:
                     self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
 
                 slot_section = dictionary['multislot']
@@ -367,6 +375,9 @@ class Package:
     def get_key(self):
         return self.key
 
+    def get_value(self, key):
+        return self.unmodified_dict[key]
+
     def to_string(self):
         # The fully unique identifier string for a package
         optionals = ''
@@ -400,23 +411,12 @@ class Package:
         return self.to_string()
 
     def __eq__(self, other):
-        if self.name != '*' and other.name != '*':
-            if self.name != other.name or self.version != other.version:
-                return False
-
-        optionals = True
-        if self.setup.using_track:
-            if other.track != Track.anytrack:
-                optionals = optionals and self.track == other.track
-        if self.setup.using_arch:
-            if other.arch != anyarch:
-                optionals = optionals and self.arch == other.arch
-        if self.setup.using_buildtype:
-            if other.buildtype != buildtype_unknown:
-                optionals = optionals and self.buildtype == other.buildtype
-        return optionals
-
-    def equal_or_better(self, other):
+        """ The equality check uses the set of rules that exists for checking for equality for
+            each of the name, version, track, arch and buildtypes attributes. For some specific examples
+            of how versions are checked see 'test_versions.py' and for the rest they honor the
+            wildcards anytrack, anyarch and unknown for buildtype. The current rule that the
+            'production' track may not be mixed with other tracks are also enforced here.
+        """
         if self.name != '*' and other.name != '*':
             if self.name != other.name or self.version != other.version:
                 return False
@@ -433,14 +433,10 @@ class Package:
             optionals = optionals and (self.track != Track.production or self.buildtype == other.buildtype)
         return optionals
 
-    def matches_without_version(self, other):
+    def is_duplicate(self, other):
         match = self.name == other.name
-        if self.setup.using_track:
-            match = match and self.track == other.track
-        if self.setup.using_arch:
-            match = match and self.arch == other.arch
-        if self.setup.using_buildtype:
-            match = match and self.buildtype == other.buildtype
+        if self.setup.using_arch and match:
+            match = self.arch == other.arch
         return match
 
     def __lt__(self, other):
@@ -476,6 +472,12 @@ class Package:
 
     def get_dependencies(self):
         return self.dependencies
+
+    def get_nof_dependencies(self):
+        try:
+            return len(self.dependencies)
+        except:
+            return 0
 
     def add_dependency(self, package):
         try:

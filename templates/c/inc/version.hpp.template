@@ -1,0 +1,127 @@
+#pragma once
+#include <stdlib.h>
+
+#define eq 0
+#define lt 1
+#define le 2
+
+struct Digit 
+{
+    int op;
+    int value;
+};
+
+struct Version
+{
+    struct Digit major;
+    struct Digit minor;
+    struct Digit build;
+};
+
+
+static void parse_digit(const char* digit_string, struct Digit *digit)
+{
+    //printf("%s\n", digit_string);
+    if (!strncmp(digit_string, ">=", 2))
+    {
+        digit->op = le;
+        digit->value = atoi(digit_string + 2);
+    }
+    else if (!strncmp(digit_string, ">", 1))
+    {
+        digit->op = lt;
+        digit->value = atoi(digit_string + 1);
+    }
+    else 
+    {
+        digit->op = eq;
+        digit->value = atoi(digit_string);
+    }
+}
+
+
+static void parse_version(const char* version_string, struct Version *version)
+{
+    const char* major = version_string;
+    const char* minor = strchr(major, '.') + 1;
+    const char* build = strchr(minor, '.') + 1;
+    
+    parse_digit(major, &version->major);
+    parse_digit(minor, &version->minor);
+    parse_digit(build, &version->build);
+}
+
+
+/// Compare the requirement from a downstream depends section digit against a upstream digit
+/// Returns: 
+///     1 if the requirement is met and there is no reason to verify any more digits.
+///     0 if the requrement is exactly met and verifying should continue if there are more digits.
+///    -1 if the requirement is not met
+/// 
+static int compare_digit(const struct Digit *depends, const struct Digit *upstream)
+{
+    //printf("*** %i %i    %i %i\n", d1->value, d1->op, d2->value, d2->op);
+    
+    if (upstream->value > depends->value && (depends->op == lt || depends->op == le))
+        // 2 > 1, 2 >= 1
+        return 1;
+    if (upstream->value < depends->value)
+        // 1 > 2, 1 >= 2, 1 != 2
+        return -1;
+    if (upstream->value == depends->value && depends->op == lt)
+        // 1 > 1
+        return -1;
+    if (upstream->value == depends->value)
+        // 1 >= 1, 1 = 1
+        return 0;
+    return -1;
+}
+
+
+/// Compare the requirement from a downstream depends section version against a upstream version
+/// Returns: 
+///     1 if the requirement is met
+///     0 if the requirement is not met
+/// 
+static int compare_versions(struct Version *depends, struct Version *upstream)
+{
+    int major = compare_digit(&depends->major, &upstream->major);
+    if (major > 0 || major < 0)
+        return major > 0;
+    
+    int minor = compare_digit(&depends->minor, &upstream->minor);
+    if (minor > 0 || minor < 0)
+        return minor > 0;
+    
+    int build = compare_digit(&depends->build, &upstream->build);
+    return build >= 0;
+}
+
+
+static int compare_version_strings(const char* depends_spec, const char* upstream_spec)
+{
+    struct Version depends, upstream;
+    parse_version(depends_spec, &depends);
+    parse_version(upstream_spec, &upstream);
+    return compare_versions(&depends, &upstream);
+}
+
+
+static void test(const char* depends_spec, const char* upstream_spec, int expected)
+{
+    int result = compare_version_strings(depends_spec, upstream_spec);
+    printf("depends '%s', \tupstream '%s', \tresult=%i \t%s\n", depends_spec, upstream_spec, result, result == expected ? "PASS" : "FAIL");
+}
+
+
+static void test_versions()
+{
+    // the depends entry checked to see if the upstream is equal or larger
+    test("1.1.1", "1.1.1", 1);
+    test("2.1.1", "1.1.1", 0);
+    test("1.1.1", "2.1.1", 0);
+    test(">1.1.1", "1.1.1", 0);    
+    test(">=1.1.1", "1.1.1", 1);   
+    test(">1.1.1", "2.1.1", 1);
+    test(">=1.1.1", "2.1.1", 1);
+}

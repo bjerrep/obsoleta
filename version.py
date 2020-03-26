@@ -6,6 +6,12 @@ import common
 import copy
 
 
+class Match(Enum):
+    Larger = 0
+    Equal = 1
+    Smaller = 2
+
+
 class Digit:
     class Range(Enum):
         Any = 0
@@ -34,25 +40,47 @@ class Digit:
 
     def __eq__(self, other):
         if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
-            return "TrueBreak"
+            return Match.Larger
 
         if self.range == Digit.Range.Number and other.range == Digit.Range.Number:
-            return eval("%i%s%i" % (self.number, self.op, other.number))
+            if self.number == other.number:
+                return Match.Equal
+            return Match.Smaller
 
-        res = True
+        if self.range == Digit.Range.Range:
+            res = eval("%i%s%i" % (other.number, self.op, self.number))
+            if not res:
+                return Match.Smaller
+            return Match.Larger
 
-        if self.op and self.range == Digit.Range.Range:
-            res = res and eval("%i%s%i" % (other.number, self.op, self.number))
-
-        if other.op and other.range == Digit.Range.Range:
-            res = res and eval("%i%s%i" % (self.number, other.op, other.number))
-
-        return res
+        if other.range == Digit.Range.Range:
+            res = eval("%i%s%i" % (self.number, other.op, other.number))
+            if not res:
+                return Match.Smaller
+            return Match.Larger
 
     def __lt__(self, other):
         if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
-            return True
-        return self.number < other.number
+            return Match.Smaller
+
+        if self.range == Digit.Range.Number and other.range == Digit.Range.Number:
+            if self.number < other.number:
+                return Match.Smaller
+            if self.number > other.number:
+                return Match.Larger
+            return Match.Equal
+
+        if self.range == Digit.Range.Range:
+            res = eval("%i%s%i" % (other.number, self.op, self.number))
+            if not res:
+                return Match.Larger
+            return Match.Smaller
+
+        if other.range == Digit.Range.Range:
+            res = eval("%i%s%i" % (self.number, other.op, other.number))
+            if not res:
+                return Match.Larger
+            return Match.Smaller
 
     def increase(self):
         self.number += 1
@@ -91,30 +119,29 @@ class Version:
 
     def __eq__(self, other):
         for digit in range(len(self.digits)):
-            m = self.digits[digit] == other.digits[digit]
-            if m == "TrueBreak":
+            match = self.digits[digit] == other.digits[digit]
+            if match == Match.Larger:
                 return True
-            if not m:
+            if match == Match.Smaller:
                 return False
         return True
 
     def __lt__(self, other):
-        loops = len(self.digits) - 1
-
-        while loops > 0:
-            if self.digits[loops] < other.digits[loops]:
+        # less than
+        for digit in range(len(self.digits)):
+            try:
+                match = self.digits[digit] < other.digits[digit]
+            except:
                 return True
-            if self.digits[loops] > other.digits[loops]:
+            if match == Match.Smaller:
+                return True
+            if match == Match.Larger:
                 return False
-            loops -= 1
 
         return self.digits[0] < other.digits[0]
 
     def __le__(self, other):
-        for digit in len(self.digits):
-            if self.digits[digit] > other.digits[digit]:
-                return False
-        return True
+        return self.__eq__(other) or self.__lt__(other)
 
     def unique(self):
         for digit in self.digits:

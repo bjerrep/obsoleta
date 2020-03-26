@@ -4,7 +4,8 @@ from common import ErrorCode, Setup, Exceptio
 from common import Position
 from package import Package
 from dixicore import Dixi
-import json, logging, argparse
+import generator
+import json, logging, argparse, os
 
 # ---------------------------------------------------------------------------------------------
 
@@ -24,6 +25,13 @@ parser.add_argument('--printtemplate', action='store_true',
                     help='print a blank obsoleta.json')
 parser.add_argument('--printkey', metavar='key:value',
                     help='print a obsoleta.key on stdout. Argument value is the (multi)slot name')
+
+parser.add_argument('--generate_c', action='store_true',
+                    help='generate c code for runtime obsoleta usage')
+parser.add_argument('--generate_src', default='.',
+                    help='source directory relative to package file. Defaults to package dir')
+parser.add_argument('--generate_inc', default='.',
+                    help='include directory relative to package file. Defaults to package dir')
 
 parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify the package file')
@@ -70,6 +78,9 @@ parser.add_argument('--getarch', action='store_true',
 parser.add_argument('--setbuildtype', help='command: set buildtype (e.g. release, debug)')
 parser.add_argument('--getbuildtype', action='store_true',
                     help='command: get buildtype (e.g. release, debug)')
+
+parser.add_argument('--getvalue',
+                    help='command: get the value for the given key')
 
 args = parser.parse_args()
 
@@ -197,8 +208,20 @@ elif args.getbuildtype:
         cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
     ret = dx.get_buildtype()
 
+elif args.getvalue:
+    try:
+        ret = dx.get_package().get_value(args.getvalue)
+    except:
+        cri('key not found, "%s"' % args.getvalue, ErrorCode.SYNTAX_ERROR)
+
 elif args.print:
     print_result(dx.to_merged_json())
+
+elif args.generate_c:
+    generator.generate_c(package,
+                         os.path.join(package.get_path(), args.generate_src),
+                         os.path.join(package.get_path(), args.generate_inc))
+    dx.save()
 
 else:
     err('no command found')

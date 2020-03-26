@@ -141,7 +141,8 @@ class Obsoleta:
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
-            inf('resolving root ' + str(package))
+            inf('')
+            inf('resolving ' + str(package))
         else:
             inf('resolving dependency ' + str(package))
 
@@ -189,31 +190,23 @@ class Obsoleta:
             level -= 1
         return True
 
-    def lookup(self, target_package, strict=False):
+    def lookup(self, target_package):
         candidates = []
         for package in self.loaded_packages:
-            if not strict:
-                if package.equal_or_better(target_package):
-                    candidates.append(package)
-            else:
-                if package == target_package:
-                    candidates.append(package)
+            if package == target_package:
+                candidates.append(package)
         if candidates:
             return ErrorCode.OK, candidates
         return ErrorCode.PACKAGE_NOT_FOUND, candidates
 
-    def locate_downstreams(self, target_package, strict=True):
+    def locate_downstreams(self, target_package):
         candidates = []
         for parent in self.loaded_packages:
             package_deps = parent.get_dependencies()
             if package_deps:
                 for package in package_deps:
-                    if not strict:
-                        if package.equal_or_better(target_package):
-                            candidates.append(parent)
-                    else:
-                        if package == target_package:
-                            candidates.append(parent)
+                    if package == target_package:
+                        candidates.append(parent)
         if candidates:
             return ErrorCode.OK, candidates
         return ErrorCode.PACKAGE_NOT_FOUND, candidates
@@ -237,7 +230,7 @@ class Obsoleta:
 
                 for i in range(len(candidate)):
                     for j in candidate[i + 1:]:
-                        if candidate[i].matches_without_version(j):
+                        if candidate[i].is_duplicate(j):
                             err1 = Error(ErrorCode.MULTIPLE_VERSIONS,
                                          candidate[i],
                                          'with parent %s' % candidate[i].parent)
@@ -293,7 +286,7 @@ class Obsoleta:
                     deleted.append(package)
                     found_next = True
                     break
-                nof_dependencies = len(package.get_dependencies())
+                nof_dependencies = package.get_nof_dependencies()
                 for dp in package.get_dependencies():
                     if dp in deleted:
                         nof_dependencies -= 1

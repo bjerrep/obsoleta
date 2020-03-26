@@ -12,5 +12,6 @@ if __name__ == '__main__':
     import test_obsoleta_api
     import test_dixi_api
     import version
+    #import test_c_generator
 
     print('\n\nsuccess, all tests took %.3f secs\n' % (time.time() - start_time))
