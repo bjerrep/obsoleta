@@ -22,7 +22,7 @@ This will add two .c files to ./src which should be included for building for C 
 
 Notice that the --generate_c command above should be executed for a package whenever the package file changes since the sourcefiles reflects whats in the package file.
 
-This generator is targeting a environment of mixed C and C++ which makes it slightly messy. There is no native C++ generator yet. The generated code is the first proof of concept so the versions are just verified verbatim, there are no equality (<,>,<= etc) support yet.
+This generator is targeting an environment of mixed C and C++ which makes it slightly messy. There is no native C++ generator yet. The generated code is the first proof of concept so the versions are just verified verbatim, there are no equality (<,>,<= etc) support yet.
 
 The test program *test_c_generator.py* can be used as reference since the above is all the documentation written so far. The test program copies package files and build scripts from *templates/c* into *local/temp*. There are the application **a** that uses the dynamic library **b** which is statically linked with the third and last library **c**.  Next the package directories are updated with auto generated source files as seen above and obsoleta is used to get the build order. After this the respective *build.sh* scripts are called for pure C and *build_cpp.sh* scripts for a mixture of C and C++. Finally the C binary *a/a.out* and the C++ *a/a_cpp* binary is executed, hopefully showing that the runtime versions for the libraries verifies to a pass for both C and C++.
 
@@ -36,7 +36,7 @@ mkdir -p local/temp
 ./dixi.py --printtemplate > local/temp/obsoleta.json
 ```
 
-now open the obsoleta json package file add the line "language": "C" to the package file not to get any C++ wrapper stuff (for no particular reason). Now its time to generate the source files and get a quick overview of the output:
+now open the obsoleta json package file and add the line "language": "C" to the package file not to get any C++ wrapper stuff (for no particular reason). Now its time to generate the source files and get a quick overview of the output:
 
 ```
 ./dixi.py --conf testdata/test.conf --path local/temp --generate_c --generate_src src --generate_inc inc
