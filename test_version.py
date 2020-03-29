@@ -1,5 +1,5 @@
 from version import Version
-
+from common import Position
 
 aye = 0
 nay = 0
@@ -74,4 +74,12 @@ aye += v123 < Version('*')
 
 if nay or aye != 19:
     print('fail wildchar test (%i/%i)' % (nay, aye))
+    exit(1)
+
+# ------------------------------------------
+
+try:
+    _ = str(Version('1.2').increase(Position.MINOR))
+except:
+    print('fail version other tests')
     exit(1)

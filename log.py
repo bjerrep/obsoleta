@@ -11,7 +11,7 @@ class Indent():
 
     def __del__(self):
         global indent
-        indent = indent[:-3]
+        indent = indent[:-2]
 
     @staticmethod
     def indent():

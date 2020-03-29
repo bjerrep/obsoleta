@@ -2,8 +2,9 @@ from log import logger as log
 from log import Indent as Indent
 from log import deb, inf, war
 from version import Version
-from common import Error, Exceptio, get_package_filepath, get_key_filepath
+from common import Error, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
+from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile, CompactParseError, UnknownException
 from enum import Enum
 import json, os, copy
 
@@ -44,9 +45,10 @@ class Package:
         self.key = None
         self.unmodified_dict = None
         self.layout = Layout.standard
+        self.string = None
 
         if package_path:
-            self.from_package_path(package_path, key_file)
+            self.from_package_path(package_path, key_file, dictionary)
         elif compact:
             self.from_compact(compact)
         else:
@@ -57,10 +59,10 @@ class Package:
         return cls(setup, None, None, dictionary)
 
     @classmethod
-    def construct_from_package_path(cls, setup, package_path, key_file=None):
+    def construct_from_package_path(cls, setup, package_path, key_file=None, dictionary=None):
         """ Returns the package object for package at the given path. A multislot package
             requires the specific keyfile to use (there might be more than one) """
-        return cls(setup, package_path, None, None, key_file)
+        return cls(setup, package_path, None, dictionary, key_file)
 
     @classmethod
     def construct_from_compact(cls, setup, compact):
@@ -72,19 +74,15 @@ class Package:
 
         if dictionary.get('path'):
             # a cache file will have the path added
-            self.package_path = dictionary.get('path')
-
-        path = 'in ' + get_package_filepath(self.package_path) if self.package_path else ''
+            path = get_package_filepath(dictionary.get('path'))
+        else:
+            path = 'unknown'
 
         try:
             self.name = dictionary['name']
-        except:
-            raise Exceptio('unable to extract name %s (sure its a json list?)' % path, ErrorCode.BAD_PACKAGE_FILE)
-
-        try:
             self.version = Version(dictionary['version'])
         except:
-            raise Exceptio('invalid version number %s' % path, ErrorCode.BAD_PACKAGE_FILE)
+            raise BadPackageFile('invalid name and/or version number in %s' % path)
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         pedantic = True
@@ -93,8 +91,8 @@ class Package:
                 try:
                     self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise Exceptio('invalid track name "%s" %s' %
-                                   (dictionary['track'], path), ErrorCode.COMPACT_PARSE_ERROR)
+                    raise CompactParseError('invalid track name "%s" %s' %
+                                            (dictionary['track'], path))
             else:
                 self.track = Track.anytrack
         elif pedantic and 'track' in dictionary:
@@ -113,14 +111,12 @@ class Package:
                 try:
                     self.buildtype = dictionary['buildtype']
                 except:
-                    raise Exceptio('invalid buildtype "%s" %s' %
-                                   (dictionary['buildtype'], path), ErrorCode.COMPACT_PARSE_ERROR)
+                    raise CompactParseError('invalid buildtype "%s" %s' %
+                                           (dictionary['buildtype'], path))
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
             war('package %s specifies an buildtype but buildtype is not currently enabled (check config file)' % self.name)
-
-        deb('%s' % self.to_extra_string())
 
         try:
             dependencies = dictionary['depends']
@@ -163,11 +159,10 @@ class Package:
             raise e
 
     def merge(self, slot_section, key_section):
-        '''
+        """
         Add new or replace existing entries in the slot_section with entries from the key_section.
         The yikes-ness arises when individuel entries in the 'depends' lists are merged as well.
-        '''
-
+        """
         result = dict(slot_section, **key_section)
 
         if key_section.get('depends'):
@@ -186,63 +181,68 @@ class Package:
             result['depends'] = new_entries
         return result
 
-    def from_package_path(self, package_path, multislot_key_file):
+    def from_package_path(self, package_path, multislot_key_file, dictionary=None):
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
 
-        json_file = get_package_filepath(self.package_path)
+        if not dictionary:
+            json_file = get_package_filepath(self.package_path)
 
-        with open(json_file) as f:
-            _json = f.read()
-            dictionary = json.loads(_json)
-            self.unmodified_dict = dictionary
+            with open(json_file) as f:
+                _json = f.read()
+                try:
+                    dictionary = json.loads(_json)
+                except:
+                    raise BadPackageFile('malformed json in %s' % json_file)
+
+        self.unmodified_dict = dictionary
+
+        _ = Indent()
+        if 'slot' in dictionary:
+            inf('parsing \'%s\' in %s (slot)' % (dictionary['slot']['name'], package_path))
+            self.layout = Layout.slot
+            key_file = get_key_filepath(self.package_path)
+            self.key = self.get_key_from_keyfile(key_file)
+            slot_section = dictionary['slot']
 
             try:
-                name = dictionary['name']
+                key_section = dictionary[self.key]
+            except KeyError:
+                raise InvalidKeyFile('failed to find slot in package file %s with key "%s"' %
+                                    (os.path.abspath(json_file), self.key))
+
+            merged = self.merge(slot_section, key_section)
+            self.from_dict(merged)
+        elif 'multislot' in dictionary:
+            inf('parsing \'%s\' in %s (multislot)' % (dictionary['multislot']['name'], package_path))
+            self.layout = Layout.multislot
+
+            try:
+                multislot_key_file = get_key_filepath(multislot_key_file)
             except:
-                name = 'not found'
+                raise InvalidKeyFile('missing or invalid keyfile "%s"' % multislot_key_file)
+
+            try:
+                multislot_key_file = get_key_filepath(multislot_key_file)
+                self.key = self.get_key_from_keyfile(multislot_key_file)
+            except Exception:
+                self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
+
+            slot_section = dictionary['multislot']
+            try:
+                key_section = dictionary[self.key]
+            except KeyError:
+                raise InvalidKeyFile('failed to find multislot in package file %s with key "%s"' %
+                                    (os.path.abspath(json_file), self.key))
+            merged = self.merge(slot_section, key_section)
+            self.from_dict(merged)
+        else:
+            try:
+                name = dictionary['name']
+            except KeyError:
+                raise BadPackageFile('missing name')
             inf('parsing \'%s\' in %s' % (name, package_path))
-
-            _ = Indent()
-            if 'slot' in dictionary:
-                self.layout = Layout.slot
-                key_file = get_key_filepath(self.package_path)
-
-                self.key = self.get_key_from_keyfile(key_file)
-                slot_section = dictionary['slot']
-                try:
-                    key_section = dictionary[self.key]
-                except KeyError:
-                    raise Exceptio('failed to find slot in package file %s with key "%s"' %
-                                   (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
-
-                merged = self.merge(slot_section, key_section)
-                self.from_dict(merged)
-            elif 'multislot' in dictionary:
-                self.layout = Layout.multislot
-
-                try:
-                    multislot_key_file = get_key_filepath(multislot_key_file)
-                except:
-                    raise Exceptio('missing or invalid keyfile "%s"' % multislot_key_file,
-                                   ErrorCode.INVALID_KEY_FILE)
-
-                try:
-                    multislot_key_file = get_key_filepath(multislot_key_file)
-                    self.key = self.get_key_from_keyfile(multislot_key_file)
-                except Exception:
-                    self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
-
-                slot_section = dictionary['multislot']
-                try:
-                    key_section = dictionary[self.key]
-                except KeyError:
-                    raise Exceptio('failed to find multislot in package file %s with key "%s"' %
-                                   (os.path.abspath(json_file), self.key), ErrorCode.INVALID_KEY_FILE)
-                merged = self.merge(slot_section, key_section)
-                self.from_dict(merged)
-            else:
-                self.from_dict(dictionary)
+            self.from_dict(dictionary)
 
     def get_key_from_keyfile(self, keyfile):
         try:
@@ -251,18 +251,11 @@ class Package:
                 dictionary = json.loads(_json)
                 return dictionary['key']
         except FileNotFoundError as e:
-            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.MISSING_KEY_FILE)
+            raise MissingKeyFile('%s not found' % keyfile)
         except json.JSONDecodeError as e:
-            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.INVALID_KEY_FILE)
+            raise InvalidKeyFile(str(e) + ' ' + keyfile)
         except Exception as e:
-            raise Exceptio(str(e) + ' ' + keyfile, ErrorCode.UNKNOWN_EXCEPTION)
-
-    @staticmethod
-    def is_multislot(package_file):
-        with open(package_file) as f:
-            _json = f.read()
-            dictionary = json.loads(_json)
-            return 'multislot' in dictionary
+            raise UnknownException(str(e) + ' ' + keyfile)
 
     def from_compact(self, compact):
         self.name = '*'
@@ -285,8 +278,8 @@ class Package:
             found_entries = len(entries)
             expected_entries = 2 + optionals
             if found_entries > expected_entries:
-                raise Exceptio('compact name contains %i fields but expected %i fields (check optionals)' %
-                               (found_entries, expected_entries), ErrorCode.COMPACT_PARSE_ERROR)
+                raise CompactParseError('compact name contains %i fields but expected %i fields (check optionals)' %
+                                       (found_entries, expected_entries))
             try:
                 current = 'name'
                 self.name = entries.pop(0)
@@ -321,9 +314,9 @@ class Package:
             except IndexError:
                 pass
             except KeyError as e:
-                raise Exceptio('failed to parse %s as %s' % (str(e), current), ErrorCode.COMPACT_PARSE_ERROR)
+                raise CompactParseError('failed to parse %s as %s' % (str(e), current))
             except Exception as e:
-                raise Exceptio(str(e), ErrorCode.COMPACT_PARSE_ERROR)
+                raise CompactParseError(str(e))
 
     def to_dict(self, add_path=False):
         dictionary = {
@@ -361,6 +354,7 @@ class Package:
         return self.version
 
     def set_version(self, version):
+        self.string = None
         self.version = version
 
     def get_path(self):
@@ -380,14 +374,22 @@ class Package:
 
     def to_string(self):
         # The fully unique identifier string for a package
-        optionals = ''
-        if self.setup.using_track:
-            optionals = ':%s' % TrackToString[self.track.value]
-        if self.setup.using_arch:
-            optionals = '%s:%s' % (optionals, self.arch)
-        if self.setup.using_buildtype:
-            optionals = '%s:%s' % (optionals, self.buildtype)
-        return '%s:%s%s' % (self.name, str(self.version), optionals)
+        if self.string:
+            return self.string
+        if self.setup.using_all_optionals:
+            self.string = '%s:%s:%s:%s:%s' % (self.name, str(self.version),
+                                              TrackToString[self.track.value],
+                                              self.arch, self.buildtype)
+        else:
+            optionals = ''
+            if self.setup.using_track:
+                optionals = ':%s' % TrackToString[self.track.value]
+            if self.setup.using_arch:
+                optionals = '%s:%s' % (optionals, self.arch)
+            if self.setup.using_buildtype:
+                optionals = '%s:%s' % (optionals, self.buildtype)
+            self.string = '%s:%s%s' % (self.name, str(self.version), optionals)
+        return self.string
 
     def to_extra_string(self):
         # As to_string() but adds the errorcount in case there are errors, and dependencies if there are any.
@@ -417,21 +419,21 @@ class Package:
             wildcards anytrack, anyarch and unknown for buildtype. The current rule that the
             'production' track may not be mixed with other tracks are also enforced here.
         """
-        if self.name != '*' and other.name != '*':
-            if self.name != other.name or self.version != other.version:
-                return False
+        if other.name != '*' and (self.name != other.name or self.version != other.version):
+            return False
 
-        optionals = True
         if self.setup.using_track:
-            if other.track == Track.production:
-                optionals = self.track == Track.production
-            else:
-                optionals = optionals and self.track >= other.track
+            if other.track == Track.production and self.track != Track.production:
+                return False
+            if not (self.track >= other.track):
+                return False
         if self.setup.using_arch:
-            optionals = optionals and (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch)
+            if not (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch):
+                return False
         if self.setup.using_track and self.setup.using_buildtype:
-            optionals = optionals and (self.track != Track.production or self.buildtype == other.buildtype)
-        return optionals
+            if not (self.track != Track.production or self.buildtype == other.buildtype):
+                return False
+        return True
 
     def is_duplicate(self, other):
         match = self.name == other.name

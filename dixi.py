@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 from log import deb, inf, err, cri, print_result, logger
-from common import ErrorCode, Setup, Exceptio
+from common import Setup
 from common import Position
 from package import Package
 from dixicore import Dixi
+from errorcodes import ErrorCode
+from exceptions import ObsoletaException
 import generator
 import json, logging, argparse, os
 
@@ -115,7 +117,7 @@ setup = Setup(args.conffile)
 
 try:
     package = Package.construct_from_package_path(setup, args.path, args.keypath)
-except Exceptio as e:
+except ObsoletaException as e:
     err(str(e))
     exit(e.ErrorCode.value)
 except Exception as e:

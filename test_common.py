@@ -1,4 +1,4 @@
-from common import ErrorCode
+from errorcodes import ErrorCode
 from log import print_result, print_result_nl
 from package import Package
 import subprocess, shutil

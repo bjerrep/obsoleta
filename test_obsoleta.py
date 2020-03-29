@@ -8,7 +8,7 @@ In case a test fails then the program exits immediately.
 Tests that need to modify the testdata should use populate_local_temp() to get a temporary copy to work on.
 """
 # flake8: noqa E502
-from common import ErrorCode
+from errorcodes import ErrorCode
 from test_common import execute, test_eq, title, populate_local_temp
 import os
 import time
@@ -255,7 +255,7 @@ exitcode, output = execute(fixed + '--root %s --package a --check' % root, Error
 
 title('J1b', "bump d from slot")
 root = populate_local_temp('testdata/G2_test_slot')
-exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13' % root, ErrorCode.OK)
+exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13 --verbose' % root, ErrorCode.OK)
 print(output)
 test_eq("""bumped upstream {d:4.4.4:anytrack:anyarch:unknown} from 4.4.4 to 7.9.13 in "d"
 bumped downstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "a\"""" in output)

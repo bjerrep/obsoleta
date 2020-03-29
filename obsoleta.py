@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from log import logger
 from log import inf, deb, err, print_result, print_result_nl
-from common import Setup, Exceptio
+from common import Setup
 from errorcodes import ErrorCode, is_ok
 from package import Package
 from obsoletacore import Obsoleta
 from obsoleta_api import ObsoletaApi
+from exceptions import ObsoletaException
 import argparse, json, logging, os, traceback
 
 # This is the script for calling obsoleta from the command line.
@@ -55,9 +56,15 @@ parser.add_argument('--verbose', action='store_true',
                     help='enable all log messages')
 parser.add_argument('--info', action='store_true',
                     help='enable informational log messages')
+parser.add_argument('--yappi', action='store_true',
+                    help='run yappi profiler')
 
 
 args = parser.parse_args()
+
+if args.yappi:
+    import yappirun
+    yappirun.start_yappi()
 
 if args.verbose:
     logger.setLevel(logging.DEBUG)
@@ -125,7 +132,7 @@ try:
     else:
         package = Package.construct_from_compact(setup, args.package)
 
-except Exceptio as e:
+except ObsoletaException as e:
     err(str(e))
     exit_code = e.ErrorCode
 except Exception as e:
@@ -224,5 +231,8 @@ else:
 if exit_code != ErrorCode.OK:
     print()
     err('failed with error: %s' % ErrorCode.to_string(exit_code.value))
+
+if args.yappi:
+    yappirun.stop_yappi()
 
 exit(exit_code.value)

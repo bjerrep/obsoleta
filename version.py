@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from errorcodes import ErrorCode
-from common import Exceptio, Position
+from common import Position
 import common
 import copy
 
@@ -21,15 +20,21 @@ class Digit:
     def __init__(self, digit_string):
         self.number = None
 
-        if digit_string == '*':
-            self.range = Digit.Range.Any
+        if not digit_string[0].isdigit():
+            if digit_string == '*':
+                self.range = Digit.Range.Any
+            else:
+                self.range = Digit.Range.Range
+                if not digit_string[1].isdigit():
+                    self.op = digit_string[:2]
+                    self.number = int(digit_string[2:])
+                else:
+                    self.op = digit_string[0]
+                    self.number = int(digit_string[1:])
         else:
-            self.range = Digit.Range.Range
-            self.op = "".join([c for c in digit_string if c not in '0123456789'])
-            self.number = int(digit_string[len(self.op):])
-            if not self.op:
-                self.range = Digit.Range.Number
-                self.op = "=="
+            self.range = Digit.Range.Number
+            self.op = "=="
+            self.number = int(digit_string)
 
     def __str__(self):
         if self.range == Digit.Range.Any:
@@ -39,9 +44,6 @@ class Digit:
         return self.op + str(self.number)
 
     def __eq__(self, other):
-        if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
-            return Match.Larger
-
         if self.range == Digit.Range.Number and other.range == Digit.Range.Number:
             if self.number == other.number:
                 return Match.Equal
@@ -59,10 +61,10 @@ class Digit:
                 return Match.Smaller
             return Match.Larger
 
-    def __lt__(self, other):
         if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
-            return Match.Smaller
+            return Match.Larger
 
+    def __lt__(self, other):
         if self.range == Digit.Range.Number and other.range == Digit.Range.Number:
             if self.number < other.number:
                 return Match.Smaller
@@ -82,6 +84,9 @@ class Digit:
                 return Match.Larger
             return Match.Smaller
 
+        if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
+            return Match.Smaller
+
     def increase(self):
         self.number += 1
 
@@ -90,36 +95,22 @@ class Digit:
 
 
 class Version:
-    def __init__(self, version='*.*.*'):
+    def __init__(self, version=None):
         if isinstance(version, Version):
             self.digits = copy.deepcopy(version.digits)
             return
-        self.digits = []
-        digits = version.split('.')
-        if digits != [d for d in digits if d]:
-            raise Exceptio(
-                'Invalid version number %s (try compact name with "" if running from a shell and using e.g. ">")'
-                % version, ErrorCode.INVALID_VERSION_NUMBER)
-        nof_digits = len(digits)
-        if not nof_digits:
-            self.digits.append(Digit(version))
-        else:
-            for digit in digits:
-                self.digits.append(Digit(digit))
-        while len(self.digits) < 3:
-            self.digits.append(Digit('*'))
+        self.string = version
+        self.digits = [Digit(digit) for digit in version.split('.')]
 
     def __str__(self):
-        ret = []
-        for digit in self.digits:
-            ret.append(str(digit))
-            if digit.range == Digit.Range.Any:
-                break
-        return ".".join(ret)
+        if self.string:
+            return self.string
+        self.string = ".".join(map(str, self.digits))
+        return self.string
 
     def __eq__(self, other):
-        for digit in range(len(self.digits)):
-            match = self.digits[digit] == other.digits[digit]
+        for a, b in zip(self.digits, other.digits):
+            match = a == b
             if match == Match.Larger:
                 return True
             if match == Match.Smaller:
@@ -128,9 +119,9 @@ class Version:
 
     def __lt__(self, other):
         # less than
-        for digit in range(len(self.digits)):
+        for a, b in zip(self.digits, other.digits):
             try:
-                match = self.digits[digit] < other.digits[digit]
+                match = a < b
             except:
                 return True
             if match == Match.Smaller:
@@ -138,7 +129,7 @@ class Version:
             if match == Match.Larger:
                 return False
 
-        return self.digits[0] < other.digits[0]
+        return False
 
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
@@ -150,8 +141,9 @@ class Version:
         return True
 
     def increase(self, position):
+        self.string = None
         self.digits[position.value].increase()
-        if common.get_setup().semver:
+        if common.get_setup() and common.get_setup().semver:
             if position == Position.MINOR:
                 self.digits[Position.BUILD.value].reset()
             elif position == Position.MAJOR:
@@ -160,4 +152,5 @@ class Version:
         return self
 
     def set(self, position, value):
+        self.string = None
         self.digits[position.value] = Digit(value)

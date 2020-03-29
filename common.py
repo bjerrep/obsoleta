@@ -1,13 +1,8 @@
 from log import deb, inf
 from errorcodes import ErrorCode
+from exceptions import BadPath
 import os, json
 from enum import Enum
-
-
-class Exceptio(Exception):
-    def __init__(self, msg, ErrorCode):
-        super().__init__(msg)
-        self.ErrorCode = ErrorCode
 
 
 class Position(Enum):
@@ -29,6 +24,7 @@ class Setup:
     using_track = False
     using_arch = False
     using_buildtype = False
+    using_all_optionals = False
     ignore_duplicates = False
     keepgoing = False
     cache = False
@@ -65,6 +61,8 @@ class Setup:
                 self.using_arch = conf.get('using_arch') == 'true'
                 self.using_track = conf.get('using_track') == 'true'
                 self.using_buildtype = conf.get('using_buildtype') == 'true'
+                if self.using_arch and self.using_track and self.using_buildtype:
+                    self.using_all_optionals = True
                 self.ignore_duplicates = conf.get('allow_duplicates') == 'false'
                 self.keepgoing = conf.get('keepgoing') == 'true'
                 self.cache = conf.get('cache') == 'true'
@@ -128,7 +126,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
     try:
         scan_list = list(os.scandir(path))
     except FileNotFoundError:
-        raise Exceptio('bad path %s' % path, ErrorCode.BAD_PATH)
+        raise BadPath('bad path %s' % path)
 
     for entry in scan_list:
         if entry.name == 'obsoleta.skip':
@@ -155,7 +153,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
         if entry.name == filename:
             results.append(entry.path)
             deb('- found %s' % entry.path)
-            continue
+
     return dirs_checked
 
 

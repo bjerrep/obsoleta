@@ -73,7 +73,7 @@ class ObsoletaApi:
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, result = self.obsoleta.lookup(package_or_compact)
+        errorcode, result = self.obsoleta.locate_upstreams(package_or_compact)
         if errorcode != ErrorCode.OK:
             return errorcode, 'unable to locate %s' % package_or_compact
         if as_path_list:

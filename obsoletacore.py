@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from log import deb, inf, war, err, Indent
 import os, copy, collections, json
-from common import Error, Exceptio
+from common import Error
 import common
 from common import find_in_path
+from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
 from package import Package
 
@@ -32,7 +33,7 @@ class Obsoleta:
         self.load(self.package_files)
 
         if not self.loaded_packages:
-            raise Exceptio("didn't find any packages", ErrorCode.PACKAGE_NOT_FOUND)
+            raise PackageNotFound("didn't find any packages")
 
         for package in self.loaded_packages:
             self.resolve_dependencies(package)
@@ -89,32 +90,39 @@ class Obsoleta:
 
     def load(self, json_files):
         json_files = sorted(json_files)
+        _1 = Indent()
         for file in json_files:
             deb('parsing %s:' % file)
             try:
-                multislot_package = Package.is_multislot(file)
-            except Exception as e:
-                if self.setup.keepgoing:
-                    deb('keep going is set, ignoring invalid package %s' % file)
-                else:
-                    raise Exceptio(file + " '" + str(e) + "'", ErrorCode.BAD_PACKAGE_FILE)
+                try:
+                    try:
+                        with open(file) as f:
+                            _json = f.read()
+                            dictionary = json.loads(_json)
+                    except json.JSONDecodeError:
+                        raise BadPackageFile('malformed json in %s' % file)
 
-            try:
-                if multislot_package:
-                    key_files = []
-                    path = os.path.dirname(file)
-                    find_in_path(path, 'obsoleta.key', 2, key_files)
-                    packages = [Package.construct_from_package_path(self.setup, file, key_file)
-                                for key_file in key_files]
-                else:
-                    packages = [Package.construct_from_package_path(self.setup, file), ]
+                    if dictionary.get('multislot'):
+                        key_files = []
+                        path = os.path.dirname(file)
+                        find_in_path(path, 'obsoleta.key', 2, key_files)
+                        packages = [Package.construct_from_package_path(self.setup, file, key_file, dictionary=dictionary)
+                                    for key_file in key_files]
+                    else:
+                        packages = [Package.construct_from_package_path(self.setup, file, dictionary=dictionary), ]
+
+                except (BadPackageFile, MissingKeyFile) as e:
+                    if self.setup.keepgoing:
+                        deb('keep going is set, ignoring invalid package %s' % file)
+                    else:
+                        raise e
 
                 # multislot packages have more than one package from construction above
                 for package in packages:
                     duplicates = self.get_duplicates(package.get_dependencies())
                     if duplicates:
-                        raise Exceptio('%s have duplicate packages in its dependency list (%s)' %
-                                       (str(package), str(duplicates)), ErrorCode.DUPLICATE_PACKAGE)
+                        raise DuplicatePackage('%s have duplicate packages in its dependency list (%s)' %
+                                       (str(package), str(duplicates)))
                     try:
                         dupe = self.loaded_packages.index(package)
                         message = 'duplicate package %s in %s, already exists as %s' % \
@@ -129,7 +137,7 @@ class Obsoleta:
                             if self.args.locate or self.setup.keepgoing:
                                 self.loaded_packages.append(package)
                         else:
-                            raise Exceptio(message, ErrorCode.DUPLICATE_PACKAGE)
+                            raise DuplicatePackage(message)
                     except ValueError:
                         self.loaded_packages.append(package)
 
@@ -141,12 +149,11 @@ class Obsoleta:
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
-            inf('')
-            inf('resolving ' + str(package))
+            inf('>resolving ' + str(package))
         else:
             inf('resolving dependency ' + str(package))
 
-        _ = Indent()
+        _1 = Indent()
 
         dependencies = package.get_dependencies()
 
@@ -155,12 +162,12 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                errorcode, resolved = self.lookup(dependency)
+                errorcode, resolved = self.locate_upstreams(dependency)
 
                 if resolved:
                     resolved = max(resolved)
                     deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
-                    _1 = Indent()
+                    _2 = Indent()
                     resolved.parent = package
                     resolved = copy.copy(resolved)
                     if level > 1:
@@ -190,7 +197,9 @@ class Obsoleta:
             level -= 1
         return True
 
-    def lookup(self, target_package):
+    def locate_upstreams(self, target_package):
+        """" Find any upstream packages matching 'target_package'
+        """
         candidates = []
         for package in self.loaded_packages:
             if package == target_package:
@@ -200,6 +209,9 @@ class Obsoleta:
         return ErrorCode.PACKAGE_NOT_FOUND, candidates
 
     def locate_downstreams(self, target_package):
+        """" Find any packages that references the upstream 'target_package' in their
+             depends section
+        """
         candidates = []
         for parent in self.loaded_packages:
             package_deps = parent.get_dependencies()
