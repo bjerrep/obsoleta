@@ -31,27 +31,38 @@ title('A2', 'simple sunshine --tree')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package \'*\' --tree', ErrorCode.OK)
 
 test_eq("""a:0.1.2:anytrack:anyarch:unknown
-  b:1.1.2:anytrack:anyarch:unknown
+  b:1.1.2:anytrack:linux_x86_64:unknown
+    d:0.1.2:anytrack:linux_x86_64:release
     c:2.1.2:anytrack:anyarch:unknown
-b:1.1.2:anytrack:anyarch:unknown
+      e:1.2.3:anytrack:linux_x86_64:unknown
+d:0.1.2:anytrack:linux_x86_64:release
+b:1.1.2:anytrack:linux_x86_64:unknown
+  d:0.1.2:anytrack:linux_x86_64:release
   c:2.1.2:anytrack:anyarch:unknown
-c:2.1.2:anytrack:anyarch:unknown""" in output)
+    e:1.2.3:anytrack:linux_x86_64:unknown
+e:1.2.3:anytrack:linux_x86_64:unknown
+c:2.1.2:anytrack:anyarch:unknown
+  e:1.2.3:anytrack:linux_x86_64:unknown""" in output)
 
 title('A3', 'simple sunshine --check')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --check', ErrorCode.OK)
 
 title('A4', 'simple sunshine --buildorder')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --buildorder', ErrorCode.OK)
-test_eq("""c:2.1.2:anytrack:anyarch:unknown
-b:1.1.2:anytrack:anyarch:unknown
+test_eq("""d:0.1.2:anytrack:linux_x86_64:release
+e:1.2.3:anytrack:linux_x86_64:unknown
+c:2.1.2:anytrack:anyarch:unknown
+b:1.1.2:anytrack:linux_x86_64:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A5', 'simple sunshine --buildorder --printpaths')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --buildorder --printpaths', ErrorCode.OK)
 output = output.split('\n')
-test_eq(output[0].endswith('c'))
-test_eq(output[1].endswith('b'))
-test_eq(output[2].endswith('a'))
+test_eq(output[0].endswith('d'))
+test_eq(output[1].endswith('e'))
+test_eq(output[2].endswith('c'))
+test_eq(output[3].endswith('b'))
+test_eq(output[4].endswith('a'))
 
 title('A6', 'simple sunshine --upstream')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --upstream', ErrorCode.OK)
@@ -60,8 +71,10 @@ test_eq(output is not None)
 title('A7', 'simple sunshine --buildorder a::anytrack')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a::anytrack --buildorder', ErrorCode.OK)
 print(output)
-test_eq("""c:2.1.2:anytrack:anyarch:unknown
-b:1.1.2:anytrack:anyarch:unknown
+test_eq("""d:0.1.2:anytrack:linux_x86_64:release
+e:1.2.3:anytrack:linux_x86_64:unknown
+c:2.1.2:anytrack:anyarch:unknown
+b:1.1.2:anytrack:linux_x86_64:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A8', 'simple sunshine with a json error in unused c')
@@ -213,10 +226,10 @@ title('G2a', "slot sunshine. nix arch brings in new dependency")
 execute('./dixi.py --printkey key:nix > testdata/G2_test_slot/a/obsoleta.key')
 exitcode, output = execute(fixed + '--root testdata/G2_test_slot --path testdata/G2_test_slot/a --package a --tree --depth 2', ErrorCode.OK)
 test_eq("""a:1.1.1:anytrack:linux:unknown
-  d:4.4.4:anytrack:anyarch:unknown
-  e:5.5.5:anytrack:anyarch:unknown
   b:2.2.2:anytrack:anyarch:unknown
-  c:3.3.3:anytrack:anyarch:unknown""" in output)
+  c:3.3.3:anytrack:anyarch:unknown
+  d:4.4.4:anytrack:anyarch:unknown
+  e:5.5.5:anytrack:anyarch:unknown""" in output)
 
 title('G2b', "slot sunshine. win arch brings no new dependency")
 root = populate_local_temp('testdata/G2_test_slot')

@@ -40,6 +40,7 @@ class Package:
         self.parent = None
         self.package_path = package_path
         self.dependencies = None
+        self.original_dependencies = None
         self.direct_dependency = True
         self.errors = None
         self.key = None
@@ -151,6 +152,8 @@ class Package:
 
                     self.dependencies.append(package)
                 del(_)
+                self.dependencies.sort()
+                self.original_dependencies = self.dependencies
 
         except KeyError:
             pass
@@ -250,7 +253,7 @@ class Package:
                 _json = f.read()
                 dictionary = json.loads(_json)
                 return dictionary['key']
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             raise MissingKeyFile('%s not found' % keyfile)
         except json.JSONDecodeError as e:
             raise InvalidKeyFile(str(e) + ' ' + keyfile)
@@ -352,6 +355,15 @@ class Package:
 
     def get_version(self):
         return self.version
+
+    def get_arch(self):
+        return self.arch
+
+    def get_track(self):
+        return self.track
+
+    def get_buildtype(self):
+        return self.buildtype
 
     def set_version(self, version):
         self.string = None
@@ -473,7 +485,15 @@ class Package:
         return None
 
     def get_dependencies(self):
+        """ Return the dependencies. Once the dependencies are resolved (by obsoleta) these
+            dependencies are replaced with the resolved upstreams.
+        """
         return self.dependencies
+
+    def get_original_dependencies(self):
+        """ Return the dependencies as they were loaded from package file.
+        """
+        return self.original_dependencies
 
     def get_nof_dependencies(self):
         try:

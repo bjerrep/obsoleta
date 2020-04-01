@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 from log import deb, inf, war, err, Indent
-import os, copy, collections, json
 from common import Error
 import common
 from common import find_in_path
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
-from package import Package
+from package import Package, anyarch, buildtype_unknown, Track
+import os, copy, collections, json, html, datetime
 
 
 class Obsoleta:
@@ -35,6 +35,7 @@ class Obsoleta:
         if not self.loaded_packages:
             raise PackageNotFound("didn't find any packages")
 
+        self.loaded_packages.sort()
         for package in self.loaded_packages:
             self.resolve_dependencies(package)
 
@@ -89,7 +90,6 @@ class Obsoleta:
         return names
 
     def load(self, json_files):
-        json_files = sorted(json_files)
         _1 = Indent()
         for file in json_files:
             deb('parsing %s:' % file)
@@ -206,6 +206,7 @@ class Obsoleta:
                 candidates.append(package)
         if candidates:
             return ErrorCode.OK, candidates
+
         return ErrorCode.PACKAGE_NOT_FOUND, candidates
 
     def locate_downstreams(self, target_package):
@@ -284,7 +285,7 @@ class Obsoleta:
                 self.get_package_list(package, package_list)
                 break
 
-        packages = set(package_list)
+        packages = list(dict.fromkeys(package_list))
         deleted = []
         package_copy = packages
         found_next = True
@@ -359,3 +360,49 @@ class Obsoleta:
         with open(self.default_cache_filename()) as f:
             cache = json.loads(f.read())
         self.loaded_packages = [Package.construct_from_dict(self.setup, p) for p in cache]
+
+    def generate_digraph(self, target_package, dest_file):
+        header = '%s[label=<<font face="DejaVuSans" point-size="14"><table border="0" cellborder="0" cellspacing="0">\n'
+        title = '<tr><td><font point-size="20"><b>%s</b></font></td></tr>\n'
+        specialization = '<tr><td><font color="blue">%s=%s</font></td></tr>\n'
+        dependency = '<tr><td><font color="orange">%s=%s</font></td></tr>\n'
+        footer = '</table></font>>];\n'
+
+        errorcode, packages = self.locate_upstreams(target_package)
+        for package in packages:
+            with open(dest_file, 'w') as f:
+                f.write('digraph obsoleta {\nnode [shape=plaintext]\n')
+                f.write('info[label=<<font face="DejaVuSans" point-size="14">Obsoleta dependency graph<br/>%s</font>>];' %
+                        datetime.datetime.now().strftime("%Y%m%d %H:%M"))
+
+                def write_package(_package):
+                    markup = header % _package.get_name()
+                    markup += title % (_package.get_name() + ' - ' + html.escape(str(_package.get_version())))
+                    if _package.get_arch() != anyarch:
+                        markup += specialization % ('Arch', _package.get_arch())
+                    if _package.get_track() != Track.anytrack:
+                        markup += specialization % ('Track', _package.get_track())
+                    if _package.get_buildtype() != buildtype_unknown:
+                        markup += specialization % ('Buildtype', _package.get_buildtype())
+                    if _package.get_nof_dependencies():
+                        for dep in _package.get_original_dependencies():
+                            markup += dependency % ('Depends', html.escape(dep.to_string()))
+                    markup += footer
+                    f.write('\n' + markup + '\n')
+
+                    if _package.get_nof_dependencies():
+                        for dep in _package.get_dependencies():
+                            f.write('"%s" -> "%s"\n' % (_package.get_name(), dep.get_name()))
+                            _errorcode, _packages = self.locate_upstreams(dep)
+                            try:
+                                write_package(_packages[0])
+                            except:
+                                markup = header % (dep.get_name())
+                                markup += title % ('Error ' + _package.get_name() + ' - ' + html.escape(str(_package.get_version())))
+                                markup += footer
+                                f.write('\n' + markup + '\n')
+                    else:
+                        f.write('"%s"\n' % _package.get_name())
+
+                write_package(package)
+                f.write('}')

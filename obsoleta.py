@@ -10,7 +10,6 @@ from exceptions import ObsoletaException
 import argparse, json, logging, os, traceback
 
 # This is the script for calling obsoleta from the command line.
-# It predates the python obsoleta_api so it calls the obsoletacore script directly. Thats a pending change.
 
 parser = argparse.ArgumentParser('obsoleta')
 parser.add_argument('--package',
@@ -18,7 +17,8 @@ parser.add_argument('--package',
 parser.add_argument('--path',
                     help='the path for the package. See also --package')
 parser.add_argument('--root',
-                    help='search root(s), ":" separated. Use this and/or roots in obsoleta.conf (default runs from current)')
+                    help='search root(s), ":" separated. '
+                         'Use this and/or roots in obsoleta.conf (default runs from current)')
 parser.add_argument('--depth',
                     help='search depth relative to root(s). Default 1')
 parser.add_argument('--blacklist_paths', action='store',
@@ -37,6 +37,8 @@ parser.add_argument('--upstream', action='store_true',
                          'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
 parser.add_argument('--downstream', action='store_true',
                     help='command: get the paths for packages using the package given with --package')
+parser.add_argument('--digraph', action='store_true',
+                    help='command: make dependency plot for the package given with --package')
 
 parser.add_argument('--bump', action='store_true',
                     help='command: bump the version for --package, both downstream and upstream. Requires --version')
@@ -71,12 +73,9 @@ if args.verbose:
 elif args.info:
     logger.setLevel(logging.INFO)
 
-valid_package_action = args.tree or \
-                       args.check or \
-                       args.buildorder or \
-                       args.upstream or \
-                       args.downstream or \
-                       args.bump
+valid_package_action = args.tree or args.check or args.buildorder or args.upstream or \
+                       args.downstream or args.bump or args.digraph
+
 valid_command = valid_package_action or args.dumpcache
 
 if args.clearcache:
@@ -224,6 +223,9 @@ elif args.bump:
         else:
             err('unable to locate %s' % package)
             exit_code = ErrorCode.PACKAGE_NOT_FOUND
+
+elif args.digraph:
+    obsoleta.generate_digraph(package, '%s.gv' % package.get_name())
 
 else:
     err("no valid command found")

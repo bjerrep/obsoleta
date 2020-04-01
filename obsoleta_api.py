@@ -94,6 +94,10 @@ class ObsoletaApi:
             return errorcode, "\n".join(p.get_path() for p in result)
         return errorcode, result
 
+    def generate_digraph(self, package_or_compact, dest_file):
+        package_or_compact = self.make_package_from_compact(package_or_compact)
+        self.obsoleta.generate_digraph(package_or_compact, dest_file)
+
     def bump(self, package_or_compact, new_version):
         """ Replace the version in any downstream package(s) where 'package_or_compact' is found
             in the dependency list and also in any 'package_or_compact' upstream package(s).

@@ -1,7 +1,8 @@
 from log import inf
 from version import Version
 from package import Layout
-import json, os, datetime, time
+from common import get_local_time_tz
+import json, os
 
 
 class Dixi:
@@ -93,13 +94,8 @@ class Dixi:
         package_file = os.path.join(self.package.package_path, 'obsoleta.json')
 
         with open(package_file, 'w') as f:
-            utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
-            utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
-            now = datetime.datetime.now()
-            local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
-
             unmodified_dict = self.package.get_original_dict()
-            unmodified_dict['dixi_modified'] = local_with_tz
+            unmodified_dict['dixi_modified'] = get_local_time_tz()
             unmodified_dict['dixi_action'] = self.action
             f.write(json.dumps(unmodified_dict, indent=2))
 

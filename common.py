@@ -1,7 +1,7 @@
 from log import deb, inf
 from errorcodes import ErrorCode
 from exceptions import BadPath
-import os, json
+import os, json, time, datetime
 from enum import Enum
 
 
@@ -167,3 +167,11 @@ def get_key_filepath(path):
     if path.endswith('obsoleta.key'):
         return path
     return os.path.join(path, 'obsoleta.key')
+
+
+def get_local_time_tz():
+    utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
+    utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
+    now = datetime.datetime.now()
+    local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
+    return local_with_tz

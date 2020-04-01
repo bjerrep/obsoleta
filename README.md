@@ -461,3 +461,23 @@ Sounds about right. A new --check will tell that the x86 arch still adds up . An
 
 Dixi has experimental support for auto generating C source files making it possible to add runtime version checking to a C/C++ based system. More [here](GENERATORS.md)
 
+
+
+# Graph
+
+Also from the exotic department obsoleta can be told to make a graphviz dependency graph with the command --digraph. An example:
+
+`./obsoleta.py --conf testdata/test.conf --root testdata/A2_test_simple/ --package a --digraph`
+
+This will produce an 'a.gv' file that can be converted to a .png with: 
+`dot -Tpng a.gv -o depgraph.png`
+
+Which currently looks like this: (click to expand)
+
+[![Dependency graph](depgraph_thumb.png)](depgraph.png)
+
+
+
+
+
+
