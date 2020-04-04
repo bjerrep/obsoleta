@@ -28,9 +28,9 @@ title('A1', 'first check that this test suite matches the used obsoleta')
 exitcode, output = execute(fixed + '--root testdata/A1_test_obsoleta:.. --depth 1 --package testsuite --check', ErrorCode.OK)
 
 title('A2', 'simple sunshine --tree')
-exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package \'*\' --tree', ErrorCode.OK)
-
-test_eq("""a:0.1.2:anytrack:anyarch:unknown
+exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package \'*\' --tree --info', ErrorCode.OK)
+print(output)
+test_pass = """a:0.1.2:anytrack:anyarch:unknown
   b:1.1.2:anytrack:linux_x86_64:unknown
     d:0.1.2:anytrack:linux_x86_64:release
     c:2.1.2:anytrack:anyarch:unknown
@@ -42,7 +42,8 @@ b:1.1.2:anytrack:linux_x86_64:unknown
     e:1.2.3:anytrack:linux_x86_64:unknown
 e:1.2.3:anytrack:linux_x86_64:unknown
 c:2.1.2:anytrack:anyarch:unknown
-  e:1.2.3:anytrack:linux_x86_64:unknown""" in output)
+  e:1.2.3:anytrack:linux_x86_64:unknown""" in output
+test_eq(test_pass)
 
 title('A3', 'simple sunshine --check')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --check', ErrorCode.OK)
