@@ -93,6 +93,7 @@ class Obsoleta:
         return names
 
     def load(self, json_files):
+        json_files = sorted(json_files)
         _1 = Indent()
         for file in json_files:
             deb('parsing %s:' % file)
