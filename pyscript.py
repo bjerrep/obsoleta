@@ -1,18 +1,17 @@
 import shutil, os, subprocess
 
-"""                                          PYSCRIPT
+""" PYSCRIPT
+pyscript is trying to bridge the simplicity of small bash scripts with the power of Python.
+Its absolute only goal is to help making small scripts quicker to write and easier to maintain.
 
-    pyscript is trying to bridge the simplicity of small bash scripts with the power of Python.
-    Its absolute only goal is to help making small scripts quicker to write and easier to maintain.
-    A pyscript should require a minimum of development effort and ideally offer no surprises.
+A pyscript should require a minimum of development effort and ideally offer no surprises.
+pyscript can not beat a few lines of bash and it would be completely out of place in regular python importing
+modules left and right and doing fancy stuff. But it can quickly be a competitor to e.g. bash scripts once
+they start to get littered with loops and tests with names that have to be looked up and then doesn't work
+because there is a missing space and then explodes if a variable is empty, and so on and so on.
 
-    pyscript can not beat a few lines of bash and it would be completely out of place in regular python importing
-    modules left and right and doing fancy stuff. But it can quickly be a competitor to e.g. bash scripts once
-    they start to get littered with loops and tests with names that have to be looked up and then doesn't work 
-    because there is a missing space and then explodes if a variable is empty, and so on and so on.
-
-    pyscript has only been tested in single user plain filesystems and there is no reason to believe 
-    that it wont fail misserably in non-plain filesystems.
+pyscript has only been tested in single user plain filesystems and there is no reason to believe
+that it wont fail misserably in non-plain filesystems.
 """
 
 
