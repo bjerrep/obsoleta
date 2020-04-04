@@ -1,0 +1,14 @@
+{
+  "name": "c",
+  "version": "1",
+  "depends": [
+    {
+      "name": "s",
+      "version": "1"
+    },
+    {
+      "name": "v",
+      "version": "1"
+    }    
+  ]
+}

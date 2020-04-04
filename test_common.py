@@ -76,7 +76,7 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
     output = output.decode()
 
     if proc.returncode != expected_exit_code:
-        print('  process fail - unexpected exit code %i (not %i)\n    %s' %
+        print('  process fail - unexpected exit code %i (not %i)\n\n%s' %
               (proc.returncode, expected_exit_code, output))
         if exitonerror:
             print('terminating test with a fail since exitonerror=True')
@@ -84,7 +84,7 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
         return proc.returncode, output
 
     elif proc.returncode:
-        print('  success, process failed with expected exit code %i\n    %s' % (expected_exit_code, output))
+        print('  success, process failed with expected exit code %i\n\n%s' % (expected_exit_code, output))
         return proc.returncode, output
 
     else:

@@ -1,7 +1,7 @@
 from log import logger as log
 from log import Indent as Indent
 from log import deb, inf, war
-from version import Version
+from version import Version, VersionAny
 from common import Error, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
 from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile, CompactParseError, UnknownException
@@ -42,6 +42,7 @@ class Package:
         self.dependencies = None
         self.original_dependencies = None
         self.direct_dependency = True
+        self.implicit_attributes = {}
         self.errors = None
         self.key = None
         self.unmodified_dict = None
@@ -117,7 +118,8 @@ class Package:
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
-            war('package %s specifies an buildtype but buildtype is not currently enabled (check config file)' % self.name)
+            war('package %s specifies an buildtype but buildtype is not currently enabled '
+                                                                '(check config file)' % self.name)
 
         try:
             dependencies = dictionary['depends']
@@ -202,7 +204,8 @@ class Package:
 
         _ = Indent()
         if 'slot' in dictionary:
-            inf('parsing \'%s\' in %s (slot)' % (dictionary['slot']['name'], package_path))
+            deb('parsing \'%s\' in %s (slot)' %
+                (dictionary['slot']['name'], package_path))
             self.layout = Layout.slot
             key_file = get_key_filepath(self.package_path)
             self.key = self.get_key_from_keyfile(key_file)
@@ -216,8 +219,12 @@ class Package:
 
             merged = self.merge(slot_section, key_section)
             self.from_dict(merged)
+            inf('parsing \'%s\' in %s (slot) -> %s' %
+                (dictionary['slot']['name'], package_path, self.to_string()))
+
         elif 'multislot' in dictionary:
-            inf('parsing \'%s\' in %s (multislot)' % (dictionary['multislot']['name'], package_path))
+            deb('parsing \'%s\' in %s (multislot)' %
+                (dictionary['multislot']['name'], package_path))
             self.layout = Layout.multislot
 
             try:
@@ -239,13 +246,15 @@ class Package:
                                     (os.path.abspath(json_file), self.key))
             merged = self.merge(slot_section, key_section)
             self.from_dict(merged)
+            inf('parsing \'%s\' in %s (multislot) -> %s' %
+                (dictionary['multislot']['name'], package_path, self.to_string()))
         else:
             try:
                 name = dictionary['name']
             except KeyError:
                 raise BadPackageFile('missing name')
-            inf('parsing \'%s\' in %s' % (name, package_path))
             self.from_dict(dictionary)
+            inf('parsing \'%s\' in %s -> %s' % (name, package_path, self.to_string()))
 
     def get_key_from_keyfile(self, keyfile):
         try:
@@ -262,7 +271,7 @@ class Package:
 
     def from_compact(self, compact):
         self.name = '*'
-        self.version = Version('*')
+        self.version = VersionAny
         optionals = 0
         if self.setup.using_track:
             self.track = Track.anytrack
@@ -356,14 +365,32 @@ class Package:
     def get_version(self):
         return self.version
 
-    def get_arch(self):
-        return self.arch
+    def get_arch(self, implicit=False):
+        if not implicit or self.arch != anyarch:
+            return self.arch
+        try:
+            return self.implicit_attributes['arch']
+        except:
+            return self.arch
 
-    def get_track(self):
-        return self.track
+    def get_track(self, implicit=False):
+        if not implicit or self.track != Track.anytrack:
+            return self.track
+        try:
+            return self.implicit_attributes['track']
+        except:
+            return self.track
 
-    def get_buildtype(self):
-        return self.buildtype
+    def get_buildtype(self, implicit=False):
+        if not implicit or self.buildtype != buildtype_unknown:
+            return self.buildtype
+        try:
+            return self.implicit_attributes['buildtype']
+        except:
+            return self.buildtype
+
+    def set_implicit(self, key, value):
+        self.implicit_attributes[key] = value
 
     def set_version(self, version):
         self.string = None
@@ -442,9 +469,16 @@ class Package:
         if self.setup.using_arch:
             if not (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch):
                 return False
+
+        # if any tracks are production then different explicit tracks are not allowed and on top
+        # of that the buildtypes must match. Might be a bogus rule that needs to go.
         if self.setup.using_track and self.setup.using_buildtype:
-            if not (self.track != Track.production or self.buildtype == other.buildtype):
-                return False
+            if self.track == Track.production or other.track == Track.production:
+                if self.track == other.track or self.track == Track.anytrack or other.track == Track.anytrack:
+                    # yes, both are production or can mix. Disallow different explicit build types
+                    return (self.buildtype == other.buildtype or
+                            self.buildtype == buildtype_unknown or
+                            other.buildtype == buildtype_unknown)
         return True
 
     def is_duplicate(self, other):
@@ -475,6 +509,8 @@ class Package:
         return error
 
     def get_dependency(self, depends_package):
+        """ Always prepare for getting a None in return, especially when it definitely wasn't expected
+        """
         try:
             depends_package = Package.construct_from_compact(self.setup, depends_package)
         except:

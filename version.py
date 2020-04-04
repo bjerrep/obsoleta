@@ -63,6 +63,7 @@ class Digit:
 
         if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
             return Match.Larger
+        return Match.Smaller
 
     def __lt__(self, other):
         if self.range == Digit.Range.Number and other.range == Digit.Range.Number:
@@ -154,3 +155,6 @@ class Version:
     def set(self, position, value):
         self.string = None
         self.digits[position.value] = Digit(value)
+
+
+VersionAny = Version('*')

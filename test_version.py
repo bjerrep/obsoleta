@@ -1,4 +1,4 @@
-from version import Version
+from version import Version, VersionAny
 from common import Position
 
 aye = 0
@@ -49,7 +49,7 @@ if nay or aye != 5:
 
 aye = 0
 
-aye += Version('*') == Version('*')
+aye += VersionAny == VersionAny
 aye += Version('1.*') == Version('1.*')
 aye += Version('1.3.3') == Version('1.*')
 aye += Version('1.1.*') == Version('1.1.*')
@@ -59,18 +59,18 @@ aye += Version('1.2.3') == Version('1.*.4')
 aye += v123 > Version('1.*')
 aye += v123 >= Version('1.*')
 
-aye += Version('*') == v123
+aye += VersionAny == v123
 aye += Version('1.*') == v123
 aye += Version('1.2.*') == v123
 
-aye += v123 == Version('*')
+aye += v123 == VersionAny
 aye += v123 == Version('1.*')
 aye += v123 == Version('1.2.*')
 
-aye += Version('*') > v123
-aye += Version('*') < v123
-aye += v123 > Version('*')
-aye += v123 < Version('*')
+aye += VersionAny > v123
+aye += VersionAny < v123
+aye += v123 > VersionAny
+aye += v123 < VersionAny
 
 if nay or aye != 19:
     print('fail wildchar test (%i/%i)' % (nay, aye))

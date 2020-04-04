@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import deb, inf, war, err, Indent
+from log import deb, inf, inf_alt, war, err, Indent
 from common import Error
 import common
 from common import find_in_path
@@ -37,7 +37,10 @@ class Obsoleta:
 
         self.loaded_packages.sort()
         for package in self.loaded_packages:
-            self.resolve_dependencies(package)
+            if self.resolve_dependencies(package):
+                self.aggregate_attributes(package)
+            else:
+                err('attribute aggregation skipped due to errors in %s' % package.to_string())
 
         if not self.setup.ignore_duplicates:
             self.check_for_multiple_versions()
@@ -106,8 +109,9 @@ class Obsoleta:
                         key_files = []
                         path = os.path.dirname(file)
                         find_in_path(path, 'obsoleta.key', 2, key_files)
-                        packages = [Package.construct_from_package_path(self.setup, file, key_file, dictionary=dictionary)
-                                    for key_file in key_files]
+                        packages = [
+                            Package.construct_from_package_path(self.setup, file, key_file, dictionary=dictionary)
+                            for key_file in key_files]
                     else:
                         packages = [Package.construct_from_package_path(self.setup, file, dictionary=dictionary), ]
 
@@ -149,7 +153,7 @@ class Obsoleta:
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
-            inf('>resolving ' + str(package))
+            inf_alt('>resolving ' + str(package))
         else:
             inf('resolving dependency ' + str(package))
 
@@ -183,7 +187,10 @@ class Obsoleta:
                                 return False
 
                     package.dependencies.append(resolved)
-                    self.resolve_dependencies(resolved, level)
+                    dep_success = self.resolve_dependencies(resolved, level)
+                    del _2
+                    if not dep_success:
+                        return False
                 else:
                     resolved = copy.copy(dependency)
                     if level > 1:
@@ -195,6 +202,48 @@ class Obsoleta:
                     deb('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
+        return True
+
+    def aggregate_attributes(self, package, level=0):
+        """ Starting from the bottom of the dependency tree then add attributes from upstreams to their
+            downstream parent packages in case any downstream attributes are undefined, and the upstream
+            attributes are not. (attributes are arch, track and buildtype).
+            This will catch illegal situations where e.g. two upstreams have different arch and the downstream
+            didn't ask for an explicit arch. If the downstream asked for an explicit arch it would have
+            failed while running 'resolve_dependencies'.
+            This Aggregate attributes are stored in the 'implicit_attributes' dictionary in a given package.
+        """
+        dependencies = package.get_dependencies()
+        if dependencies:
+            _1 = Indent()
+
+            for dependency in dependencies:
+                errorcode, resolved_list = self.locate_upstreams(dependency)
+
+                for resolved in resolved_list:
+                    if not self.aggregate_attributes(resolved, level):
+                        return False
+
+                    # mixing different arch is downright illegal
+                    if self.setup.using_arch:
+                        resolved_arch = resolved.get_arch(implicit=True)
+                        package_arch = package.get_arch(implicit=True)
+                        if resolved_arch != anyarch:
+                            if package_arch != anyarch and resolved_arch != package_arch:
+                                error = Error(
+                                    ErrorCode.ARCH_MISMATCH, resolved, 'arch collision with ' + package.to_string())
+                                resolved.add_error(error)
+                                try:
+                                    package.get_dependency(resolved).add_error(error)
+                                except:
+                                    pass
+                                if self.args.verbose:
+                                    err(error.to_string())
+                                return False
+                            else:
+                                deb('setting implicit arch for %s to %s' % (package.get_name(), resolved_arch))
+                                package.set_implicit('arch', resolved.get_arch())
+
         return True
 
     def locate_upstreams(self, target_package):
@@ -372,7 +421,8 @@ class Obsoleta:
         for package in packages:
             with open(dest_file, 'w') as f:
                 f.write('digraph obsoleta {\nnode [shape=plaintext]\n')
-                f.write('info[label=<<font face="DejaVuSans" point-size="14">Obsoleta dependency graph<br/>%s</font>>];' %
+                f.write('info[label=<<font face="DejaVuSans" point-size="14">'
+                        'Obsoleta dependency graph<br/>%s</font>>];' %
                         datetime.datetime.now().strftime("%Y%m%d %H:%M"))
 
                 def write_package(_package):
@@ -398,7 +448,8 @@ class Obsoleta:
                                 write_package(_packages[0])
                             except:
                                 markup = header % (dep.get_name())
-                                markup += title % ('Error ' + _package.get_name() + ' - ' + html.escape(str(_package.get_version())))
+                                markup += title % ('Error ' + _package.get_name() + ' - ' +
+                                                   html.escape(str(_package.get_version())))
                                 markup += footer
                                 f.write('\n' + markup + '\n')
                     else:

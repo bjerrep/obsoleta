@@ -6,7 +6,8 @@ title('Gen-C', 'test generator c')
 
 # copy the sources (which includes an obsoleta.json package file) and let obsoleta figure out an build order
 pyscript.dir_copy_rewrite('testdata/generator/c/', 'local/temp')
-exitcode, paths = pyscript.run('./obsoleta.py --conf testdata/test.conf --root local/temp --buildorder --printpaths --package a')
+exitcode, paths = pyscript.run(
+    './obsoleta.py --conf testdata/test.conf --root local/temp --buildorder --printpaths --package a')
 
 # and for each package dir patch the sources and run the build script
 for path in paths:

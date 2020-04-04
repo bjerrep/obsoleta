@@ -83,6 +83,7 @@ class Param:
     depth = None
     root = ''
     verbose = False
+    info = False
 
     def set_depth(self, depth):
         self.depth = depth

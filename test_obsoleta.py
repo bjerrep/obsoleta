@@ -142,6 +142,15 @@ exitcode, output = execute(fixed + '--root testdata/C7_test_circular_dependency 
 title('C8', 'named architecture -> named architecture -> "anyarch" is ok')
 exitcode, output = execute(fixed + '--root testdata/C8_test_arch_noarch --package a:*:anytrack:beos --check', ErrorCode.OK)
 
+title('C9a', 'two upstream with different arch')
+exitcode, output = execute(fixed + '--root testdata/C9_upstream_collisions/ --package a --tree', ErrorCode.ARCH_MISMATCH)
+
+title('C9b', 'production upstream pulled in development downstream, thats fine')
+exitcode, output = execute(fixed + '--root testdata/C9_upstream_collisions/ --package b --tree', ErrorCode.OK)
+
+title('C9c', 'a production upstream and a development upstream is ok if downstream isn\'t production')
+exitcode, output = execute(fixed + '--root testdata/C9_upstream_collisions/ --package c --tree', ErrorCode.OK)
+
 
 title('D1', 'find b in version 0.2.0')
 exitcode, output = execute(fixed + '--root testdata/D1_range_find_newest --package a --tree', ErrorCode.OK)
