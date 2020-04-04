@@ -58,6 +58,14 @@ def inf(msg, newline=True):
         handler.terminator = "\n"
 
 
+def inf_alt(msg, newline=True):
+    if not newline:
+        handler.terminator = ""
+    logger.info(indent + '\033[37m\033[44m' + msg)
+    if not newline:
+        handler.terminator = "\n"
+
+
 def war(msg):
     logger.warning(indent + msg)
 
