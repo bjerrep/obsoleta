@@ -2,7 +2,7 @@
 from log import logger
 from log import inf, deb, err, print_result, print_result_nl
 from common import Setup
-from errorcodes import ErrorCode, is_ok
+from errorcodes import ErrorCode
 from package import Package
 from obsoletacore import Obsoleta
 from obsoleta_api import ObsoletaApi
@@ -147,35 +147,35 @@ if exit_code != ErrorCode.OK:
 
 elif args.check:
     deb('checking package "%s"' % package)
-    errorcode, errors = obsoleta.get_errors(package)
+    error, errors = obsoleta.get_errors(package)
 
-    if errorcode == ErrorCode.PACKAGE_NOT_FOUND:
+    if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
         err('package "%s" not found' % package)
-        exit_code = errorcode
-    elif errorcode != ErrorCode.OK:
+        exit_code = error.get_errorcode()
+    elif error.has_error():
         err('checking package "%s": failed, %i errors found' % (package, len(errors)))
         for error in errors:
             err('   ' + error.to_string())
-            exit_code = error.get_error()
+            exit_code = error.get_errorcode()
     else:
         inf('checking package "%s": success' % package)
         exit_code = ErrorCode.OK
 
 elif args.tree:
     inf('package tree for "%s"' % package)
-    errorcode, result = obsoleta.tree(package)
-    if errorcode == ErrorCode.OK:
+    error, result = obsoleta.tree(package)
+    if error.is_ok():
         print_result("\n".join(result))
     else:
-        inf("package '%s'not found" % package)
-    exit_code = errorcode
+        err(error.print())
+    exit_code = error.get_errorcode()
 
 elif args.buildorder:
     exit_code = ErrorCode.OK
     deb('packages listed in buildorder')
-    errorcode, resolved = obsoleta.buildorder(package)
+    error, resolved = obsoleta.buildorder(package)
 
-    if errorcode != ErrorCode.OK:
+    if error.has_error():
         err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
         exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
 
@@ -188,12 +188,12 @@ elif args.buildorder:
         errors = _package.get_root_error()
         if errors:
             for error in errors:
-                exit_code = error.get_error()
+                exit_code = error.get_errorcode()
                 err(' - error: ' + error.to_string())
 
 elif args.upstream:
-    errorcode, lookup = obsoleta.upstreams(package)
-    if is_ok(errorcode):
+    error, lookup = obsoleta.upstreams(package)
+    if error.is_ok():
         print_result("\n".join(p.get_path() for p in lookup))
         exit_code = ErrorCode.OK
     else:
@@ -201,8 +201,8 @@ elif args.upstream:
         exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
 elif args.downstream:
-    errorcode, lookup = obsoleta.downstreams(package)
-    if is_ok(errorcode):
+    error, lookup = obsoleta.downstreams(package)
+    if error.is_ok():
         print_result("\n".join(p.get_path() for p in lookup))
         exit_code = ErrorCode.OK
     else:
@@ -216,8 +216,8 @@ elif args.bump:
     if not args.version:
         exit_code = ErrorCode.MISSING_INPUT
     else:
-        errorcode, messages = obsoleta.bump(package, args.version)
-        if is_ok(errorcode):
+        error, messages = obsoleta.bump(package, args.version)
+        if error.is_ok():
             print_result_nl("\n".join(line for line in messages))
             exit_code = ErrorCode.OK
         else:
@@ -232,7 +232,7 @@ else:
 
 if exit_code != ErrorCode.OK:
     print()
-    err('failed with error: %s' % ErrorCode.to_string(exit_code.value))
+    err('failed with error %i: %s' % (exit_code.value, ErrorCode.to_string(exit_code.value)))
 
 if args.yappi:
     yappirun.stop_yappi()

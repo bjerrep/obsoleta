@@ -264,7 +264,7 @@ title('H4', "optionals - none enabled, upstream compact name 'c::::1.2.3' fails"
 exitcode, output = execute('./obsoleta.py --conf testdata/test_no_optionals.conf --root testdata/C5_test_multiple_versions/ --upstream --package c::::1.2.3', ErrorCode.COMPACT_PARSE_ERROR)
 
 title('I1', "optionals - all enabled, upstream compact name 'c:1.2.3' finds b")
-exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --downstream --package c:1.2.3', ErrorCode.OK)
+errorcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --downstream --package c:1.2.3', ErrorCode.OK)
 test_eq("C5_test_multiple_versions/b" in output)
 
 

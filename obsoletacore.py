@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from log import deb, inf, inf_alt, war, err, Indent
-from common import Error
+from common import Error, ErrorOk
 import common
 from common import find_in_path
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
@@ -182,7 +182,8 @@ class Obsoleta:
                         for d in resolved_dependencies:
                             circular_dependency = d.search_upstream()
                             if circular_dependency:
-                                error = Error(ErrorCode.CIRCULAR_DEPENDENCY, d, 'required by ' + package.to_string())
+                                error = Error(ErrorCode.CIRCULAR_DEPENDENCY, d,
+                                              d.to_string() + ' required by ' + package.to_string())
                                 resolved.add_error(error)
                                 package.dependencies.append(resolved)
                                 return False
@@ -196,7 +197,8 @@ class Obsoleta:
                     resolved = copy.copy(dependency)
                     if level > 1:
                         resolved.set_lookup()
-                    error = Error(ErrorCode.PACKAGE_NOT_FOUND, resolved, 'required by ' + package.to_string())
+                    error = Error(ErrorCode.PACKAGE_NOT_FOUND, resolved,
+                                  resolved.to_string() + ' required by ' + package.to_string())
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
@@ -255,9 +257,11 @@ class Obsoleta:
             if package == target_package:
                 candidates.append(package)
         if candidates:
-            return ErrorCode.OK, candidates
+            return ErrorOk(), candidates
 
-        return ErrorCode.PACKAGE_NOT_FOUND, candidates
+        return Error(ErrorCode.PACKAGE_NOT_FOUND,
+                     target_package,
+                     'no upstreams matches %s' % target_package.to_string()), candidates
 
     def locate_downstreams(self, target_package):
         """" Find any packages that references the upstream 'target_package' in their
@@ -271,8 +275,10 @@ class Obsoleta:
                     if package == target_package:
                         candidates.append(parent)
         if candidates:
-            return ErrorCode.OK, candidates
-        return ErrorCode.PACKAGE_NOT_FOUND, candidates
+            return ErrorOk(), candidates
+        return Error(ErrorCode.PACKAGE_NOT_FOUND,
+                     target_package,
+                     "%s not found" % target_package), candidates
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
@@ -315,16 +321,16 @@ class Obsoleta:
 
     def dump_tree(self, root_package):
         ret = []
-        error = ErrorCode.OK
+        error = ErrorOk()
         found = 0
         for package in self.loaded_packages:
             if package == root_package:
                 found += 1
                 error = package.dump(ret, error)
         if not found:
-            return ErrorCode.PACKAGE_NOT_FOUND, ret
+            return Error(ErrorCode.PACKAGE_NOT_FOUND, root_package), ret
         if found > 1 and root_package.get_name() != '*':
-            return ErrorCode.PACKAGE_NOT_UNIQUE, ret
+            return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package), ret
         return error, ret
 
     def dump_build_order(self, root_package):
@@ -378,10 +384,12 @@ class Obsoleta:
                                 _package.errors = loaded.errors
 
                     if errors:
-                        return ErrorCode.DUPLICATE_PACKAGE, list(set(errors))
-                    return ErrorCode.OK, errors
+                        return Error(ErrorCode.DUPLICATE_PACKAGE,
+                                     package), list(set(errors))
+                    return ErrorOk(), errors
 
-        return ErrorCode.PACKAGE_NOT_FOUND, errors
+        return Error(ErrorCode.PACKAGE_NOT_FOUND,
+                     package), errors
 
     def get_error_count(self):
         errors = 0

@@ -98,19 +98,38 @@ class Error:
         self.package = package
         if message:
             self.message = message
-        elif package.parent:
+        elif package and package.parent:
             self.message = 'from parent ' + package.parent.to_string()
         else:
             self.message = ''
 
-    def get_error(self):
+    def get_errorcode(self):
         return self.errorcode
 
+    def has_error(self):
+        return self.errorcode != ErrorCode.OK
+
+    def is_ok(self):
+        return self.errorcode == ErrorCode.OK
+
     def __str__(self):
+        if self.package:
+            return ErrorCode.to_string(self.errorcode.value)
         return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string()
 
     def to_string(self):
         return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
+
+    def get_message(self):
+        return self.message
+
+    def print(self):
+        if self.message:
+            return '%s, %s' % (ErrorCode.to_string(self.errorcode.value), self.message)
+        try:
+            return '%s, %s' % (ErrorCode.to_string(self.errorcode.value), self.package.to_string())
+        except:
+            return '%s' % ErrorCode.to_string(self.errorcode.value)
 
     def __repr__(self):
         return str(self)
@@ -121,6 +140,11 @@ class Error:
     def __hash__(self):
         uid = str(self)
         return hash(uid)
+
+
+class ErrorOk(Error):
+    def __init__(self):
+        super(ErrorOk, self).__init__(ErrorCode.OK, None)
 
 
 def find_in_path(path, filename, maxdepth, results, dirs_checked=1):

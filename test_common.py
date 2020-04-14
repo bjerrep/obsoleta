@@ -1,4 +1,5 @@
 from errorcodes import ErrorCode
+from common import Error
 from log import print_result, print_result_nl
 from package import Package
 import subprocess, shutil
@@ -12,6 +13,9 @@ def test_eq(result, expected=True):
 
 
 def test_ok(errorcode, output=None):
+    if isinstance(errorcode, Error):
+        errorcode = errorcode.get_errorcode()
+
     if output:
         if isinstance(output, list):
             try:
@@ -46,6 +50,9 @@ def test_true(success, output=None):
 
 
 def test_error(errorcode, expected_error, output=None):
+    if isinstance(errorcode, Error):
+        errorcode = errorcode.get_errorcode()
+
     if errorcode != expected_error:
         print_result_nl('expected "%s" but got "%s"' %
                         (ErrorCode.to_string(errorcode.value),

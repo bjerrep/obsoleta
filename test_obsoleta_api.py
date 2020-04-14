@@ -22,80 +22,80 @@ obsoleta = ObsoletaApi(setup, param)
 
 # check
 
-title('1A', 'check')
+title('TOA 1A', 'check')
 package = obsoleta.make_package_from_compact('a')
 errorcode, messages = obsoleta.check(package)
 test_ok(errorcode, messages)
 
-title('1B', 'check')
+title('TOA 1B', 'check')
 errorcode, messages = obsoleta.check('e')
 test_ok(errorcode, messages)
 
 # tree
 
-title('2A', 'tree')
-errorcode, messages = obsoleta.tree('a')
-test_ok(errorcode, messages)
+title('TOA 2A', 'tree for "a" in G2_test_slot')
+error, messages = obsoleta.tree('a')
+test_ok(error.get_errorcode(), messages)
 
-title('2B', 'tree')
+title('TOA 2B', 'tree')
 package = obsoleta.make_package_from_compact('a')
-errorcode, messages = obsoleta.tree(package)
-test_ok(errorcode, messages)
+error, messages = obsoleta.tree(package)
+test_ok(error.get_errorcode(), messages)
 
-title('2C', 'tree')
-errorcode, messages = obsoleta.tree('oups')
-test_error(errorcode, ErrorCode.PACKAGE_NOT_FOUND, messages)
+title('TOA 2C', 'tree')
+error, messages = obsoleta.tree('oups')
+test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND, messages)
 
 # buildorder
 
-title('3A', 'buildorder')
-errorcode, messages = obsoleta.buildorder('a')
-test_ok(errorcode, messages)
+title('TOA 3A', 'buildorder')
+error, messages = obsoleta.buildorder('a')
+test_ok(error, messages)
 
-title('3B', 'buildorder')
+title('TOA 3B', 'buildorder')
 package = obsoleta.make_package_from_compact('a')
-errorcode, messages = obsoleta.buildorder(package)
-test_ok(errorcode, messages)
+error, messages = obsoleta.buildorder(package)
+test_ok(error, messages)
 
-title('3C', 'buildorder')
-errorcode, messages = obsoleta.buildorder('oups')
-test_error(errorcode, ErrorCode.RESOLVE_ERROR, messages)
+title('TOA 3C', 'buildorder')
+error, messages = obsoleta.buildorder('oups')
+test_error(error, ErrorCode.RESOLVE_ERROR, messages)
 
-title('3D', 'buildorder')
-errorcode, messages = obsoleta.buildorder('a', True)
-test_ok(errorcode, messages)
+title('TOA 3D', 'buildorder')
+error, messages = obsoleta.buildorder('a', True)
+test_ok(error, messages)
 
 # upstream
 
-title('4A', 'upstream')
+title('TOA 4A', 'upstream')
 errorcode, messages = obsoleta.upstreams('a:*::linux')
 test_ok(errorcode, messages)
 
-title('4B', 'upstream')
+title('TOA 4B', 'upstream')
 package = obsoleta.make_package_from_compact('a:*::linux')
 errorcode, messages = obsoleta.upstreams(package)
 test_ok(errorcode, messages)
 
-title('4C', 'upstream')
+title('TOA 4C', 'upstream')
 package = obsoleta.make_package_from_compact('oups:*::linux')
 errorcode, messages = obsoleta.upstreams(package)
 test_error(errorcode, ErrorCode.PACKAGE_NOT_FOUND, messages)
 
 # upstream
 
-title('5A', 'downstream')
-errorcode, messages = obsoleta.downstreams('b:*::linux')
-test_ok(errorcode, messages)
+title('TOA 5A', 'downstream')
+error, messages = obsoleta.downstreams('b:*::linux')
+test_ok(error, messages)
 
-title('5B', 'downstream')
+title('TOA 5B', 'downstream')
 package = obsoleta.make_package_from_compact('b:*::linux')
-errorcode, messages = obsoleta.downstreams(package)
-test_ok(errorcode, messages)
+error, messages = obsoleta.downstreams(package)
+test_ok(error, messages)
 
-title('5C', 'downstream')
+title('TOA 5C', 'downstream')
 package = obsoleta.make_package_from_compact('oups:*::linux')
-errorcode, messages = obsoleta.downstreams(package)
-test_error(errorcode, ErrorCode.PACKAGE_NOT_FOUND, messages)
+error, messages = obsoleta.downstreams(package)
+test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
 
 
 def bump(compact):
@@ -111,8 +111,8 @@ def bump(compact):
     new_ver = Version(old_ver).increase(Position.BUILD)
     test_true(old_ver != new_ver, 'version update')
     # .. and make the bump
-    errorcode, result = obsoleta.bump(package, new_ver)
-    test_true(errorcode, result)
+    error, result = obsoleta.bump(package, new_ver)
+    test_true(error, result)
     # go through the motions to explicitly verify that the package did in fact get a new version
     obsoleta = ObsoletaApi(setup, param)
     errorcode, packages = obsoleta.upstreams(package)
@@ -122,5 +122,5 @@ def bump(compact):
     test_true(errorcode, messages)
 
 
-title('6A', 'bump')
+title('TOA 6A', 'bump')
 bump('b')

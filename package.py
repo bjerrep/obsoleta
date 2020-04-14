@@ -493,13 +493,13 @@ class Package:
     def __hash__(self):
         return hash(self.to_string())
 
-    def dump(self, ret, error):
+    def dump(self, ret, error=None):
+        if error.has_error():
+            return error
         title = Indent.indent() + self.to_string()
         if self.errors:
-            for err in self.errors:
-                title += '\n' + Indent.indent() + ' - ' + err.to_string()
-                if error == ErrorCode.OK:
-                    error = err.get_error()
+            return self.errors[0]
+
         ret.append(title)
         if self.dependencies:
             _ = Indent()

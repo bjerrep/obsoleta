@@ -1,7 +1,7 @@
 from obsoletacore import Obsoleta
 from package import Package
-from common import Param
-from errorcodes import ErrorCode, is_ok
+from common import Error, ErrorOk, Param
+from errorcodes import ErrorCode
 from dixi_api import DixiApi
 import os
 
@@ -43,28 +43,32 @@ class ObsoletaApi:
 
     def check(self, package_or_compact):
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, errors = self.obsoleta.get_errors(package_or_compact)
-        if errorcode != ErrorCode.OK:
-            return errorcode, errors
-        return errorcode, 'check pass for %s' % package_or_compact
+        error, errors = self.obsoleta.get_errors(package_or_compact)
+        if error.has_error():
+            return error, errors
+        return error, 'check pass for %s' % package_or_compact
 
     def tree(self, package_or_compact):
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, errors = self.obsoleta.dump_tree(package_or_compact)
-        return errorcode, errors
+        error = self.obsoleta.dump_tree(package_or_compact)
+        return error
 
     def buildorder(self, package_or_compact, printpaths=False):
         package_or_compact = self.make_package_from_compact(package_or_compact)
         unresolved, resolved = self.obsoleta.dump_build_order(package_or_compact)
         if not resolved:
-            return ErrorCode.RESOLVE_ERROR, 'unable to resolve %s' % package_or_compact
+            return Error(ErrorCode.RESOLVE_ERROR,
+                         package_or_compact,
+                         'unable to resolve %s' % package_or_compact), None
         if unresolved:
-            return ErrorCode.RESOLVE_ERROR, 'unable to fully resolve %s' % package_or_compact
+            return Error(ErrorCode.RESOLVE_ERROR,
+                         package_or_compact,
+                         'unable to fully resolve %s' % package_or_compact), None
         if printpaths:
             result = [_package.get_path() for _package in resolved]
         else:
             result = resolved
-        return ErrorCode.OK, result
+        return ErrorOk(), result
 
     def upstreams(self, package_or_compact, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages matching the name)
@@ -73,12 +77,12 @@ class ObsoletaApi:
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, result = self.obsoleta.locate_upstreams(package_or_compact)
-        if errorcode != ErrorCode.OK:
-            return errorcode, 'unable to locate %s' % package_or_compact
+        error, result = self.obsoleta.locate_upstreams(package_or_compact)
+        if error.has_error():
+            return error, 'unable to locate %s' % package_or_compact
         if as_path_list:
-            return errorcode, "\n".join(p.get_path() for p in result)
-        return errorcode, result
+            return error, "\n".join(p.get_path() for p in result)
+        return error, result
 
     def downstreams(self, package_or_compact, as_path_list=False):
         """ Find all/any downstream packages and return them as a list. (Downstream: packages depending on the package)
@@ -87,12 +91,12 @@ class ObsoletaApi:
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = self.make_package_from_compact(package_or_compact)
-        errorcode, result = self.obsoleta.locate_downstreams(package_or_compact)
-        if not is_ok(errorcode):
-            return errorcode, 'unable to locate upstreams for %s' % package_or_compact
+        error, result = self.obsoleta.locate_downstreams(package_or_compact)
+        if error.has_error():
+            return error, 'unable to locate upstreams for %s' % package_or_compact
         if as_path_list:
-            return errorcode, "\n".join(p.get_path() for p in result)
-        return errorcode, result
+            return error, "\n".join(p.get_path() for p in result)
+        return error, result
 
     def generate_digraph(self, package_or_compact, dest_file):
         package_or_compact = self.make_package_from_compact(package_or_compact)
@@ -110,10 +114,10 @@ class ObsoletaApi:
         package = self.make_package_from_compact(package_or_compact)
         dixi_api = DixiApi(self.setup)
 
-        errorcode, upstreams = self.upstreams(package_or_compact, True)
+        error, upstreams = self.upstreams(package_or_compact, True)
 
-        if not is_ok(errorcode):
-            return errorcode, ['unable to locate any upstreams for {%s}' % package_or_compact, ]
+        if error.has_error():
+            return error, ['unable to locate any upstreams for {%s}' % package_or_compact, ]
 
         for path in upstreams.split():
             dixi_api.load(path)
@@ -126,12 +130,12 @@ class ObsoletaApi:
                         package_path))
             dixi_api.save()
 
-        errorcode, downstreams = self.downstreams(package, True)
+        error, downstreams = self.downstreams(package, True)
 
-        if errorcode == ErrorCode.PACKAGE_NOT_FOUND:
+        if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
             ret.append('no {%s} downstream packages found' % str(package_or_compact))
-        elif not is_ok(errorcode):
-            return errorcode, ['downstream search failed for {%s}' % package_or_compact, ]
+        elif error.has_error():
+            return error, ['downstream search failed for {%s}' % package_or_compact, ]
         else:
             for path in downstreams.split():
                 dixi_api.load(path, package_or_compact)
@@ -145,4 +149,4 @@ class ObsoletaApi:
                             package_path))
                 dixi_api.save()
 
-        return ErrorCode.OK, ret
+        return ErrorOk(), ret

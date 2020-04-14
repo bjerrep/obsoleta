@@ -53,7 +53,3 @@ class ErrorCode(Enum):
              ]
 
         return ErrorCodeToString[errorcode]
-
-
-def is_ok(errorcode):
-    return errorcode == ErrorCode.OK
