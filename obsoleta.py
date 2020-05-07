@@ -150,7 +150,7 @@ elif args.check:
     error, errors = obsoleta.get_errors(package)
 
     if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-        err('package "%s" not found' % package)
+        err(error.get_message())
         exit_code = error.get_errorcode()
     elif error.has_error():
         err('checking package "%s": failed, %i errors found' % (package, len(errors)))

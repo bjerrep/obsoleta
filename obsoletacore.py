@@ -52,12 +52,13 @@ class Obsoleta:
         if args.verbose:
             _1 = Indent()
             for package in self.loaded_packages:
-                err('errors in %s' % (package.to_extra_string()))
                 first_error, errors = self.get_errors(package)
-                _2 = Indent()
-                for error in errors:
-                    err(error.print())
-                del _2
+                if errors:
+                    err('errors in %s' % (package.to_extra_string()))
+                    _2 = Indent()
+                    for error in errors:
+                        err(error.print())
+                    del _2
 
         if setup.cache:
             self.write_cache()
@@ -425,7 +426,7 @@ class Obsoleta:
                                 _package.errors = loaded.errors
 
                     if errors:
-                        return Error(errors[0].get_errorcode(), package), list(set(errors))
+                        return errors[0], list(set(errors))
                     return ErrorOk(), errors
 
         return Error(ErrorCode.PACKAGE_NOT_FOUND,
