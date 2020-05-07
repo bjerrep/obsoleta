@@ -1,0 +1,11 @@
+{
+  "name": "k1",
+  "version": "0.1.2",
+  "depends": [
+    {
+      "name": "bz2",
+      "so": "/usr/lib/",
+      "version": ">=0"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ from log import deb, inf, inf_alt, war, err, Indent
 from common import Error, ErrorOk
 import common
 from common import find_in_path
+from version import Version
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
 from package import Package, anyarch, buildtype_unknown, Track
@@ -48,6 +49,15 @@ class Obsoleta:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
 
         inf('loading and parsing complete with %i errors' % self.get_error_count())
+        if args.verbose:
+            _1 = Indent()
+            for package in self.loaded_packages:
+                err('errors in %s' % (package.to_extra_string()))
+                first_error, errors = self.get_errors(package)
+                _2 = Indent()
+                for error in errors:
+                    err(error.print())
+                del _2
 
         if setup.cache:
             self.write_cache()
@@ -249,6 +259,22 @@ class Obsoleta:
 
         return True
 
+    def locate_external_lib(self, target_package):
+        try:
+            so_path = target_package.get_value('so')
+            name = target_package.get_value('name')
+            lib_name = 'lib%s.so' % name
+            so = os.path.join(so_path, lib_name)
+
+            binary = os.readlink(so)
+            version = binary. replace(lib_name + '.', '')
+            _ = Version(version)
+            package = Package.construct_from_compact(self.setup, '%s:%s' % (name, version), so_path)
+            self.loaded_packages.append(package)
+            return [package]
+        except Exception as e:
+            return []
+
     def locate_upstreams(self, target_package):
         """" Find any upstream packages matching 'target_package'
         """
@@ -256,6 +282,10 @@ class Obsoleta:
         for package in self.loaded_packages:
             if package == target_package:
                 candidates.append(package)
+
+        if not candidates:
+            candidates = self.locate_external_lib(target_package)
+
         if candidates:
             return ErrorOk(), candidates
 
@@ -334,6 +364,8 @@ class Obsoleta:
         return error, ret
 
     def dump_build_order(self, root_package):
+        error = None
+
         packages_build_order = []
         package_list = []
         for package in self.loaded_packages:
@@ -342,31 +374,40 @@ class Obsoleta:
                 break
 
         packages = list(dict.fromkeys(package_list))
-        deleted = []
         package_copy = packages
-        found_next = True
 
-        while found_next:
-            found_next = False
-            for package in package_copy:
-                if not package.get_dependencies():
-                    packages_build_order.append(package)
-                    package_copy.remove(package)
-                    deleted.append(package)
-                    found_next = True
-                    break
-                nof_dependencies = package.get_nof_dependencies()
-                for dp in package.get_dependencies():
-                    if dp in deleted:
-                        nof_dependencies -= 1
-                if not nof_dependencies:
-                    packages_build_order.append(package)
-                    package_copy.remove(package)
-                    deleted.append(package)
-                    found_next = True
-                    break
+        if package_list:
+            deleted = []
+            found_next = True
 
-        return package_copy, packages_build_order
+            while found_next:
+                found_next = False
+                for package in package_copy:
+                    upstreams = package.get_nof_dependencies()
+                    if not upstreams:
+                        packages_build_order.append(package)
+                        package_copy.remove(package)
+                        deleted.append(package)
+                        found_next = True
+                        break
+
+                    for dp in package.get_dependencies():
+                        if dp in deleted:
+                            upstreams -= 1
+                    if not upstreams:
+                        packages_build_order.append(package)
+                        package_copy.remove(package)
+                        deleted.append(package)
+                        found_next = True
+                        break
+            if not packages_build_order:
+                error = Error(ErrorCode.CIRCULAR_DEPENDENCY, root_package, 'can\'t resolve %s' % root_package)
+        else:
+            error = Error(ErrorCode.RESOLVE_ERROR, root_package, '%s not found' % root_package)
+
+        if not error:
+            error = ErrorOk()
+        return error, package_copy, packages_build_order
 
     def get_errors(self, package):
         errors = []
@@ -384,8 +425,7 @@ class Obsoleta:
                                 _package.errors = loaded.errors
 
                     if errors:
-                        return Error(ErrorCode.DUPLICATE_PACKAGE,
-                                     package), list(set(errors))
+                        return Error(errors[0].get_errorcode(), package), list(set(errors))
                     return ErrorOk(), errors
 
         return Error(ErrorCode.PACKAGE_NOT_FOUND,

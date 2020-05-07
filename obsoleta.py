@@ -175,21 +175,24 @@ elif args.buildorder:
     deb('packages listed in buildorder')
     error, resolved = obsoleta.buildorder(package)
 
-    if error.has_error():
+    if error.get_errorcode() == ErrorCode.RESOLVE_ERROR:
+        err(error.get_message())
+        exit_code = error.get_errorcode()
+    elif error.has_error():
         err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
         exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
+    else:
+        for _package in resolved:
+            if args.printpaths:
+                print_result(_package.get_path(), True)
+            else:
+                print_result(_package.to_string(), True)
 
-    for _package in resolved:
-        if args.printpaths:
-            print_result(_package.get_path(), True)
-        else:
-            print_result(_package.to_string(), True)
-
-        errors = _package.get_root_error()
-        if errors:
-            for error in errors:
-                exit_code = error.get_errorcode()
-                err(' - error: ' + error.to_string())
+            errors = _package.get_root_error()
+            if errors:
+                for error in errors:
+                    exit_code = error.get_errorcode()
+                    err(' - error: ' + error.to_string())
 
 elif args.upstream:
     error, lookup = obsoleta.upstreams(package)

@@ -49,10 +49,10 @@ class Package:
         self.layout = Layout.standard
         self.string = None
 
-        if package_path:
+        if compact:
+            self.from_compact(compact, package_path)
+        elif package_path:
             self.from_package_path(package_path, key_file, dictionary)
-        elif compact:
-            self.from_compact(compact)
         else:
             self.from_dict(dictionary)
 
@@ -67,8 +67,8 @@ class Package:
         return cls(setup, package_path, None, dictionary, key_file)
 
     @classmethod
-    def construct_from_compact(cls, setup, compact):
-        return cls(setup, None, compact, None)
+    def construct_from_compact(cls, setup, compact, package_path=None):
+        return cls(setup, package_path, compact, None)
 
     def from_dict(self, dictionary):
         if not self.unmodified_dict:
@@ -269,9 +269,10 @@ class Package:
         except Exception as e:
             raise UnknownException(str(e) + ' ' + keyfile)
 
-    def from_compact(self, compact):
+    def from_compact(self, compact, package_path):
         self.name = '*'
         self.version = VersionAny
+        self.package_path = package_path
         optionals = 0
         if self.setup.using_track:
             self.track = Track.anytrack

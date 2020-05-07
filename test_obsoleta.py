@@ -138,7 +138,7 @@ title('C6', 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d 
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package d --check', ErrorCode.OK)
 
 title('C7', 'fail to list buildorder as there are a circular dependency')
-exitcode, output = execute(fixed + '--root testdata/C7_test_circular_dependency --package \* --buildorder', ErrorCode.CIRCULAR_DEPENDENCY)
+exitcode, output = execute(fixed + '--root testdata/C7_test_circular_dependency --package a --buildorder', ErrorCode.CIRCULAR_DEPENDENCY)
 
 title('C8', 'named architecture -> named architecture -> "anyarch" is ok')
 exitcode, output = execute(fixed + '--root testdata/C8_test_arch_noarch --package a:*:anytrack:beos --check', ErrorCode.OK)
@@ -291,6 +291,9 @@ print(output)
 test_eq("""bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"
 bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2\"""" in output)
 exitcode, output = execute(fixed + '--root %s --package a:::x86 --check' % root, ErrorCode.OK)
+
+title('K1', 'simple sunshine with external lib dependency --check')
+exitcode, output = execute(fixed + '--root testdata/K1_system_lib_dependency --package k1 --check', ErrorCode.OK)
 
 
 print('test suite took %.3f secs' % (time.time() - start_time))
