@@ -31,5 +31,11 @@ class DixiApi:
         slot, version = self.dixi.getter('version')
         return version
 
+    def get_value(self, key):
+        return self.dixi.get_value(key)
+
+    def set_value(self, key, value):
+        return self.dixi.set_value(key, value)
+
     def save(self):
         self.dixi.save()

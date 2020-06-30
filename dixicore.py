@@ -137,3 +137,9 @@ class Dixi:
     def get_buildtype(self):
         _, buildtype = self.getter('buildtype')
         return buildtype
+
+    def get_value(self, key):
+        return self.getter(key)[1]
+
+    def set_value(self, key, value):
+        return self.setter(None, key, value)

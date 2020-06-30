@@ -97,6 +97,13 @@ exitcode, output = execute(fixed + '--setbuildtype release_stripped')
 exitcode, output = execute(fixed + '--getbuildtype')
 test_eq(output, 'release_stripped')
 
+title('Q2', 'setvalue and getvalue')
+prepare_local('simple')
+exitcode, output = execute(fixed + '--setvalue "key this is the value"')
+exitcode, output = execute(fixed + '--getvalue key')
+test_eq(output, 'this is the value')
+
+
 title('R1', 'slotted setversion and getversion')
 prepare_local('slotted')
 exitcode, output = execute(fixed + '--setversion 1.2.3')

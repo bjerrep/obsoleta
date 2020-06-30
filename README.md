@@ -399,7 +399,15 @@ Currently dixi supports the following get/set operations:
 	--setarch arch
 	--getbuildtype
 	--setbuildtype buildtype
+
+Free form get/setters of key:values external to obsoleta. 
+
 	--getvalue key
+	--setvalue "key this is the value"
+
+Use the get/setters in the first part for obsoleta specific entries, the free form get/setters for anything else (e.g. a toolchain that might decide the obsoleta.json files is a good place to save information in)
+
+
 
 An simple dixi example:
 

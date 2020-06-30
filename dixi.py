@@ -83,6 +83,10 @@ parser.add_argument('--getbuildtype', action='store_true',
 
 parser.add_argument('--getvalue',
                     help='command: get the value for the given key')
+parser.add_argument('--setvalue',
+                    help='command: set the value for the given key. Use quotes as in '
+                         '"key value becomes everything else"')
+
 
 args = parser.parse_args()
 
@@ -212,9 +216,17 @@ elif args.getbuildtype:
 
 elif args.getvalue:
     try:
-        ret = dx.get_package().get_value(args.getvalue)
+        ret = dx.get_value(args.getvalue)
     except:
         cri('key not found, "%s"' % args.getvalue, ErrorCode.SYNTAX_ERROR)
+
+elif args.setvalue:
+    try:
+        key, value = args.setvalue.split(maxsplit=1)
+        ret = dx.set_value(key, value)
+        save_pending = True
+    except Exception as e:
+        cri('got ' + str(e), ErrorCode.SYNTAX_ERROR)
 
 elif args.print:
     print_result(dx.to_merged_json())
