@@ -83,14 +83,14 @@ class Obsoleta:
             roots = '.'
         return roots
 
-    def find_package_files(self, pathlist):
-        inf('searching %i paths' % len(pathlist))
+    def find_package_files(self, roots):
+        inf('searching %i roots' % len(roots))
         package_files = []
         _ = Indent()
-        for path in pathlist:
-            inf('path = %s' % path)
+        for root in roots:
+            inf('path = %s' % root)
             __ = Indent()
-            self.dirs_checked = find_in_path(path, 'obsoleta.json', self.setup.depth, package_files)
+            self.dirs_checked = find_in_path(root, 'obsoleta.json', self.setup.depth, package_files)
 
         del(_)
         inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
@@ -150,8 +150,7 @@ class Obsoleta:
                             if self.setup.keepgoing:
                                 reason += ' (keepgoing)'
                             war('ignoring ' + message + reason)
-                            if self.args.locate or self.setup.keepgoing:
-                                self.loaded_packages.append(package)
+                            self.loaded_packages.append(package)
                         else:
                             raise DuplicatePackage(message)
                     except ValueError:
