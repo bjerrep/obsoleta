@@ -212,7 +212,7 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    deb('package ' + dependency.to_string() + ' does not exist')
+                    inf('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
         return True
@@ -272,7 +272,7 @@ class Obsoleta:
             package = Package.construct_from_compact(self.setup, '%s:%s' % (name, version), so_path)
             self.loaded_packages.append(package)
             return [package]
-        except Exception as e:
+        except:
             return []
 
     def locate_upstreams(self, target_package):
@@ -409,27 +409,28 @@ class Obsoleta:
             error = ErrorOk()
         return error, package_copy, packages_build_order
 
-    def get_errors(self, package):
-        errors = []
+    def get_errors(self, package, errors=[]):
+        anypackage = package.get_name() == '*'
+        if not self.loaded_packages or (not anypackage and package not in self.loaded_packages):
+            return Error(ErrorCode.PACKAGE_NOT_FOUND, package), errors
 
-        if self.loaded_packages:
-            for loaded_package in self.loaded_packages:
-                if loaded_package == package:
-                    loaded_package.error_list_append(errors)
-                    package_list = []
-                    package_list = set(self.get_package_list(loaded_package, package_list))
-                    for _package in package_list:
-                        for loaded in self.loaded_packages:
-                            if loaded == _package:
-                                loaded.error_list_append(errors)
-                                _package.errors = loaded.errors
+        if not package:
+            for _package in self.loaded_packages:
+                _package.error_list_append(_package, errors)
+            if errors:
+                return errors[0], list(set(errors))
+            return ErrorOk(), errors
 
-                    if errors:
-                        return errors[0], list(set(errors))
-                    return ErrorOk(), errors
+        if anypackage:
+            for _package in self.loaded_packages:
+                _package.error_list_append(errors)
+        else:
+            package = self.loaded_packages[self.loaded_packages.index(package)]
+            package.error_list_append(errors)
 
-        return Error(ErrorCode.PACKAGE_NOT_FOUND,
-                     package), errors
+        if errors:
+            errors = sorted(list(set(errors)))
+        return ErrorOk(), errors
 
     def get_error_count(self):
         errors = 0

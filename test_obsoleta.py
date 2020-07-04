@@ -86,6 +86,18 @@ title('A9', 'simple sunshine with a json error in unused c and keepgoing')
 exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --upstream --keepgoing', ErrorCode.OK)
 test_eq('A3_test_simple_bad_json/a' in output)
 
+title('A10', 'simple sunshine --listmissing "*"')
+exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package "*" --listmissing', ErrorCode.OK)
+test_eq("""b:1.1.1:anytrack:c64:unknown
+e:1.1.1:anytrack:c64:unknown
+y:1.1.1:anytrack:vic20:unknown""" in output)
+
+title('A11', 'simple sunshine --listmissing a')
+exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package a --listmissing', ErrorCode.OK)
+test_eq("""b:1.1.1:anytrack:c64:unknown
+e:1.1.1:anytrack:c64:unknown""" in output)
+
+
 title('B1', 'no json files found (bad path)')
 exitcode, output = execute(fixed + '--root nonexisting --package a --check', ErrorCode.BAD_PATH)
 
@@ -113,6 +125,9 @@ exitcode, output = execute(fixed + '--root testdata/B6_test_missing_package_trac
 title('B9', 'no package found, --upstream')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package found --upstream', ErrorCode.PACKAGE_NOT_FOUND)
 test_eq("unable to locate upstream found:*:anytrack:anyarch:unknown" in output)
+
+title('B10', 'no package found, --listmissing z')
+exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package z --listmissing', ErrorCode.PACKAGE_NOT_FOUND)
 
 
 title('C1', "a anyarch <<< b anyarch <<< c arch is ok")
@@ -290,7 +305,7 @@ exitcode, output = execute(fixed + '--root %s --bump --package b:::x86 --version
 print(output)
 test_eq("""bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"
 bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2\"""" in output)
-exitcode, output = execute(fixed + '--root %s --package a:::x86 --check' % root, ErrorCode.OK)
+exitcode, output = execute(fixed + '--root %s --package a::development:x86 --check' % root, ErrorCode.OK)
 
 title('K1', 'simple sunshine with external lib dependency --check')
 exitcode, output = execute(fixed + '--root testdata/K1_system_lib_dependency --package k1 --check', ErrorCode.OK)

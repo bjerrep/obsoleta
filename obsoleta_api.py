@@ -68,6 +68,10 @@ class ObsoletaApi:
             result = resolved
         return ErrorOk(), result
 
+    def list_missing(self, package_or_compact):
+        package_or_compact = self.make_package_from_compact(package_or_compact)
+        return self.obsoleta.get_errors(package_or_compact)
+
     def upstreams(self, package_or_compact, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages matching the name)
             Param: 'package_or_compact' is a Package object or a string with compact name.

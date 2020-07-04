@@ -113,7 +113,7 @@ class Error:
         return self.errorcode == ErrorCode.OK
 
     def __str__(self):
-        if self.package:
+        if not self.package:
             return ErrorCode.to_string(self.errorcode.value)
         return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string()
 
@@ -137,8 +137,15 @@ class Error:
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
 
+    def __lt__(self, other):
+        if self.errorcode.value < other.errorcode.value:
+            return True
+        if self.message < other.message:
+            return True
+        return self.package.to_string() < other.package.to_string()
+
     def __hash__(self):
-        uid = str(self)
+        uid = self.to_string()
         return hash(uid)
 
 

@@ -331,6 +331,22 @@ Conceptually there isn't a long way to a pseudo script that could wrap everythin
 		export obsoleta=$obsoleta:path # for the build system to use
 		./build.sh
 
+### List missing packages
+
+The underlying theme for most of this readme is the expectation that the workspace is in working order and is ready to be used. It might however also be a common use case that old and/or specialized builds are brought back to life where the dependencies are expected to be more or less missing in the local workspace and should be reinstalled for the occasion.
+
+For this there is an command called --listmissing which will simply list any missing dependencies for a given package without the usual error messages and exitcodes associated with a broken tree. It could look like this:
+
+```
+./obsoleta.py --conf mini.conf --root testdata/E1_list_missing_packages --package a --listmissing
+b:1.1.1:anytrack:c64:unknown
+e:1.1.1:anytrack:c64:unknown
+```
+
+With a little script wizzardry **b** and **e** could now be checked out from the scm at the tags 1.1.1 and get a obsoleta.key file setting the arch to c64. This cycle would then have to be repeated until the --listmissing command returns a blank. Then a --buildorder will tell in which order to build the dependencies. Alternatively it might be that some or all of the missing dependencies should be installed from binary releases from an artifact server of some kind instead. You would be the one knowing how to do that.
+
+
+
 ## Python api
 
 The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:

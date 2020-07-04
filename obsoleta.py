@@ -32,6 +32,8 @@ parser.add_argument('--tree', action='store_true',
                     help='command: show tree for a package')
 parser.add_argument('--buildorder', action='store_true',
                     help='command: show dependencies in building order for a package')
+parser.add_argument('--listmissing', action='store_true',
+                    help='command: list missing packages in --package dependency tree')
 parser.add_argument('--upstream', action='store_true',
                     help='command: get the paths for the packages matching --package. Notice that the "last package '
                          'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
@@ -73,8 +75,8 @@ if args.verbose:
 elif args.info:
     logger.setLevel(logging.INFO)
 
-valid_package_action = args.tree or args.check or args.buildorder or args.upstream or \
-                       args.downstream or args.bump or args.digraph
+valid_package_action = args.tree or args.check or args.buildorder or args.listmissing or \
+                       args.upstream or args.downstream or args.bump or args.digraph
 
 valid_command = valid_package_action or args.dumpcache
 
@@ -92,7 +94,7 @@ if args.clearcache:
 # go-no-go checks
 
 if not valid_command:
-    err('no action specified (use --check, --tree, --buildorder, --upstream, --downstream or --dumpcache')
+    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream, --downstream or --dumpcache')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not args.dumpcache and not args.package and not args.path:
@@ -152,7 +154,7 @@ elif args.check:
     if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
         err(error.get_message())
         exit_code = error.get_errorcode()
-    elif error.has_error():
+    elif error.has_error() or errors:
         err('checking package "%s": failed, %i errors found' % (package, len(errors)))
         for error in errors:
             err('   ' + error.to_string())
@@ -193,6 +195,17 @@ elif args.buildorder:
                 for error in errors:
                     exit_code = error.get_errorcode()
                     err(' - error: ' + error.to_string())
+
+elif args.listmissing:
+    exit_code = ErrorCode.OK
+    deb('list any missing packages for %s' % package)
+    error, missing = obsoleta.list_missing(package)
+    if error.has_error():
+        err('listmissing failed for package %s' % package)
+        exit_code = error.get_errorcode()
+    if missing:
+        for _error in missing:
+            print(_error.package.to_string())
 
 elif args.upstream:
     error, lookup = obsoleta.upstreams(package)
