@@ -31,6 +31,7 @@ class Setup:
     obsoleta_root = None
     depth = 1
     semver = False
+    relaxed_multislot = False       # allow a multislot key dir to be given as package root. Naughty,
 
     def __init__(self, configuration_file=None):
         global _setup
@@ -67,6 +68,7 @@ class Setup:
                 self.keepgoing = conf.get('keepgoing') == 'true'
                 self.cache = conf.get('cache') == 'true'
                 self.semver = conf.get('semver') == 'true'
+                self.relaxed_multislot = conf.get('relaxed_multislot') == 'true'
                 try:
                     self.depth = int(conf['depth'])
                 except KeyError:

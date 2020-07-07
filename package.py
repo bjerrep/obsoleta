@@ -119,7 +119,7 @@ class Package:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
             war('package %s specifies an buildtype but buildtype is not currently enabled '
-                                                                '(check config file)' % self.name)
+                '(check config file)' % self.name)
 
         try:
             dependencies = dictionary['depends']
@@ -192,6 +192,25 @@ class Package:
 
         if not dictionary:
             json_file = get_package_filepath(self.package_path)
+
+            # a lazy toolchain might be camping in a multislot build directory which is wrong but just for the
+            # fun of it, lets allow that. (it should have been in the up dir and supplied a --keypath)
+            # So if we have a key file, and there is a package file in the up dir, lets silently relocate
+            # and go with that further below. If all this sounds awful then set 'relaxed_multislot' to false.
+            try:
+                if self.setup.relaxed_multislot and not multislot_key_file and not os.path.exists(json_file):
+                    key_file = os.path.join(self.package_path, 'obsoleta.key')
+                    if os.path.exists(key_file):
+                        updir = os.path.split(os.path.abspath(self.package_path))[0]
+                        updir_package_file = get_package_filepath(updir)
+                        if os.path.exists(updir_package_file):
+                            inf('assuming that this is a multislotted build dir. Using package file %s' %
+                                updir_package_file)
+                            json_file = updir_package_file
+                            multislot_key_file = key_file
+            except:
+                # there was an attempt, and it failed. Now just fall over
+                pass
 
             with open(json_file) as f:
                 _json = f.read()

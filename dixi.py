@@ -71,15 +71,15 @@ parser.add_argument('--setbuild', help='command: set the build number')
 
 parser.add_argument('--settrack', help='command: set track')
 parser.add_argument('--gettrack', action='store_true',
-                    help='command: get track')
+                    help='command: get track. Default returns "anytrack"')
 
 parser.add_argument('--setarch', help='command: set arch')
 parser.add_argument('--getarch', action='store_true',
-                    help='command: get arch')
+                    help='command: get arch. Default returns "anyarch"')
 
 parser.add_argument('--setbuildtype', help='command: set buildtype (e.g. release, debug)')
 parser.add_argument('--getbuildtype', action='store_true',
-                    help='command: get buildtype (e.g. release, debug)')
+                    help='command: get buildtype (e.g. release, debug). Default returns "unknown"')
 
 parser.add_argument('--getvalue',
                     help='command: get the value for the given key')

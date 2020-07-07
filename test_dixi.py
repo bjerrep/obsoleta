@@ -23,7 +23,8 @@ def prepare_local(master):
 
 print('\n\n============================= dixi =============================')
 
-fixed = './dixi.py --conf testdata/test.conf --path local/dixi '
+_fixed = './dixi.py --conf testdata/test.conf '
+fixed = _fixed + ' --path local/dixi '
 
 title('M0', 'getname')
 prepare_local('simple')
@@ -181,10 +182,25 @@ exitcode, output = execute(fixed + '--depends b --keypath build_a --setversion 4
 exitcode, output = execute(fixed + '--depends b --keypath build_a --getversion')
 test_eq(output, '4.4.4')
 
-title('S1B', 'multislot setversion and getversion with invalid key')
+title('S1C', 'multislot setversion and getversion with invalid key')
 prepare_local('multislot_invalid_key')
 exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3', ErrorCode.INVALID_KEY_FILE.value)
 exitcode, output = execute(fixed + '--keypath build_a --getversion', ErrorCode.INVALID_KEY_FILE.value)
+
+title('S1D', 'multislot get arch, buildtype and track of which none is defined, falling back to defaults')
+prepare_local('multislot')
+exitcode, output = execute(fixed + '--keypath build_x --gettrack', ErrorCode.OK.value)
+test_eq(output, 'anytrack')
+exitcode, output = execute(fixed + '--keypath build_x --getarch', ErrorCode.OK.value)
+test_eq(output, 'anyarch')
+exitcode, output = execute(fixed + '--keypath build_x --getbuildtype', ErrorCode.OK.value)
+test_eq(output, 'unknown')
+
+title('S1E', 'multislot get arch from build dir. Requires "relaxed_multislot" in setup')
+prepare_local('multislot')
+exitcode, output = execute(_fixed + '--path local/dixi/build_x --gettrack', ErrorCode.OK.value)
+test_eq(output, 'anytrack')
+
 
 title('T1', 'printtemplate')
 exitcode, output = execute(fixed + '--printtemplate')

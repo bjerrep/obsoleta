@@ -1,6 +1,6 @@
 from log import inf
 from version import Version
-from package import Layout
+from package import Layout, anyarch, Track, TrackToString, buildtype_unknown
 from common import get_local_time_tz
 import json, os
 
@@ -109,8 +109,11 @@ class Dixi:
         return track
 
     def get_track(self):
-        _, track = self.getter('track')
-        return track
+        try:
+            _, track = self.getter('track')
+            return track
+        except KeyError:
+            return TrackToString[Track.anytrack.value]
 
     def set_arch(self, arch):
         section, org_arch = self.getter('arch')
@@ -122,8 +125,11 @@ class Dixi:
         return arch
 
     def get_arch(self):
-        _, arch = self.getter('arch')
-        return arch
+        try:
+            _, arch = self.getter('arch')
+            return arch
+        except KeyError:
+            return anyarch
 
     def set_buildtype(self, buildtype):
         section, org_buildtype = self.getter('buildtype')
@@ -135,8 +141,11 @@ class Dixi:
         return buildtype
 
     def get_buildtype(self):
-        _, buildtype = self.getter('buildtype')
-        return buildtype
+        try:
+            _, buildtype = self.getter('buildtype')
+            return buildtype
+        except KeyError:
+            return buildtype_unknown
 
     def get_value(self, key):
         return self.getter(key)[1]
