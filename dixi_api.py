@@ -24,6 +24,9 @@ class DixiApi:
     def get_package(self):
         return self.dixi.get_package()
 
+    def get_compact(self, delimiter=':'):
+        return self.dixi.get_compact(delimiter)
+
     def set_version(self, version):
         return self.dixi.set_version(version)
 

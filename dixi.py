@@ -47,6 +47,9 @@ parser.add_argument('--keypath',
                     help='the relative keypath (directory name) to use for a multislotted package')
 parser.add_argument('--depends',
                     help='target is the package in the depends section with the name given with --depends')
+parser.add_argument('--skiptags', action='store_true',
+                    help='don\'t write a short description of last action into the package file. '\
+                         'It looks cool, but for slotted packages it might trigger merge conflicts.')
 
 parser.add_argument('--getname', action='store_true',
                     help='command: get name')
@@ -146,9 +149,7 @@ if args.getname:
     ret = dx.get_package().get_name()
 
 elif args.getcompact:
-    ret = dx.get_package().to_string()
-    if args.delimiter:
-        ret = ret.replace(':', args.delimiter)
+    ret = dx.get_compact(args.delimiter)
 
 elif args.getversion:
     ret = dx.get_package().get_version()
@@ -235,7 +236,7 @@ elif args.generate_c:
     generator.generate_c(package,
                          os.path.join(package.get_path(), args.generate_src),
                          os.path.join(package.get_path(), args.generate_inc))
-    dx.save()
+    save_pending = True
 
 else:
     err('no command found')
@@ -248,6 +249,6 @@ if save_pending:
     if args.dryrun:
         inf('\ndry run, package file is not rewritten')
     else:
-        dx.save()
+        dx.save(not args.skiptags)
 
 exit(ErrorCode.OK.value)

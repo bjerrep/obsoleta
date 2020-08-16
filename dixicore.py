@@ -26,6 +26,12 @@ class Dixi:
             return self.package.get_dependency(self.depends_package)
         return self.package
 
+    def get_compact(self, delimiter):
+        ret = self.package.to_string()
+        if delimiter:
+            ret = ret.replace(':', delimiter)
+        return ret
+
     def get_original_dict(self):
         try:
             return self.package.get_dependency(self.depends_package).get_original_dict()
@@ -90,13 +96,14 @@ class Dixi:
         self.add_action(action)
         return org_version, str(version)
 
-    def save(self):
+    def save(self, add_description=True):
         package_file = os.path.join(self.package.package_path, 'obsoleta.json')
 
         with open(package_file, 'w') as f:
             unmodified_dict = self.package.get_original_dict()
-            unmodified_dict['dixi_modified'] = get_local_time_tz()
-            unmodified_dict['dixi_action'] = self.action
+            if add_description:
+                unmodified_dict['dixi_modified'] = get_local_time_tz()
+                unmodified_dict['dixi_action'] = self.action
             f.write(json.dumps(unmodified_dict, indent=2))
 
     def set_track(self, track):

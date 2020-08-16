@@ -77,8 +77,8 @@ test_eq(output == '(\'0.1.2\', \'0.1.77\')')
 
 title('M6', 'getcompact')
 prepare_local('simple')
-exitcode, output = execute(fixed + '--getcompact')
-test_eq(output, 'a:0.1.2:testing:minix:debug')
+exitcode, output = execute(fixed + '--getcompact --delimiter _')
+test_eq(output, 'a_0.1.2_testing_minix_debug')
 
 title('O1', 'settrack and gettrack')
 prepare_local('simple')
