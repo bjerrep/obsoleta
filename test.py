@@ -6,6 +6,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
+    import test_package
     import test_version
     import test_obsoleta
     import test_dixi

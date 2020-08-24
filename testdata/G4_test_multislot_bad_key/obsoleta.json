@@ -1,0 +1,12 @@
+{
+  "multislot": {
+    "name": "a",
+    "version": "1.1.1"
+  },
+  "nix": {
+    "arch": "linux"
+  },
+  "win": {
+    "arch": "windows"
+  }
+}

@@ -262,7 +262,7 @@ class Package:
                 key_section = dictionary[self.key]
             except KeyError:
                 raise InvalidKeyFile('failed to find multislot in package file %s with key "%s"' %
-                                    (os.path.abspath(json_file), self.key))
+                                    (os.path.abspath(package_path), self.key))
             merged = self.merge(slot_section, key_section)
             self.from_dict(merged)
             inf('parsing \'%s\' in %s (multislot) -> %s' %
