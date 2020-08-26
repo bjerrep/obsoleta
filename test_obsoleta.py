@@ -9,7 +9,7 @@ Tests that need to modify the testdata should use populate_local_temp() to get a
 """
 # flake8: noqa E502
 from errorcodes import ErrorCode
-from test_common import execute, test_eq, title, populate_local_temp
+from test_common import execute, test_eq, test_ok, title, populate_local_temp
 import os
 import time
 
@@ -78,13 +78,13 @@ c:2.1.2:anytrack:anyarch:unknown
 b:1.1.2:anytrack:linux_x86_64:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
-title('A8', 'simple sunshine with a json error in unused c')
+title('A8', 'finding upstreams to "a" failing due to json error in unused "c"')
 exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --upstream', ErrorCode.BAD_PACKAGE_FILE)
 test_eq('A3_test_simple_bad_json/c/obsoleta.json' in output)
 
-title('A9', 'simple sunshine with a json error in unused c and keepgoing')
+title('A9', 'as A8 but succeeds due to --keepgoing argument')
 exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --package a --upstream --keepgoing', ErrorCode.OK)
-test_eq('A3_test_simple_bad_json/a' in output)
+test_eq('A3_test_simple_bad_json/b' in output)
 
 title('A10', 'simple sunshine --listmissing "*"')
 exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package "*" --listmissing', ErrorCode.OK)
@@ -253,8 +253,9 @@ exitcode, output = execute(fixed + '--root testdata/G2_test_slot --path testdata
 test_eq("""a:1.1.1:anytrack:linux:unknown
   b:2.2.2:anytrack:anyarch:unknown
   c:3.3.3:anytrack:anyarch:unknown
-  d:4.4.4:anytrack:anyarch:unknown
-  e:5.5.5:anytrack:anyarch:unknown""" in output)
+  d:4.4.4:anytrack:linux:unknown
+  e:5.5.5:anytrack:linux:unknown
+    f:6.6.6:anytrack:linux:unknown""" in output)
 
 title('G2b', "slot sunshine. win arch brings no new dependency")
 root = populate_local_temp('testdata/G2_test_slot')
@@ -282,20 +283,19 @@ title('I1', "optionals - all enabled, upstream compact name 'c:1.2.3' finds b")
 errorcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --downstream --package c:1.2.3', ErrorCode.OK)
 test_eq("C5_test_multiple_versions/b" in output)
 
-
 title('J1', "bump a downstream package")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package a --version 7.9.13' % root, ErrorCode.OK)
 print(output)
 test_eq("""bumped upstream {a:1.1.1:anytrack:linux:unknown} from 1.1.1 to 7.9.13 in "a"
-no {a:*:anytrack:anyarch:unknown} downstream packages found""" in output)
+no {a:1.1.1:anytrack:linux:unknown} downstream packages found""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
 title('J1b', "bump d from slot")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13 --verbose' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream {d:4.4.4:anytrack:anyarch:unknown} from 4.4.4 to 7.9.13 in "d"
+test_eq("""bumped upstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "d"
 bumped downstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "a\"""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 

@@ -2,6 +2,7 @@ from log import inf
 from version import Version
 from package import Layout, anyarch, Track, TrackToString, buildtype_unknown
 from common import get_local_time_tz
+from exceptions import BadPackageFile
 import json, os
 
 
@@ -36,6 +37,8 @@ class Dixi:
         try:
             return self.package.get_dependency(self.depends_package).get_original_dict()
         except:
+            if not self.package.get_original_dict():
+                raise BadPackageFile('package not from model, %s' % self.package)
             return self.package.get_original_dict()
 
     def add_action(self, action):

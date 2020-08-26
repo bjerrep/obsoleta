@@ -130,6 +130,7 @@ class Obsoleta:
                 except (BadPackageFile, MissingKeyFile) as e:
                     if self.setup.keepgoing:
                         deb('keep going is set, ignoring invalid package %s' % file)
+                        continue
                     else:
                         raise e
 
@@ -177,7 +178,7 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                errorcode, resolved = self.locate_upstreams(dependency)
+                errorcode, resolved = self.find_all(dependency)
 
                 if resolved:
                     resolved = max(resolved)
@@ -231,7 +232,7 @@ class Obsoleta:
             _1 = Indent()
 
             for dependency in dependencies:
-                errorcode, resolved_list = self.locate_upstreams(dependency)
+                errorcode, resolved_list = self.find_all(dependency)
 
                 for resolved in resolved_list:
                     if not self.aggregate_attributes(resolved, level):
@@ -275,8 +276,9 @@ class Obsoleta:
         except:
             return []
 
-    def locate_upstreams(self, target_package):
-        """" Find any upstream packages matching 'target_package'
+    def find_all(self, target_package):
+        """" Find any packages matching 'target_package'.
+             If used for a package depends section it will find all upstream candidates.
         """
         candidates = []
         for package in self.loaded_packages:
@@ -293,8 +295,41 @@ class Obsoleta:
                      target_package,
                      'no upstreams matches %s' % target_package.to_string()), candidates
 
+    def find_package(self, package):
+        for loaded_package in self.loaded_packages:
+            if loaded_package == package:
+                return loaded_package
+        return None
+
+    def locate_upstreams(self, target_package):
+        """" Find any upstream packages listed in the 'target_package' depends section
+        """
+        candidates = []
+
+        target_package = self.find_package(target_package)
+        if not target_package:
+            err = Error(ErrorCode.PACKAGE_NOT_FOUND,
+                        target_package,
+                        "package not found, %s" % target_package)
+            return err, candidates
+
+        dependencies = target_package.get_dependencies()
+        if not dependencies:
+            return ErrorOk(), candidates
+
+        for upstream in dependencies:
+            found = self.find_package(upstream)
+            if found:
+                candidates.append(found)
+            else:
+                err = Error(ErrorCode.PACKAGE_NOT_FOUND,
+                            target_package,
+                            "no upstream %s found for %s" % (upstream, target_package))
+                return err, candidates
+        return ErrorOk(), candidates
+
     def locate_downstreams(self, target_package):
-        """" Find any packages that references the upstream 'target_package' in their
+        """" Find any downstream packages that references the 'target_package' in their
              depends section
         """
         candidates = []
@@ -467,7 +502,7 @@ class Obsoleta:
         dependency = '<tr><td><font color="orange">%s=%s</font></td></tr>\n'
         footer = '</table></font>>];\n'
 
-        errorcode, packages = self.locate_upstreams(target_package)
+        errorcode, packages = self.find_all(target_package)
         for package in packages:
             with open(dest_file, 'w') as f:
                 f.write('digraph obsoleta {\nnode [shape=plaintext]\n')
@@ -493,7 +528,7 @@ class Obsoleta:
                     if _package.get_nof_dependencies():
                         for dep in _package.get_dependencies():
                             f.write('"%s" -> "%s"\n' % (_package.get_name(), dep.get_name()))
-                            _errorcode, _packages = self.locate_upstreams(dep)
+                            _errorcode, _packages = self.find_all(dep)
                             try:
                                 write_package(_packages[0])
                             except:

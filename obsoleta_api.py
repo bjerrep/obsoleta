@@ -31,7 +31,7 @@ class ObsoletaApi:
 
     def make_package_from_compact(self, package_or_compact):
         """
-        Returns a Package object from its compact name. As a convinience it will
+        Returns a Package object from its compact name. As a convenience it will
         just return the Package if it is given a Package.
         """
         if isinstance(package_or_compact, Package):
@@ -40,6 +40,9 @@ class ObsoletaApi:
 
     def make_package_from_path(self, path):
         return Package.construct_from_package_path(self.setup, path)
+
+    def find_package(self, package):
+        return self.obsoleta.find_package(package)
 
     def check(self, package_or_compact):
         package_or_compact = self.make_package_from_compact(package_or_compact)
@@ -104,43 +107,38 @@ class ObsoletaApi:
         package_or_compact = self.make_package_from_compact(package_or_compact)
         self.obsoleta.generate_digraph(package_or_compact, dest_file)
 
-    def bump(self, package_or_compact, new_version):
-        """ Replace the version in any downstream package(s) where 'package_or_compact' is found
-            in the dependency list and also in any 'package_or_compact' upstream package(s).
+    def bump(self, package, new_version):
+        """ Replace the version in any downstream package(s) where package is found
+            in the dependency list and also the version for the package itself.
 
-            Param: 'package_or_compact' can be both a Package object or a string with a compact name.
+            Param: 'package'. Package from the loaded package files list
             Param: 'new_version', version as a string.
             Returns: tuple(errorcode, [informational text messages])
         """
         ret = []
-        package = self.make_package_from_compact(package_or_compact)
         dixi_api = DixiApi(self.setup)
 
-        error, upstreams = self.upstreams(package_or_compact, True)
+        # the package given is the upstream package in this context, bump it as the first thing
+        dixi_api.load(package)
+        old_version = dixi_api.set_version(new_version)[0]
+        package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
+        ret.append('bumped upstream {%s} from %s to %s in "%s"' %
+                   (dixi_api.get_package().to_string(),
+                    old_version,
+                    new_version,
+                    package_path))
+        dixi_api.save()
 
-        if error.has_error():
-            return error, ['unable to locate any upstreams for {%s}' % package_or_compact, ]
-
-        for path in upstreams.split():
-            dixi_api.load(path)
-            old_version = dixi_api.set_version(new_version)[0]
-            package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
-            ret.append('bumped upstream {%s} from %s to %s in "%s"' %
-                       (dixi_api.get_package().to_string(),
-                        old_version,
-                        new_version,
-                        package_path))
-            dixi_api.save()
-
+        # now bump all downstreams referencing the package in their depends section
         error, downstreams = self.downstreams(package, True)
 
         if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-            ret.append('no {%s} downstream packages found' % str(package_or_compact))
+            ret.append('no {%s} downstream packages found' % package.to_string())
         elif error.has_error():
-            return error, ['downstream search failed for {%s}' % package_or_compact, ]
+            return error, ['downstream search failed for {%s}' % package, ]
         else:
             for path in downstreams.split():
-                dixi_api.load(path, package_or_compact)
+                dixi_api.load(path, package)
                 old_version = dixi_api.set_version(new_version)[0]
                 parent_path = dixi_api.get_package().get_parent().get_path()
                 package_path = os.path.relpath(parent_path, self.get_common_path())

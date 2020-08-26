@@ -143,114 +143,121 @@ except Exception as e:
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)
 
 # and now figure out what to do
+try:
+    if exit_code != ErrorCode.OK:
+        pass
 
-if exit_code != ErrorCode.OK:
-    pass
+    elif args.check:
+        deb('checking package "%s"' % package)
+        error, errors = obsoleta.get_errors(package)
 
-elif args.check:
-    deb('checking package "%s"' % package)
-    error, errors = obsoleta.get_errors(package)
-
-    if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-        err(error.get_message())
-        exit_code = error.get_errorcode()
-    elif error.has_error() or errors:
-        err('checking package "%s": failed, %i errors found' % (package, len(errors)))
-        for error in errors:
-            err('   ' + error.to_string())
+        if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
+            err(error.get_message())
             exit_code = error.get_errorcode()
-    else:
-        inf('checking package "%s": success' % package)
-        exit_code = ErrorCode.OK
+        elif error.has_error() or errors:
+            err('checking package "%s": failed, %i errors found' % (package, len(errors)))
+            for error in errors:
+                err('   ' + error.to_string())
+                exit_code = error.get_errorcode()
+        else:
+            inf('checking package "%s": success' % package)
+            exit_code = ErrorCode.OK
 
-elif args.tree:
-    inf('package tree for "%s"' % package)
-    error, result = obsoleta.tree(package)
-    if error.is_ok():
-        print_result("\n".join(result))
-    else:
-        err(error.print())
-    exit_code = error.get_errorcode()
-
-elif args.buildorder:
-    exit_code = ErrorCode.OK
-    deb('packages listed in buildorder')
-    error, resolved = obsoleta.buildorder(package)
-
-    if error.get_errorcode() == ErrorCode.RESOLVE_ERROR:
-        err(error.get_message())
-        exit_code = error.get_errorcode()
-    elif error.has_error():
-        err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
-        exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
-    else:
-        for _package in resolved:
-            if args.printpaths:
-                print_result(_package.get_path(), True)
-            else:
-                print_result(_package.to_string(), True)
-
-            errors = _package.get_root_error()
-            if errors:
-                for error in errors:
-                    exit_code = error.get_errorcode()
-                    err(' - error: ' + error.to_string())
-
-elif args.listmissing:
-    exit_code = ErrorCode.OK
-    deb('list any missing packages for %s' % package)
-    error, missing = obsoleta.list_missing(package)
-    if error.has_error():
-        err('listmissing failed for package %s' % package)
-        exit_code = error.get_errorcode()
-    if missing:
-        for _error in missing:
-            print(_error.package.to_string())
-
-elif args.upstream:
-    error, lookup = obsoleta.upstreams(package)
-    if error.is_ok():
-        print_result("\n".join(p.get_path() for p in lookup))
-        exit_code = ErrorCode.OK
-    else:
-        err('unable to locate upstream %s' % package)
-        exit_code = ErrorCode.PACKAGE_NOT_FOUND
-
-elif args.downstream:
-    error, lookup = obsoleta.downstreams(package)
-    if error.is_ok():
-        print_result("\n".join(p.get_path() for p in lookup))
-        exit_code = ErrorCode.OK
-    else:
-        err('unable to locate downstream %s' % package)
-        exit_code = ErrorCode.PACKAGE_NOT_FOUND
-
-elif args.dumpcache:
-    pass
-
-elif args.bump:
-    if not args.version:
-        exit_code = ErrorCode.MISSING_INPUT
-    else:
-        error, messages = obsoleta.bump(package, args.version)
+    elif args.tree:
+        inf('package tree for "%s"' % package)
+        error, result = obsoleta.tree(package)
         if error.is_ok():
-            print_result_nl("\n".join(line for line in messages))
+            print_result("\n".join(result))
+        else:
+            err(error.print())
+        exit_code = error.get_errorcode()
+
+    elif args.buildorder:
+        exit_code = ErrorCode.OK
+        deb('packages listed in buildorder')
+        error, resolved = obsoleta.buildorder(package)
+
+        if error.get_errorcode() == ErrorCode.RESOLVE_ERROR:
+            err(error.get_message())
+            exit_code = error.get_errorcode()
+        elif error.has_error():
+            err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
+            exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
+        else:
+            for _package in resolved:
+                if args.printpaths:
+                    print_result(_package.get_path(), True)
+                else:
+                    print_result(_package.to_string(), True)
+
+                errors = _package.get_root_error()
+                if errors:
+                    for error in errors:
+                        exit_code = error.get_errorcode()
+                        err(' - error: ' + error.to_string())
+
+    elif args.listmissing:
+        exit_code = ErrorCode.OK
+        deb('list any missing packages for %s' % package)
+        error, missing = obsoleta.list_missing(package)
+        if error.has_error():
+            err('listmissing failed for package %s' % package)
+            exit_code = error.get_errorcode()
+        if missing:
+            for _error in missing:
+                print(_error.package.to_string())
+
+    elif args.upstream:
+        error, lookup = obsoleta.upstreams(package)
+        if error.is_ok():
+            print_result("\n".join(p.get_path() for p in lookup))
             exit_code = ErrorCode.OK
         else:
-            err('unable to locate %s' % package)
+            err('unable to locate upstream %s' % package)
             exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
-elif args.digraph:
-    obsoleta.generate_digraph(package, '%s.gv' % package.get_name())
+    elif args.downstream:
+        error, lookup = obsoleta.downstreams(package)
+        if error.is_ok():
+            print_result("\n".join(p.get_path() for p in lookup))
+            exit_code = ErrorCode.OK
+        else:
+            err('unable to locate downstream %s' % package)
+            exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
-else:
-    err("no valid command found")
+    elif args.dumpcache:
+        pass
 
-if exit_code != ErrorCode.OK:
-    print()
-    err('failed with error %i: %s' % (exit_code.value, ErrorCode.to_string(exit_code.value)))
+    elif args.bump:
+        if not args.version:
+            exit_code = ErrorCode.MISSING_INPUT
+        else:
+            package = obsoleta.find_package(package)
+            error, messages = obsoleta.bump(package, args.version)
+            if error.is_ok():
+                print_result_nl("\n".join(line for line in messages))
+                exit_code = ErrorCode.OK
+            else:
+                err('unable to locate %s' % package)
+                exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
-if args.yappi:
-    yappirun.stop_yappi()
+    elif args.digraph:
+        obsoleta.generate_digraph(package, '%s.gv' % package.get_name())
 
-exit(exit_code.value)
+    else:
+        err("no valid command found")
+
+    if exit_code != ErrorCode.OK:
+        print()
+        err('failed with error %i: %s' % (exit_code.value, ErrorCode.to_string(exit_code.value)))
+
+    if args.yappi:
+        yappirun.stop_yappi()
+
+    exit(exit_code.value)
+
+except Exception as e:
+    err('command gave unexpected exception: %s' % str(e))
+    if args.verbose:
+        print(traceback.format_exc())
+    exit(ErrorCode.UNKNOWN_EXCEPTION.value)
