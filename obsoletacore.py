@@ -8,6 +8,13 @@ from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, Duplicat
 from errorcodes import ErrorCode
 from package import Package, anyarch, buildtype_unknown, Track
 import os, copy, collections, json, html, datetime
+from enum import Enum
+
+
+class DownstreamFilter(Enum):
+    ExplicitReferences = 0
+    FollowDownstream = 1
+    DownstreamOnly = 2
 
 
 class Obsoleta:
@@ -242,8 +249,8 @@ class Obsoleta:
                     if self.setup.using_arch:
                         resolved_arch = resolved.get_arch(implicit=True)
                         package_arch = package.get_arch(implicit=True)
-                        if resolved_arch != anyarch:
-                            if package_arch != anyarch and resolved_arch != package_arch:
+                        if resolved_arch != anyarch and resolved_arch != package_arch:
+                            if package_arch != anyarch:
                                 error = Error(
                                     ErrorCode.ARCH_MISMATCH, resolved, 'arch collision with ' + package.to_string())
                                 resolved.add_error(error)
@@ -328,22 +335,32 @@ class Obsoleta:
                 return err, candidates
         return ErrorOk(), candidates
 
-    def locate_downstreams(self, target_package):
+    def locate_downstreams(self, target_package, downstream_filter, downstream_packages=None):
         """" Find any downstream packages that references the 'target_package' in their
              depends section
         """
-        candidates = []
+        if downstream_packages is None:
+            downstream_packages = []
+
         for parent in self.loaded_packages:
             package_deps = parent.get_dependencies()
             if package_deps:
                 for package in package_deps:
                     if package == target_package:
-                        candidates.append(parent)
-        if candidates:
-            return ErrorOk(), candidates
+                        if (downstream_filter != DownstreamFilter.DownstreamOnly or
+                                not parent.parent):
+                            downstream_packages.append(parent)
+                        if (downstream_filter == DownstreamFilter.FollowDownstream or
+                                downstream_filter == DownstreamFilter.DownstreamOnly):
+                            self.locate_downstreams(parent,
+                                                    downstream_filter=downstream_filter,
+                                                    downstream_packages=downstream_packages)
+
+        if downstream_packages:
+            return ErrorOk(), downstream_packages
         return Error(ErrorCode.PACKAGE_NOT_FOUND,
                      target_package,
-                     "%s not found" % target_package), candidates
+                     "%s not found" % target_package), downstream_packages
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')

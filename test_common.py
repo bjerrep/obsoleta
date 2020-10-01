@@ -104,4 +104,5 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
 def populate_local_temp(src):
     shutil.rmtree('local/temp', True)
     shutil.copytree(src, 'local/temp')
+    print('copy testdata from %s to local/temp' % src)
     return 'local/temp'

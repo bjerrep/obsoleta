@@ -45,7 +45,7 @@ class Package:
         self.implicit_attributes = {}
         self.errors = None
         self.key = None
-        self.unmodified_dict = None
+        self.original_dict = None
         self.layout = Layout.standard
         self.string = None
 
@@ -71,8 +71,8 @@ class Package:
         return cls(setup, package_path, compact, None)
 
     def from_dict(self, dictionary):
-        if not self.unmodified_dict:
-            self.unmodified_dict = dictionary
+        if not self.original_dict:
+            self.original_dict = dictionary
 
         if dictionary.get('path'):
             # a cache file will have the path added
@@ -219,7 +219,7 @@ class Package:
                 except:
                     raise BadPackageFile('malformed json in %s' % json_file)
 
-        self.unmodified_dict = dictionary
+        self.original_dict = dictionary
 
         _ = Indent()
         if 'slot' in dictionary:
@@ -377,7 +377,7 @@ class Package:
         return dictionary
 
     def get_original_dict(self):
-        return self.unmodified_dict
+        return self.original_dict
 
     def get_name(self):
         return self.name
@@ -429,7 +429,7 @@ class Package:
         return self.key
 
     def get_value(self, key):
-        return self.unmodified_dict[key]
+        return self.original_dict[key]
 
     def to_string(self):
         # The fully unique identifier string for a package
@@ -529,12 +529,9 @@ class Package:
         return error
 
     def get_dependency(self, depends_package):
-        """ Always prepare for getting a None in return, especially when it definitely wasn't expected
+        """ Always prepare for getting a None in return, especially when it definitely
+            wasn't expected
         """
-        try:
-            depends_package = Package.construct_from_compact(self.setup, depends_package)
-        except:
-            pass
         for dependency in self.dependencies:
             if dependency == depends_package:
                 return dependency

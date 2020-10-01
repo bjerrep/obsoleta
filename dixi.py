@@ -48,7 +48,7 @@ parser.add_argument('--keypath',
 parser.add_argument('--depends',
                     help='target is the package in the depends section with the name given with --depends')
 parser.add_argument('--skiptags', action='store_true',
-                    help='don\'t write a short description of last action into the package file. '\
+                    help='don\'t write a short description of last action into the package file. '
                          'It looks cool, but for slotted packages it might trigger merge conflicts.')
 
 parser.add_argument('--getname', action='store_true',
@@ -133,7 +133,7 @@ except Exception as e:
 
 try:
     if args.depends:
-        depends_package = package.get_dependency(args.depends)
+        depends_package = Package.construct_from_compact(setup, args.depends)
         dx = Dixi(package, depends_package)
     else:
         dx = Dixi(package)

@@ -102,7 +102,8 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 Assuming the local workspace contains the package json files as above then a --check will find no problems:
 
 	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
-	checking package "a:*:anytrack:anyarch:unknown": success
+
+The silence means that the --check was successful. 
 
 The tree view will also show errors if there are any (which there isn't):
 

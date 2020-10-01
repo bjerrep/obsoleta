@@ -2,6 +2,7 @@
 from test_common import execute, title, test_true, test_ok, test_eq, test_error, populate_local_temp
 from common import Position, Setup
 from obsoleta_api import Param, ObsoletaApi
+from obsoletacore import DownstreamFilter
 from errorcodes import ErrorCode
 from version import Version
 from log import logger
@@ -88,6 +89,7 @@ test_eq(str(messages), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anya
 
 title('TOA 4B', 'upstream - as TOA 4A')
 package = obsoleta.make_package_from_compact('a:*::linux')
+
 error, messages2 = obsoleta.upstreams(package)
 test_ok(error)
 test_eq(messages, messages2)
@@ -105,21 +107,43 @@ test_eq(messages, [])
 
 # find downstream packages, i.e. packages that depends on the package argument
 
+
 title('TOA 5A', 'downstream - b is used by downstream a')
-error, messages = obsoleta.downstreams('b:*::linux')
+error, messages = obsoleta.downstreams('b:*::linux',
+                                       DownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
-title('TOA 5B', 'downstream - b is used by downstream a')
+title('TOA 5B', 'downstream - b is used by downstream a (from compact)')
 package = obsoleta.make_package_from_compact('b:*::linux')
-error, messages2 = obsoleta.downstreams(package)
+error, messages2 = obsoleta.downstreams(package,
+                                        DownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 5C', 'downstream - oups not found')
 package = obsoleta.make_package_from_compact('oups:*::linux')
-error, messages = obsoleta.downstreams(package)
+error, messages = obsoleta.downstreams(package,
+                                       DownstreamFilter.ExplicitReferences)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
+
+title('TOA 5D', 'downstream to f = a (DownstreamFilter.ExplicitReferences)')
+error, messages = obsoleta.downstreams('f:*::linux',
+                                       DownstreamFilter.ExplicitReferences)
+test_ok(error)
+test_eq(str(messages), '[e:5.5.5:anytrack:linux:unknown]')
+
+title('TOA 5E', 'downstream to f = a, e (DownstreamFilter.FollowDownstream)')
+error, messages = obsoleta.downstreams('f:*::linux',
+                                       DownstreamFilter.FollowDownstream)
+test_ok(error)
+test_eq(str(messages), '[e:5.5.5:anytrack:linux:unknown, a:1.1.1:anytrack:linux:unknown]')
+
+title('TOA 5F', 'downstream to f = a (DownstreamFilter.DownstreamOnly)')
+error, messages = obsoleta.downstreams('f:*::linux',
+                                       DownstreamFilter.DownstreamOnly)
+test_ok(error)
+test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 
 def bump(compact, path):

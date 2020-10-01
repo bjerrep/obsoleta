@@ -35,7 +35,8 @@ class Dixi:
 
     def get_original_dict(self):
         try:
-            return self.package.get_dependency(self.depends_package).get_original_dict()
+            dependency = self.package.get_dependency(self.depends_package)
+            return dependency.get_original_dict()
         except:
             if not self.package.get_original_dict():
                 raise BadPackageFile('package not from model, %s' % self.package)

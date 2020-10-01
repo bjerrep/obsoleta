@@ -19,6 +19,7 @@ def prepare_local(master):
     execute('rm local/dixi -rf', 0, True)
     execute('mkdir -p local/dixi', 0, True)
     execute('cp -r testdata/dixi/' + master + '/* local/dixi', 0, True)
+    print('copy testdata from testdata/dixi/%s to local/dixi' % master)
 
 
 print('\n\n============================= dixi =============================')

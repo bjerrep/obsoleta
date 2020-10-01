@@ -4,7 +4,7 @@ from log import inf, deb, err, print_result, print_result_nl
 from common import Setup
 from errorcodes import ErrorCode
 from package import Package
-from obsoletacore import Obsoleta
+from obsoletacore import Obsoleta, DownstreamFilter
 from obsoleta_api import ObsoletaApi
 from exceptions import ObsoletaException
 import argparse, json, logging, os, traceback
@@ -217,7 +217,7 @@ try:
             exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
     elif args.downstream:
-        error, lookup = obsoleta.downstreams(package)
+        error, lookup = obsoleta.downstreams(package, DownstreamFilter.ExplicitReferences)
         if error.is_ok():
             print_result("\n".join(p.get_path() for p in lookup))
             exit_code = ErrorCode.OK
