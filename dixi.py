@@ -44,7 +44,8 @@ parser.add_argument('--info', action='store_true',
 parser.add_argument('--newline', action='store_true',
                     help='the getters default runs without trailing newlines, this one adds them back in')
 parser.add_argument('--keypath',
-                    help='the relative keypath (directory name) to use for a multislotted package')
+                    help='the relative keypath (directory name) to use for a multislotted package if a specific'
+                         'slot needs to get resolved.')
 parser.add_argument('--depends',
                     help='target is the package in the depends section with the name given with --depends')
 parser.add_argument('--skiptags', action='store_true',
@@ -145,102 +146,107 @@ except FileNotFoundError as e:
 save_pending = False
 ret = None
 
-if args.getname:
-    ret = dx.get_package().get_name()
+try:
+    if args.getname:
+        ret = dx.get_package().get_name()
 
-elif args.getcompact:
-    ret = dx.get_compact(args.delimiter)
+    elif args.getcompact:
+        ret = dx.get_compact(args.delimiter)
 
-elif args.getversion:
-    ret = dx.get_package().get_version()
+    elif args.getversion:
+        ret = dx.get_package().get_version()
 
-elif args.setversion:
-    ret = dx.set_version(args.setversion)
-    save_pending = True
-
-elif args.incmajor:
-    ret = dx.version_digit_increment(Position.MAJOR)
-    save_pending = True
-
-elif args.incminor:
-    ret = dx.version_digit_increment(Position.MINOR)
-    save_pending = True
-
-elif args.incbuild:
-    ret = dx.version_digit_increment(Position.BUILD)
-    save_pending = True
-
-elif args.setmajor:
-    ret = dx.version_digit_set(Position.MAJOR, args.setmajor)
-    save_pending = True
-
-elif args.setminor:
-    ret = dx.version_digit_set(Position.MINOR, args.setminor)
-    save_pending = True
-
-elif args.setbuild:
-    ret = dx.version_digit_set(Position.BUILD, args.setbuild)
-    save_pending = True
-
-elif args.settrack:
-    if not setup.using_track:
-        cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.set_track(args.settrack)
-    save_pending = True
-
-elif args.gettrack:
-    if not setup.using_track:
-        cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.get_track()
-
-elif args.setarch:
-    if not setup.using_arch:
-        cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.set_arch(args.setarch)
-    save_pending = True
-
-elif args.getarch:
-    if not setup.using_arch:
-        cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.get_arch()
-
-elif args.setbuildtype:
-    if not setup.using_buildtype:
-        cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.set_buildtype(args.setbuildtype)
-    save_pending = True
-
-elif args.getbuildtype:
-    if not setup.using_buildtype:
-        cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-    ret = dx.get_buildtype()
-
-elif args.getvalue:
-    try:
-        ret = dx.get_value(args.getvalue)
-    except:
-        cri('key not found, "%s"' % args.getvalue, ErrorCode.SYNTAX_ERROR)
-
-elif args.setvalue:
-    try:
-        key, value = args.setvalue.split(maxsplit=1)
-        ret = dx.set_value(key, value)
+    elif args.setversion:
+        ret = dx.set_version(args.setversion)
         save_pending = True
-    except Exception as e:
-        cri('got ' + str(e), ErrorCode.SYNTAX_ERROR)
 
-elif args.print:
-    print_result(dx.to_merged_json())
+    elif args.incmajor:
+        ret = dx.version_digit_increment(Position.MAJOR)
+        save_pending = True
 
-elif args.generate_c:
-    generator.generate_c(package,
-                         os.path.join(package.get_path(), args.generate_src),
-                         os.path.join(package.get_path(), args.generate_inc))
-    save_pending = True
+    elif args.incminor:
+        ret = dx.version_digit_increment(Position.MINOR)
+        save_pending = True
 
-else:
-    err('no command found')
-    exit(ErrorCode.MISSING_INPUT.value)
+    elif args.incbuild:
+        ret = dx.version_digit_increment(Position.BUILD)
+        save_pending = True
+
+    elif args.setmajor:
+        ret = dx.version_digit_set(Position.MAJOR, args.setmajor)
+        save_pending = True
+
+    elif args.setminor:
+        ret = dx.version_digit_set(Position.MINOR, args.setminor)
+        save_pending = True
+
+    elif args.setbuild:
+        ret = dx.version_digit_set(Position.BUILD, args.setbuild)
+        save_pending = True
+
+    elif args.settrack:
+        if not setup.using_track:
+            cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.set_track(args.settrack)
+        save_pending = True
+
+    elif args.gettrack:
+        if not setup.using_track:
+            cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.get_track()
+
+    elif args.setarch:
+        if not setup.using_arch:
+            cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.set_arch(args.setarch)
+        save_pending = True
+
+    elif args.getarch:
+        if not setup.using_arch:
+            cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.get_arch()
+
+    elif args.setbuildtype:
+        if not setup.using_buildtype:
+            cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.set_buildtype(args.setbuildtype)
+        save_pending = True
+
+    elif args.getbuildtype:
+        if not setup.using_buildtype:
+            cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
+        ret = dx.get_buildtype()
+
+    elif args.getvalue:
+        try:
+            ret = dx.get_value(args.getvalue)
+        except:
+            cri('key not found, "%s"' % args.getvalue, ErrorCode.SYNTAX_ERROR)
+
+    elif args.setvalue:
+        try:
+            key, value = args.setvalue.split(maxsplit=1)
+            ret = dx.set_value(key, value)
+            save_pending = True
+        except Exception as e:
+            cri('got ' + str(e), ErrorCode.SYNTAX_ERROR)
+
+    elif args.print:
+        print_result(dx.to_merged_json())
+
+    elif args.generate_c:
+        generator.generate_c(package,
+                             os.path.join(package.get_path(), args.generate_src),
+                             os.path.join(package.get_path(), args.generate_inc))
+        save_pending = True
+
+    else:
+        err('no command found')
+        exit(ErrorCode.MISSING_INPUT.value)
+
+except Exception as e:
+    err(str(e))
+    exit(e.ErrorCode.value)
 
 if ret:
     print_result(str(ret), args.newline)

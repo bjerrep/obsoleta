@@ -48,6 +48,7 @@ class Package:
         self.original_dict = None
         self.layout = Layout.standard
         self.string = None
+        self.slot_unresolved = False
 
         if compact:
             self.from_compact(compact, package_path)
@@ -226,6 +227,7 @@ class Package:
             deb('parsing \'%s\' in %s (slot)' %
                 (dictionary['slot']['name'], package_path))
             self.layout = Layout.slot
+
             key_file = get_key_filepath(self.package_path)
             self.key = self.get_key_from_keyfile(key_file)
             slot_section = dictionary['slot']
@@ -246,13 +248,17 @@ class Package:
                 (dictionary['multislot']['name'], package_path))
             self.layout = Layout.multislot
 
+            if not multislot_key_file:
+                self.slot_unresolved = True
+                self.from_dict(dictionary['multislot'])
+                return
+
             try:
                 multislot_key_file = get_key_filepath(multislot_key_file)
             except:
                 raise InvalidKeyFile('missing or invalid keyfile "%s"' % multislot_key_file)
 
             try:
-                multislot_key_file = get_key_filepath(multislot_key_file)
                 self.key = self.get_key_from_keyfile(multislot_key_file)
             except Exception:
                 self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))

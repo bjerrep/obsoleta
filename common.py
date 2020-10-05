@@ -86,12 +86,16 @@ class Param:
     root = ''
     verbose = False
     info = False
+    keypath = None
 
     def set_depth(self, depth):
         self.depth = depth
 
     def set_root(self, root):
         self.root = root
+
+    def set_keypath(self, keypath):
+        self.keypath = keypath
 
 
 class Error:

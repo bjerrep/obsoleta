@@ -173,8 +173,8 @@ test_eq(output, 'release')
 
 title('S1', 'multislot setversion and getversion')
 prepare_local('multislot')
-exitcode, output = execute(fixed + '--keypath build_a --setversion 1.2.3')
-exitcode, output = execute(fixed + '--keypath build_a --getversion')
+exitcode, output = execute(fixed + '--setversion 1.2.3')
+exitcode, output = execute(fixed + '--getversion')
 test_eq(output, '1.2.3')
 
 title('S1B', 'multislot setversion and getversion in depends section')
@@ -190,17 +190,22 @@ exitcode, output = execute(fixed + '--keypath build_a --getversion', ErrorCode.I
 
 title('S1D', 'multislot get arch, buildtype and track of which none is defined, falling back to defaults')
 prepare_local('multislot')
-exitcode, output = execute(fixed + '--keypath build_x --gettrack', ErrorCode.OK.value)
+exitcode, output = execute(fixed + '--gettrack', ErrorCode.OK.value)
 test_eq(output, 'anytrack')
-exitcode, output = execute(fixed + '--keypath build_x --getarch', ErrorCode.OK.value)
+exitcode, output = execute(fixed + '--getarch', ErrorCode.OK.value)
 test_eq(output, 'anyarch')
-exitcode, output = execute(fixed + '--keypath build_x --getbuildtype', ErrorCode.OK.value)
+exitcode, output = execute(fixed + '--getbuildtype', ErrorCode.OK.value)
 test_eq(output, 'unknown')
 
-title('S1E', 'multislot get arch from build dir. Requires "relaxed_multislot" in setup')
+title('S2A', 'multislot get arch from build dir. Requires "relaxed_multislot" in setup')
 prepare_local('multislot')
-exitcode, output = execute(_fixed + '--path local/dixi/build_x --gettrack', ErrorCode.OK.value)
-test_eq(output, 'anytrack')
+exitcode, output = execute(_fixed + '--path local/dixi/build_x --getarch', ErrorCode.OK.value)
+test_eq(output, 'anyarch')
+
+title('S2B', 'as above but arch from build_a folder')
+prepare_local('multislot')
+exitcode, output = execute(_fixed + '--path local/dixi/build_a --getarch', ErrorCode.OK.value)
+test_eq(output, 'x86_64')
 
 
 title('T1', 'printtemplate')

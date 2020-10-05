@@ -19,7 +19,7 @@ class DixiApi:
         if isinstance(path_or_package, Package):
             self.dixi = Dixi(path_or_package, depends_package)
         else:
-            self.dixi = Dixi(Package.construct_from_package_path(self.setup, path_or_package), depends_package)
+            self.dixi = Dixi(Package.construct_from_package_path(self.setup, path_or_package, self.args.keypath), depends_package)
 
     def get_package(self):
         return self.dixi.get_package()
@@ -39,6 +39,12 @@ class DixiApi:
 
     def set_value(self, key, value):
         return self.dixi.set_value(key, value)
+
+    def print(self):
+        """
+        Returns pretty printed json string but doesn't actually print anything
+        """
+        return self.dixi.to_merged_json()
 
     def save(self):
         self.dixi.save()

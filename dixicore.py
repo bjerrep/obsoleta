@@ -20,6 +20,9 @@ class Dixi:
         return self.package.get_name()
 
     def to_merged_json(self):
+        if self.package.slot_unresolved:
+            return 'need the key for slot/multislot package merge'
+
         return json.dumps(self.package.to_dict(), indent=2)
 
     def get_package(self):

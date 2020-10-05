@@ -41,3 +41,31 @@ dixi.load(package_dir)
 old_version, new_version = dixi.dixi.version_digit_increment(Position.MINOR)
 test_eq(old_version == '1.1.1')
 test_eq(new_version == '1.2.0')
+
+
+title('TDA_3A', 'call print() on multislotted package with keypath to use')
+package_dir = populate_local_temp('testdata/dixi/multislot')
+param.set_keypath('build_a')
+dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi.load(package_dir)
+result = dixi.print()
+param.set_keypath(None)
+test_eq(result == """{
+  "name": "a",
+  "version": "0.1.2",
+  "arch": "x86_64",
+  "depends": [
+    {
+      "name": "b",
+      "version": "0.1.2",
+      "arch": "x86_64"
+    }
+  ]
+}""")
+
+title('TDA_3B', 'call print() on multislotted package without a keypath fails')
+package_dir = populate_local_temp('testdata/dixi/multislot')
+dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi.load(package_dir)
+result = dixi.print()
+test_eq(result == 'need the key for slot/multislot package merge')
