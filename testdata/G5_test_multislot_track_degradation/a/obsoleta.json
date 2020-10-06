@@ -1,0 +1,21 @@
+{
+  "multislot": {
+    "name": "a",
+    "version": "1.1.1",
+    "depends": [
+      {
+        "name": "b",
+        "version": "2.2.2",
+        "track": "development"
+      }
+    ]
+  },
+  "nix": {
+    "arch": "linux",
+    "track": "development"
+  },
+  "win": {
+    "arch": "windows",
+    "track": "production"
+  }
+}

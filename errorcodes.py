@@ -24,6 +24,7 @@ class ErrorCode(Enum):
     OPTION_DISABLED = 19
     PACKAGE_NOT_UNIQUE = 20
     RESOLVE_ERROR = 21
+    ILLEGAL_DEPENDENCY = 22
 
     @staticmethod
     def to_string(errorcode):
@@ -49,7 +50,8 @@ class ErrorCode(Enum):
              'Unable to parse compact name',
              'Option disabled',
              'Package not unique',
-             'Resolve error'
+             'Resolve error',
+             'Illegal dependency'
              ]
 
         return ErrorCodeToString[errorcode]

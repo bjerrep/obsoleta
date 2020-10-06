@@ -267,6 +267,9 @@ test_eq("""a:1.1.1:anytrack:windows:unknown
 title('G3', "duplicates in depends")
 exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
 
+title('G5', "track degradation")
+exitcode, output = execute(fixed + '--root testdata/G5_test_multislot_track_degradation --package a --check', ErrorCode.ILLEGAL_DEPENDENCY)
+
 title('H1', "optionals - all enabled, upstream compact name 'c:1.2.3' is ok")
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions/ --upstream --package c:1.2.3', ErrorCode.OK)
 

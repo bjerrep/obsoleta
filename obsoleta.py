@@ -134,7 +134,7 @@ try:
         package = Package.construct_from_compact(setup, args.package)
 
 except ObsoletaException as e:
-    err(str(e))
+    err('Exception %s: %s' % (e.ErrorCode.name, str(e)))
     exit_code = e.ErrorCode
 except Exception as e:
     err('caught unexpected exception: %s' % str(e))

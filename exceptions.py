@@ -23,6 +23,11 @@ class DuplicatePackage(ObsoletaException):
         super().__init__(msg, ErrorCode.DUPLICATE_PACKAGE)
 
 
+class IllegalDependency(ObsoletaException):
+    def __init__(self, msg):
+        super().__init__(msg, ErrorCode.ILLEGAL_DEPENDENCY)
+
+
 class MissingKeyFile(ObsoletaException):
     def __init__(self, msg):
         super().__init__(msg, ErrorCode.MISSING_KEY_FILE)

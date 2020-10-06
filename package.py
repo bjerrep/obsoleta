@@ -4,7 +4,7 @@ from log import deb, inf, war
 from version import Version, VersionAny
 from common import Error, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
-from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile, CompactParseError, UnknownException
+from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile, CompactParseError, UnknownException, IllegalDependency
 from enum import Enum
 import json, os, copy
 
@@ -164,6 +164,23 @@ class Package:
             log.critical('Package caught %s' % str(e))
             raise e
 
+    def verify_merge_tracks(self, dict):
+        """ Sanity check that the tracks are valid after a multislot merge. A downstream track can't
+            be at a higher track than any upstreams.
+        """
+        dependencies = dict.get("depends")
+        if dependencies is None:
+            return
+        track = dict.get("track")
+        if not track:
+            track = Track.anytrack
+        for dependency in dependencies:
+            dep_track = dependency.get("track")
+            if dep_track and track >= dep_track:
+                message = ("Downstream package %s with track '%s' can't depend on %s with track '%s'. (%s)" %
+                          (dict['name'], track, dependency['name'], dep_track, str(dict.get('arch'))))
+                raise IllegalDependency(message)
+
     def merge(self, slot_section, key_section):
         """
         Add new or replace existing entries in the slot_section with entries from the key_section.
@@ -185,6 +202,7 @@ class Package:
                         new_entries.append(slot_depends)
 
             result['depends'] = new_entries
+        self.verify_merge_tracks(result)
         return result
 
     def from_package_path(self, package_path, multislot_key_file, dictionary=None):
