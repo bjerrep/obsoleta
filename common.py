@@ -94,7 +94,7 @@ class Param:
     def set_root(self, root):
         self.root = root
 
-    def set_keypath(self, keypath):
+    def set_slot_path(self, keypath):
         self.keypath = keypath
 
 

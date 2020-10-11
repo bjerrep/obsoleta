@@ -417,7 +417,9 @@ Currently dixi supports the following get/set operations:
 	--getbuildtype
 	--setbuildtype buildtype
 
-Free form get/setters of key:values external to obsoleta. 
+Run ./dixi.py --help to get the current list of commands and optional modifiers that can be used for tweaking some of the commands.
+
+There are also the free form get/setters of key:values external to obsoleta:
 
 	--getvalue key
 	--setvalue "key this is the value"

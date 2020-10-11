@@ -3,7 +3,7 @@ from log import deb, inf, err, cri, print_result, logger
 from common import Setup
 from common import Position
 from package import Package
-from dixicore import Dixi
+from dixicore import Dixi, TrackSetScope
 from errorcodes import ErrorCode
 from exceptions import ObsoletaException
 import generator
@@ -73,7 +73,10 @@ parser.add_argument('--setmajor', help='command: set the major number')
 parser.add_argument('--setminor', help='command: set the minor number')
 parser.add_argument('--setbuild', help='command: set the build number')
 
-parser.add_argument('--settrack', help='command: set track')
+parser.add_argument('--settrack', help='command: set track. See --settrackscope')
+parser.add_argument('--settrackscope', default='upgrade',
+                    help='set scope for settrack, downstream (only), upgrade (any too low) or force (all). '
+                         'Default is upgrade')
 parser.add_argument('--gettrack', action='store_true',
                     help='command: get track. Default returns "anytrack"')
 
@@ -134,10 +137,11 @@ except Exception as e:
 
 try:
     if args.depends:
-        depends_package = Package.construct_from_compact(setup, args.depends)
-        dx = Dixi(package, depends_package)
+        dependency = Package.construct_from_compact(setup, args.depends)
     else:
-        dx = Dixi(package)
+        dependency = None
+
+    dx = Dixi(package)
 
 except FileNotFoundError as e:
     err('caught exception: %s' % str(e))
@@ -154,10 +158,10 @@ try:
         ret = dx.get_compact(args.delimiter)
 
     elif args.getversion:
-        ret = dx.get_package().get_version()
+        ret = dx.get_package(dependency).get_version()
 
     elif args.setversion:
-        ret = dx.set_version(args.setversion)
+        ret = dx.set_version(args.setversion, dependency)
         save_pending = True
 
     elif args.incmajor:
@@ -187,7 +191,9 @@ try:
     elif args.settrack:
         if not setup.using_track:
             cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
-        ret = dx.set_track(args.settrack)
+        scopes = ['downstream', 'upgrade', 'force']
+        settrackscope = TrackSetScope(scopes.index(args.settrackscope))
+        ret = dx.set_track(args.settrack, settrackscope)
         save_pending = True
 
     elif args.gettrack:

@@ -2,54 +2,54 @@
 from test_common import title, test_eq, populate_local_temp
 from dixi_api import DixiApi
 from common import Param, Setup, Position
+from dixicore import TrackSetScope
+from package import Package, Track
 from log import logger
 import logging
 from version import Version
 
 logger.setLevel(logging.INFO)
 
-package_dir = populate_local_temp('testdata/G2_test_slot/a')
-
 param = Param()
 param.set_depth(2)
-param.set_root(package_dir)
+setup = Setup('testdata/test.conf')
 
 # set version
 
 title('TDA_1A', 'set_version/save/get_version')
 package_dir = populate_local_temp('testdata/G2_test_slot/a')
-dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi = DixiApi(setup, param)
 dixi.load(package_dir)
 old_version, new_version = dixi.set_version(Version('100.100.100'))
-test_eq(old_version == '1.1.1')
-test_eq(new_version == '100.100.100')
+test_eq(old_version, '1.1.1')
+test_eq(new_version, '100.100.100')
 version = dixi.get_version()
-test_eq(version == '100.100.100')
+test_eq(version, '100.100.100')
 dixi.save()
 # now reload and check that the package file was indeed saved
-dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi = DixiApi(setup, param)
 dixi.load(package_dir)
 version = dixi.get_version()
-test_eq(version == '100.100.100')
+test_eq(version, '100.100.100')
 
 
 title('TDA_2', 'incversion - semver')
 package_dir = populate_local_temp('testdata/G2_test_slot/a')
-dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi = DixiApi(setup, param)
 dixi.setup.semver = True
 dixi.load(package_dir)
 old_version, new_version = dixi.dixi.version_digit_increment(Position.MINOR)
-test_eq(old_version == '1.1.1')
-test_eq(new_version == '1.2.0')
+test_eq(old_version, '1.1.1')
+test_eq(new_version, '1.2.0')
 
 
 title('TDA_3A', 'call print() on multislotted package with keypath to use')
 package_dir = populate_local_temp('testdata/dixi/multislot')
-param.set_keypath('build_a')
-dixi = DixiApi(Setup('testdata/test.conf'), param)
+param.set_slot_path('build_a')
+dixi = DixiApi(setup, param)
 dixi.load(package_dir)
 result = dixi.print()
-param.set_keypath(None)
+param.set_slot_path(None)
 test_eq(result == """{
   "name": "a",
   "version": "0.1.2",
@@ -57,15 +57,89 @@ test_eq(result == """{
   "depends": [
     {
       "name": "b",
-      "version": "0.1.2",
+      "version": "2.2.2",
+      "arch": "x86_64"
+    },
+    {
+      "name": "c",
+      "version": "3.3.3",
+      "track": "production",
       "arch": "x86_64"
     }
   ]
 }""")
 
+
 title('TDA_3B', 'call print() on multislotted package without a keypath fails')
 package_dir = populate_local_temp('testdata/dixi/multislot')
-dixi = DixiApi(Setup('testdata/test.conf'), param)
+dixi = DixiApi(setup, param)
 dixi.load(package_dir)
 result = dixi.print()
 test_eq(result == 'need the key for slot/multislot package merge')
+
+
+def get_p(name):
+    return dixi.dixi.package.get_dependency(Package.construct_from_compact(setup, name))
+
+
+title('TDA_4A', 'set track - downstream')
+package_dir = populate_local_temp('testdata/dixi/simple')
+dixi = DixiApi(setup, param)
+dixi.load(package_dir)
+dixi.set_track(Track.testing, TrackSetScope.DOWNSTREAM)
+track_a = dixi.get_track()
+track_b = dixi.get_track('b')
+track_c = dixi.get_track('c')
+test_eq(track_a, 'testing')
+test_eq(track_b, 'development')
+test_eq(track_c, 'production')
+
+title('TDA_4B', 'set track - upgrade')
+package_dir = populate_local_temp('testdata/dixi/simple')
+dixi = DixiApi(setup, param)
+dixi.load(package_dir)
+dixi.set_track(Track.testing, TrackSetScope.UPGRADE)
+track_a = dixi.get_track()
+track_b = dixi.get_track('b')
+track_c = dixi.get_track('c')
+test_eq(track_a, 'testing')
+test_eq(track_b, 'testing')
+test_eq(track_c, 'production')
+
+title('TDA_4C', 'set track - force')
+package_dir = populate_local_temp('testdata/dixi/simple')
+dixi = DixiApi(setup, param)
+dixi.load(package_dir)
+dixi.set_track(Track.testing, TrackSetScope.FORCE)
+track_a = dixi.get_track()
+track_b = dixi.get_track('b')
+track_c = dixi.get_track('c')
+test_eq(track_a, 'testing')
+test_eq(track_b, 'testing')
+test_eq(track_c, 'testing')
+
+
+title('TDA_4D', 'set track - force/slotted')
+package_dir = populate_local_temp('testdata/dixi/multislot')
+param.set_slot_path('build_a')
+#
+dixi = DixiApi(setup, param)
+dixi.load(package_dir)
+dixi.set_track(Track.testing, TrackSetScope.FORCE)
+track_a = dixi.get_track()
+track_b = dixi.get_track('b')
+track_c = dixi.get_track('c')
+test_eq(track_a, 'testing')
+test_eq(track_b, 'testing')
+test_eq(track_c, 'testing')
+dixi.save()
+# Try to save and reload and do the check again
+dixi = DixiApi(setup, param)
+dixi.load(package_dir)
+track_a = dixi.get_track()
+track_b = dixi.get_track('b')
+track_c = dixi.get_track('c')
+test_eq(track_a, 'testing')
+test_eq(track_b, 'testing')
+test_eq(track_c, 'testing')
+param.set_slot_path(None)

@@ -7,7 +7,7 @@ import subprocess, shutil
 
 def test_eq(result, expected=True):
     if result != expected:
-        print('   assertion failed: %s != %s' % (str(result), str(expected)))
+        print('assertion failed: %s != %s' % (str(result), str(expected)))
         print('\nTEST FAILED\n')
         exit(ErrorCode.TEST_FAILED.value)
 

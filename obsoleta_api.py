@@ -30,36 +30,27 @@ class ObsoletaApi:
             return ''
         return self.obsoleta.roots[0]
 
-    def make_package_from_compact(self, package_or_compact):
-        """
-        Returns a Package object from its compact name. As a convenience it will
-        just return the Package if it is given a Package.
-        """
-        if isinstance(package_or_compact, Package):
-            return package_or_compact
-        return Package.construct_from_compact(self.setup, package_or_compact)
-
     def make_package_from_path(self, path):
         return Package.construct_from_package_path(self.setup, path)
 
     def find_package(self, package_or_compact):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         return self.obsoleta.find_package(package_or_compact)
 
     def check(self, package_or_compact):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error, errors = self.obsoleta.get_errors(package_or_compact)
         if error.has_error():
             return error, errors
         return error, 'check pass for %s' % package_or_compact
 
     def tree(self, package_or_compact):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error = self.obsoleta.dump_tree(package_or_compact)
         return error
 
     def buildorder(self, package_or_compact, printpaths=False):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error, unresolved, resolved = self.obsoleta.dump_build_order(package_or_compact)
         if error.has_error():
             return error, None
@@ -74,7 +65,7 @@ class ObsoletaApi:
         return ErrorOk(), result
 
     def list_missing(self, package_or_compact):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         return self.obsoleta.get_errors(package_or_compact)
 
     def upstreams(self, package_or_compact, as_path_list=False):
@@ -83,7 +74,7 @@ class ObsoletaApi:
             Param: 'as_path_list' if default false return Package objects else path strings.
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error, result = self.obsoleta.locate_upstreams(package_or_compact)
         if error.has_error():
             return error, 'unable to locate %s' % package_or_compact
@@ -101,7 +92,7 @@ class ObsoletaApi:
                     Set to True to get the full dependency list
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error, result = self.obsoleta.locate_downstreams(package_or_compact,
                                                          downstream_filter=downstream_filter)
         if error.has_error():
@@ -111,7 +102,7 @@ class ObsoletaApi:
         return error, result
 
     def generate_digraph(self, package_or_compact, dest_file):
-        package_or_compact = self.make_package_from_compact(package_or_compact)
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
         self.obsoleta.generate_digraph(package_or_compact, dest_file)
 
     def bump(self, package_or_compact, new_version):
@@ -124,7 +115,7 @@ class ObsoletaApi:
         """
 
         ret = []
-        package = self.make_package_from_compact(package_or_compact)
+        package = Package.auto_package(self.setup, package_or_compact)
         dixi_api = DixiApi(self.setup)
 
         # the package given is the upstream package in this context, bump it as the first thing
@@ -150,15 +141,15 @@ class ObsoletaApi:
                 # Make the version bump. Notice that Dixi is forced to reload the
                 # package since it gets a path rather than a package from Obsoleta.
                 # The Obsoleta packages are too digested to be of use here.
-                dixi_api.load(downstream_package.get_path(), package)
-                old_version = dixi_api.set_version(new_version)[0]
+                dixi_api.load(downstream_package.get_path())
+                old_version = dixi_api.set_version(new_version, package)[0]
 
                 # generate a message about what was done
-                parent_path = dixi_api.get_package().get_parent().get_path()
+                parent_path = dixi_api.get_package(package).get_parent().get_path()
                 package_path = os.path.relpath(parent_path, self.get_common_path())
 
                 message = ('bumped downstream {%s} from %s to %s in "%s"' %
-                          (dixi_api.get_package().to_string(), old_version, new_version, package_path))
+                          (dixi_api.get_package(package).to_string(), old_version, new_version, package_path))
                 ret.append(message)
                 deb(message)
                 dixi_api.save()

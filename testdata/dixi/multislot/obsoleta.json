@@ -5,12 +5,19 @@
     "depends": [
       {
         "name": "b",
-        "version": "0.1.2"
+        "version": "2.2.2"
       }
     ]
   },
   "build_a": {
-    "arch": "x86_64"
+    "arch": "x86_64",
+    "depends": [
+      {
+        "name": "c",
+        "version": "3.3.3",
+        "track": "production"
+      }
+    ]
   },
   "build_b": {
     "arch": "x86"

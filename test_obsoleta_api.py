@@ -6,6 +6,7 @@ from obsoletacore import DownstreamFilter
 from errorcodes import ErrorCode
 from version import Version
 from log import logger
+from package import Package
 import logging
 
 execute('./dixi.py --printkey key:nix > testdata/G2_test_slot/a/obsoleta.key')
@@ -24,7 +25,7 @@ obsoleta = ObsoletaApi(setup, param)
 # check
 
 title('TOA 1A', 'check')
-package = obsoleta.make_package_from_compact('a')
+package = Package.construct_from_compact(setup, 'a')
 error, messages = obsoleta.check(package)
 test_ok(error)
 
@@ -46,7 +47,7 @@ test_eq(messages, [
     '    f:6.6.6:anytrack:linux:unknown'])
 
 title('TOA 2B', 'tree')
-package = obsoleta.make_package_from_compact('a')
+package = Package.construct_from_compact(setup, 'a')
 error, messages = obsoleta.tree(package)
 test_ok(error, messages)
 
@@ -65,7 +66,7 @@ test_eq(str(messages),
         'e:5.5.5:anytrack:linux:unknown, a:1.1.1:anytrack:linux:unknown]')
 
 title('TOA 3B', 'buildorder')
-package = obsoleta.make_package_from_compact('a')
+package = Package.construct_from_compact(setup, 'a')
 error, messages2 = obsoleta.buildorder(package)
 test_ok(error)
 test_eq(messages, messages2)
@@ -88,14 +89,14 @@ test_eq(str(messages), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anya
                        'd:4.4.4:anytrack:linux:unknown, e:5.5.5:anytrack:linux:unknown]')
 
 title('TOA 4B', 'upstream - as TOA 4A')
-package = obsoleta.make_package_from_compact('a:*::linux')
+package = Package.construct_from_compact(setup, 'a:*::linux')
 
 error, messages2 = obsoleta.upstreams(package)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 4C', 'upstream - oups not found')
-package = obsoleta.make_package_from_compact('oups:*::linux')
+package = Package.construct_from_compact(setup, 'oups:*::linux')
 error, messages = obsoleta.upstreams(package)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
 
@@ -115,14 +116,14 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 title('TOA 5B', 'downstream - b is used by downstream a (from compact)')
-package = obsoleta.make_package_from_compact('b:*::linux')
+package = Package.construct_from_compact(setup, 'b:*::linux')
 error, messages2 = obsoleta.downstreams(package,
                                         DownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 5C', 'downstream - oups not found')
-package = obsoleta.make_package_from_compact('oups:*::linux')
+package = Package.construct_from_compact(setup, 'oups:*::linux')
 error, messages = obsoleta.downstreams(package,
                                        DownstreamFilter.ExplicitReferences)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
@@ -149,7 +150,7 @@ test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 def bump(compact, path):
     populate_local_temp(path)
     obsoleta = ObsoletaApi(setup, param)
-    package = obsoleta.make_package_from_compact(compact)
+    package = Package.construct_from_compact(setup, compact)
 
     # establish a new version number to use
     package = obsoleta.find_package(package)

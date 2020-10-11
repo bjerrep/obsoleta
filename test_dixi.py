@@ -79,7 +79,7 @@ test_eq(output == '(\'0.1.2\', \'0.1.77\')')
 title('M6', 'getcompact')
 prepare_local('simple')
 exitcode, output = execute(fixed + '--getcompact --delimiter _')
-test_eq(output, 'a_0.1.2_testing_minix_debug')
+test_eq(output, 'a_0.1.2_development_minix_debug')
 
 title('O1', 'settrack and gettrack')
 prepare_local('simple')
@@ -238,7 +238,13 @@ test_eq("""{
   "depends": [
     {
       "name": "b",
-      "version": "0.1.2",
+      "version": "2.2.2",
+      "arch": "x86_64"
+    },
+    {
+      "name": "c",
+      "version": "3.3.3",
+      "track": "production",
       "arch": "x86_64"
     }
   ]

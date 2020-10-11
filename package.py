@@ -4,7 +4,8 @@ from log import deb, inf, war
 from version import Version, VersionAny
 from common import Error, get_package_filepath, get_key_filepath
 from errorcodes import ErrorCode
-from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile, CompactParseError, UnknownException, IllegalDependency
+from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile
+from exceptions import CompactParseError, UnknownException, IllegalDependency
 from enum import Enum
 import json, os, copy
 
@@ -24,8 +25,15 @@ class Track(Enum):
     def __ge__(self, other):
         return self.value >= other.value
 
+    def __gt__(self, other):
+        return self.value > other.value
+
 
 TrackToString = ['defective', 'discontinued', 'anytrack', 'development', 'testing', 'production']
+
+
+def track_from_string(string):
+    return Track(TrackToString.index(string))
 
 
 class Layout(Enum):
@@ -70,6 +78,18 @@ class Package:
     @classmethod
     def construct_from_compact(cls, setup, compact, package_path=None):
         return cls(setup, package_path, compact, None)
+
+    @classmethod
+    def auto_package(self, setup, package_or_compact):
+        """
+        Returns a Package object from its compact name. As a convenience it will
+        just return the Package if it is given a Package.
+        """
+        if package_or_compact is None:
+            return None
+        if isinstance(package_or_compact, Package):
+            return package_or_compact
+        return Package.construct_from_compact(setup, package_or_compact)
 
     def from_dict(self, dictionary):
         if not self.original_dict:
@@ -173,10 +193,10 @@ class Package:
             return
         track = dict.get("track")
         if not track:
-            track = Track.anytrack
+            track = Track.anytrack.name
         for dependency in dependencies:
             dep_track = dependency.get("track")
-            if dep_track and track >= dep_track:
+            if dep_track and (track_from_string(track) > track_from_string(dep_track)):
                 message = ("Downstream package %s with track '%s' can't depend on %s with track '%s'. (%s)" %
                           (dict['name'], track, dependency['name'], dep_track, str(dict.get('arch'))))
                 raise IllegalDependency(message)
@@ -455,6 +475,14 @@ class Package:
     def get_value(self, key):
         return self.original_dict[key]
 
+    def set_value(self, key, value, depend_name=None):
+        if depend_name:
+            for dependency in self.get_dependencies():
+                if dependency.get_name() == depend_name:
+                    self.original_dict['depends'][0][key] = value
+        else:
+            self.original_dict[key] = value
+
     def to_string(self):
         # The fully unique identifier string for a package
         if self.string:
@@ -619,3 +647,6 @@ class Package:
             else:
                 found = self.parent.search_upstream(package_under_test)
         return found
+
+    def get_layout(self):
+        return Layout(self.layout).name
