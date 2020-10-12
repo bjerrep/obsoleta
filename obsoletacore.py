@@ -529,15 +529,18 @@ class Obsoleta:
             cache = json.loads(f.read())
         self.loaded_packages = [Package.construct_from_dict(self.setup, p) for p in cache]
 
-    def generate_digraph(self, target_package, dest_file):
+    def generate_digraph(self, target_package):
         header = '%s[label=<<font face="DejaVuSans" point-size="14"><table border="0" cellborder="0" cellspacing="0">\n'
         title = '<tr><td><font point-size="20"><b>%s</b></font></td></tr>\n'
         specialization = '<tr><td><font color="blue">%s=%s</font></td></tr>\n'
+        specialization_msg = '<tr><td><font color="blue">%s</font></td></tr>\n'
         dependency = '<tr><td><font color="orange">%s=%s</font></td></tr>\n'
         footer = '</table></font>>];\n'
 
         errorcode, packages = self.find_all(target_package)
         for package in packages:
+            dest_file = package.to_compact_string('_', True) + '.gv'
+            inf('generating digraph for %s as %s' % (package, dest_file))
             with open(dest_file, 'w') as f:
                 f.write('digraph obsoleta {\nnode [shape=plaintext]\n')
                 f.write('info[label=<<font face="DejaVuSans" point-size="14">'
@@ -567,8 +570,9 @@ class Obsoleta:
                                 write_package(_packages[0])
                             except:
                                 markup = header % (dep.get_name())
-                                markup += title % ('Error ' + _package.get_name() + ' - ' +
-                                                   html.escape(str(_package.get_version())))
+                                markup += title % ('Error ' + dep.get_name() + ' - ' +
+                                                   html.escape(str(dep.get_version())))
+                                markup += specialization_msg % dep.get_root_error()
                                 markup += footer
                                 f.write('\n' + markup + '\n')
                     else:

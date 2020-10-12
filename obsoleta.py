@@ -190,7 +190,7 @@ try:
                 else:
                     print_result(_package.to_string(), True)
 
-                errors = _package.get_root_error()
+                errors = _package.get_errors()
                 if errors:
                     for error in errors:
                         exit_code = error.get_errorcode()
@@ -242,7 +242,7 @@ try:
                 exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
     elif args.digraph:
-        obsoleta.generate_digraph(package, '%s.gv' % package.get_name())
+        obsoleta.generate_digraph(package)
 
     else:
         err("no valid command found")

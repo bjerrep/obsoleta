@@ -35,10 +35,7 @@ class Dixi:
         return self.package
 
     def get_compact(self, delimiter):
-        ret = self.package.to_string()
-        if delimiter:
-            ret = ret.replace(':', delimiter)
-        return ret
+        return self.package.to_compact_string(delimiter)
 
     def get_original_dict(self, depends_package=None):
         try:

@@ -502,6 +502,15 @@ class Package:
             self.string = '%s:%s%s' % (self.name, str(self.version), optionals)
         return self.string
 
+    def to_compact_string(self, delimiter=None, safe=False):
+        ret = self.to_string()
+        if delimiter:
+            ret = ret.replace(':', delimiter)
+            ret = ret.replace('.', delimiter)
+        if safe:
+            ret = ret.replace('*', 'any')
+        return ret
+
     def to_extra_string(self):
         # As to_string() but adds the errorcount in case there are errors, and dependencies if there are any.
         # Only used for printing
@@ -615,6 +624,12 @@ class Package:
             self.dependencies = [package]
 
     def get_root_error(self):
+        try:
+            return str(self.errors[0])
+        except:
+            return ''
+
+    def get_errors(self):
         return self.errors
 
     def error_list_append(self, error_list):

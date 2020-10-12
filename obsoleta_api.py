@@ -101,9 +101,9 @@ class ObsoletaApi:
             return error, "\n".join(p.get_path() for p in result)
         return error, result
 
-    def generate_digraph(self, package_or_compact, dest_file):
+    def generate_digraph(self, package_or_compact):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        self.obsoleta.generate_digraph(package_or_compact, dest_file)
+        self.obsoleta.generate_digraph(package_or_compact)
 
     def bump(self, package_or_compact, new_version):
         """ Replace the version in any downstream package(s) where package is found
