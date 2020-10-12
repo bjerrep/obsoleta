@@ -402,17 +402,32 @@ class Obsoleta:
         return packages
 
     def dump_tree(self, root_package):
+        """ Return a list of all package compact names in the root_package tree.
+            If there are multiple candidates found it is flagged as an error and the list
+            will contain only the possible candidates preventing a unique match.
+            If there are no errors then the list will contain a full recursive dump with
+            indention for dependencies matching their depth in the tree.
+        """
         ret = []
         error = ErrorOk()
         found = 0
         for package in self.loaded_packages:
             if package == root_package:
                 found += 1
-                error = package.dump(ret, error)
+
         if not found:
             return Error(ErrorCode.PACKAGE_NOT_FOUND, root_package), ret
+
         if found > 1 and root_package.get_name() != '*':
-            return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package), ret
+            for package in self.loaded_packages:
+                if package == root_package:
+                    error = package.dump(ret, error, skip_dependencies=True)
+            message = 'Package "%s", candidates are %s' % (root_package, str(ret))
+            return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package, message), ret
+
+        for package in self.loaded_packages:
+            if package == root_package:
+                error = package.dump(ret, error, skip_dependencies=False)
         return error, ret
 
     def dump_build_order(self, root_package):
@@ -461,7 +476,9 @@ class Obsoleta:
             error = ErrorOk()
         return error, package_copy, packages_build_order
 
-    def get_errors(self, package, errors=[]):
+    def get_errors(self, package, errors=None):
+        if errors is None:
+            errors = []
         anypackage = package.get_name() == '*'
         if not self.loaded_packages or (not anypackage and package not in self.loaded_packages):
             return Error(ErrorCode.PACKAGE_NOT_FOUND, package), errors

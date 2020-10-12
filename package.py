@@ -565,15 +565,17 @@ class Package:
     def __hash__(self):
         return hash(self.to_string())
 
-    def dump(self, ret, error=None):
+    def dump(self, ret, error=None, skip_dependencies=False):
         if error.has_error():
             return error
-        title = Indent.indent() + self.to_string()
+
         if self.errors:
             return self.errors[0]
 
+        title = Indent.indent() + self.to_string()
         ret.append(title)
-        if self.dependencies:
+
+        if not skip_dependencies and self.dependencies:
             _ = Indent()
             for dependency in self.dependencies:
                 error = dependency.dump(ret, error)
