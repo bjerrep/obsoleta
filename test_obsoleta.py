@@ -97,6 +97,10 @@ exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --p
 test_eq("""b:1.1.1:anytrack:c64:unknown
 e:1.1.1:anytrack:c64:unknown""" in output)
 
+title('A12', 'simple sunshine - dont get confused')
+exitcode, output = execute(fixed + '--root testdata/A4_dont_get_confused:testdata/A4_dont_get_confused/a --package a --tree', ErrorCode.OK)
+test_eq("""a:0.1.2:testing:linux_x86_64:unknown
+  x:2.2.2:testing:linux_x86_64:unknown""", output)
 
 title('B1', 'no json files found (bad path)')
 exitcode, output = execute(fixed + '--root nonexisting --package a --check', ErrorCode.BAD_PATH)
@@ -119,7 +123,7 @@ exitcode, output = execute(fixed + '--root testdata/B5_test_missing_package --pa
 title('B7', 'missing package --buildorder --printpaths')
 exitcode, output = execute(fixed + '--root testdata/B5_test_missing_package --package a --buildorder --printpaths', ErrorCode.PACKAGE_NOT_FOUND)
 
-title('B8', 'missing package - a:development <<< b:testing <<< c:anytrack should fail')
+title('B8', 'missing package - a:development <<< b:testing should fail, there only is a b:anytrack')
 exitcode, output = execute(fixed + '--root testdata/B6_test_missing_package_track --package a --check', ErrorCode.PACKAGE_NOT_FOUND)
 
 title('B9', 'no package found, --upstream')
@@ -147,7 +151,7 @@ title('C5', 'failing since a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<<
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package a --check', ErrorCode.MULTIPLE_VERSIONS)
 print(output)
 test_eq("c:1.2.3:anytrack:anyarch:unknown" in output)
-test_eq("c:1.2.3:anytrack:anyarch:unknown" in output)
+test_eq("c:1.2.4:anytrack:anyarch:unknown" in output)
 
 title('C6', 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package d --check', ErrorCode.OK)
@@ -201,10 +205,10 @@ exitcode, output = execute(fixed + '--root testdata/C3_test_different_buildtypes
 title('E4', "testing compact 2:5 (using different buildtypes are ok for non-production build)")
 exitcode, output = execute(fixed + '--root testdata/C3_test_different_buildtypes --package a:*:development --tree', ErrorCode.OK)
 
-title('E5', "testing compact with package path (using different buildtypes are ok for non-production build)")
+title('E5', "testing with package path (using different buildtypes are ok for non-production build)")
 exitcode, output = execute(fixed + '--root testdata/C3_test_different_buildtypes --path testdata/C3_test_different_buildtypes/a --tree', ErrorCode.OK)
 
-title('E6', "testing compact with package path (using different buildtypes are ok for non-production build)")
+title('E6', "testing with package path (using different buildtypes are ok for non-production build)")
 exitcode, output = execute(fixed + '--root testdata/C3_test_different_buildtypes --path testdata/C3_test_different_buildtypes/a --tree', ErrorCode.OK)
 
 
@@ -265,7 +269,7 @@ test_eq("""a:1.1.1:anytrack:windows:unknown
   b:2.2.2:anytrack:anyarch:unknown""" in output)
 
 title('G3', "duplicates in depends")
-exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.DUPLICATE_PACKAGE)
+exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.ILLEGAL_DEPENDENCY)
 
 title('G5', "track degradation")
 exitcode, output = execute(fixed + '--root testdata/G5_test_multislot_track_degradation --package a --check', ErrorCode.ILLEGAL_DEPENDENCY)

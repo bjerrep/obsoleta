@@ -354,11 +354,11 @@ The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is ju
 
     my_root = 'test/G2_test_slot'
     
-    param = Param()
-    param.set_info(True)
-    param.set_root(my_root)
+    args = Args()
+    args.set_info(True)
+    args.set_root(my_root)
     
-    obsoleta_api = ObsoletaApi("mini.conf", param)
+    obsoleta_api = ObsoletaApi("mini.conf", args)
     
     success, messages = obsoleta_api.check('e')
 

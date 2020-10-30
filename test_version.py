@@ -83,3 +83,5 @@ try:
 except:
     print('fail version other tests')
     exit(1)
+
+print('test version: pass')

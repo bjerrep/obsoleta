@@ -141,6 +141,9 @@ class Version:
                 return False
         return True
 
+    def is_any(self):
+        return self.string == '*'
+
     def increase(self, position):
         self.string = None
         self.digits[position.value].increase()

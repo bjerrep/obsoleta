@@ -1,4 +1,4 @@
-from common import Param
+from common import Args
 from package import Package, Track
 from dixicore import Dixi, TrackSetScope
 
@@ -7,12 +7,12 @@ class DixiApi:
     """ Python api for dixi.
         Might in time just be merged into dixicore and then there will just be 'dixi'.
     """
-    def __init__(self, setup, param=Param()):
+    def __init__(self, setup, args=Args()):
         """ Notice that the constructor does not give a usable DixiApi since it isn't told what package
             to work with. It should always be followed by a call to load()
         """
         self.setup = setup
-        self.args = param
+        self.args = args
         self.dixi = None
 
     def load(self, path_or_package):

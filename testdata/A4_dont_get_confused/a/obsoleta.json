@@ -1,0 +1,13 @@
+{
+  "name": "a",
+  "version": "0.1.2",
+  "arch": "linux_x86_64",
+  "track": "testing",
+  "depends": [
+    {
+      "name": "x",
+      "version": "2.2.2",
+      "track": "testing"      
+    }
+  ]
+}

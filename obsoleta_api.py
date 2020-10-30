@@ -1,6 +1,6 @@
 from obsoletacore import Obsoleta, DownstreamFilter
 from package import Package
-from common import Error, ErrorOk, Param
+from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
 from dixi_api import DixiApi
 from log import deb
@@ -8,9 +8,9 @@ import os
 
 
 class ObsoletaApi:
-    def __init__(self, setup, param=Param()):
+    def __init__(self, setup, args=Args()):
         self.setup = setup
-        self.args = param
+        self.args = args
         self.obsoleta = Obsoleta(self.setup, self.args)
 
     def clear_cache(self):
@@ -33,9 +33,15 @@ class ObsoletaApi:
     def make_package_from_path(self, path):
         return Package.construct_from_package_path(self.setup, path)
 
-    def find_package(self, package_or_compact):
+    def find_all_packages(self, package_or_compact):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        return self.obsoleta.find_package(package_or_compact)
+        error, packages = self.obsoleta.find_all_packages(package_or_compact)
+        return error, packages
+
+    def find_first_package(self, package_or_compact):
+        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        error, package = self.obsoleta.find_first_package(package_or_compact)
+        return error, package
 
     def check(self, package_or_compact):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
@@ -66,7 +72,12 @@ class ObsoletaApi:
 
     def list_missing(self, package_or_compact):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        return self.obsoleta.get_errors(package_or_compact)
+        error, err_list = self.obsoleta.get_errors(package_or_compact)
+        ret = []
+        for err in err_list:
+            if err.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
+                ret.append(err)
+        return error, ret
 
     def upstreams(self, package_or_compact, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages matching the name)

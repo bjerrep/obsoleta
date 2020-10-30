@@ -1,10 +1,10 @@
-from log import inf
+from log import logger, deb, inf
 from version import Version
-from package import Layout, anyarch, Track, TrackToString, track_from_string, buildtype_unknown
-from common import get_local_time_tz
+from package import anyarch, Track, TrackToString, track_from_string, buildtype_unknown
+from common import get_local_time_tz, Args
 from exceptions import BadPackageFile
 from enum import Enum
-import json, os
+import json, os, logging
 
 
 class TrackSetScope(Enum):
@@ -14,11 +14,13 @@ class TrackSetScope(Enum):
 
 
 class Dixi:
-    def __init__(self, package):
+    def __init__(self, package, args=Args()):
         self.package = package
         self.dict = self.package.to_dict()
         self.action = package.to_string() + ' - '
         self.new_track = False
+        if args.verbose:
+            logger.setLevel(logging.DEBUG)
 
     def get_target(self):
         return self.package.get_name()
@@ -31,7 +33,7 @@ class Dixi:
 
     def get_package(self, depend_package=None):
         if depend_package:
-            return self.package.get_dependency(depend_package)
+            return self.package.find_dependency(depend_package)
         return self.package
 
     def get_compact(self, delimiter):
@@ -39,7 +41,7 @@ class Dixi:
 
     def get_original_dict(self, depends_package=None):
         try:
-            dependency = self.package.get_dependency(depends_package)
+            dependency = self.package.find_dependency(depends_package)
             return dependency.get_original_dict()
         except:
             if not self.package.get_original_dict():
@@ -51,18 +53,38 @@ class Dixi:
         inf(self.action)
 
     def getter(self, key, package=None):
+        """
+        A getter just a little too magic for comfort. If a depends package is given
+        then the key is looked up for this. If not then the key is looked up in
+        the key section for a slot/multislot package and finally the key is searched
+        in the package itself.
+        """
         unmodified_dict = self.get_original_dict(package)
 
-        if self.package.layout == Layout.standard or package:
-            return '', unmodified_dict[key]
+        if package:
+            try:
+                return '', unmodified_dict[key]
+            except:
+                pass
 
         try:
-            return self.package.key, unmodified_dict[self.package.key][key]
+            slot_key = self.package.get_slot_key()
+            if slot_key:
+                deb('getter looking in %s' % str(slot_key))
+                return slot_key, unmodified_dict[slot_key][key]
         except:
-            try:
-                return 'slot', unmodified_dict['slot'][key]
-            except:
-                return 'multislot', unmodified_dict['multislot'].get(key)
+            pass
+
+        package_key = self.package.get_package_key()
+        try:
+            deb('getter looking in %s' % str(package_key))
+            if package_key:
+                return package_key, unmodified_dict[package_key][key]
+            else:
+                return '', unmodified_dict[key]
+        except:
+            pass
+        return package_key, None
 
     def setter(self, section, key, value, package=None):
         unmodified_dict = self.get_original_dict(package)
@@ -116,7 +138,10 @@ class Dixi:
             f.write(json.dumps(unmodified_dict, indent=2))
 
     def set_track(self, track, track_scope):
-        section, org_track = self.getter('track')
+        try:
+            section, org_track = self.getter('track')
+        except KeyError:
+            org_track = Track.anytrack.value
         self.setter(section, 'track', track)
         action = 'track for %s changed from %s to %s' % (self.get_target(), org_track, track)
         if section:

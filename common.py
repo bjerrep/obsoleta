@@ -19,13 +19,17 @@ def get_setup():
 
 
 class Setup:
+    """
+    The setup class represents the settings in the configuration
+    file (default 'obsoleta.conf')
+    """
     paths = []
     blacklist_paths = []
     using_track = False
     using_arch = False
     using_buildtype = False
     using_all_optionals = False
-    ignore_duplicates = False
+    allow_duplicates = True
     keepgoing = False
     cache = False
     obsoleta_root = None
@@ -59,16 +63,17 @@ class Setup:
                 blacklist_paths = conf.get('blacklist_paths')
                 if blacklist_paths:
                     Setup.blacklist_paths = blacklist_paths
-                self.using_arch = conf.get('using_arch') == 'true'
-                self.using_track = conf.get('using_track') == 'true'
-                self.using_buildtype = conf.get('using_buildtype') == 'true'
+                self.using_arch = conf.get('using_arch')
+                self.using_track = conf.get('using_track')
+                self.using_buildtype = conf.get('using_buildtype')
                 if self.using_arch and self.using_track and self.using_buildtype:
                     self.using_all_optionals = True
-                self.ignore_duplicates = conf.get('allow_duplicates') == 'false'
-                self.keepgoing = conf.get('keepgoing') == 'true'
-                self.cache = conf.get('cache') == 'true'
-                self.semver = conf.get('semver') == 'true'
-                self.relaxed_multislot = conf.get('relaxed_multislot') == 'true'
+                self.allow_duplicates = conf.get('allow_duplicates')
+                self.keepgoing = conf.get('keepgoing')
+                self.cache = conf.get('cache')
+                self.semver = conf.get('semver')
+                self.relaxed_multislot = conf.get('relaxed_multislot')
+                self.relative_trace_paths = conf.get('relative_trace_paths')
                 try:
                     self.depth = int(conf['depth'])
                 except KeyError:
@@ -81,7 +86,11 @@ class Setup:
         deb('  depth = %i' % self.depth)
 
 
-class Param:
+class Args:
+    """
+    The args class represents some of the parameters typically comming from
+    the commandline (added ad-hoc)
+    """
     depth = None
     root = ''
     verbose = False
@@ -151,7 +160,7 @@ class Error:
         return self.package.to_string() < other.package.to_string()
 
     def __hash__(self):
-        uid = self.to_string()
+        uid = str(self)
         return hash(uid)
 
 
@@ -190,7 +199,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
 
         if entry.name == filename:
             results.append(entry.path)
-            deb('- found %s' % entry.path)
+            deb('located %s' % printing_path(entry.path))
 
     return dirs_checked
 
@@ -205,6 +214,20 @@ def get_key_filepath(path):
     if path.endswith('obsoleta.key'):
         return path
     return os.path.join(path, 'obsoleta.key')
+
+
+def printing_path(path):
+    """
+    Return an absolute path as relative to Setup.root. Enable in setup file as
+    'relative_trace_paths' if the full paths in trace output are just a complete
+    waste of space and are distracting to look at.
+    """
+    try:
+        if _setup.relative_trace_paths:
+            return path.replace(_setup.root, '')[1:]
+    except:
+        pass
+    return path
 
 
 def get_local_time_tz():

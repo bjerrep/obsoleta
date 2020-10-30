@@ -1,7 +1,7 @@
 {
   "slot": {
     "name": "a",
-    "arch": "slotted",
+    "arch": "x86_64",
     "version": "0.1.2",
     "depends": [
       {

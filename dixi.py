@@ -45,7 +45,10 @@ parser.add_argument('--newline', action='store_true',
                     help='the getters default runs without trailing newlines, this one adds them back in')
 parser.add_argument('--keypath',
                     help='the relative keypath (directory name) to use for a multislotted package if a specific'
-                         'slot needs to get resolved.')
+                         'slot needs to get resolved. See also --key.')
+parser.add_argument('--key',
+                    help='the key to use for a multislotted package if a specific slot needs to get resolved. '
+                         'See also --keypath.')
 parser.add_argument('--depends',
                     help='target is the package in the depends section with the name given with --depends')
 parser.add_argument('--skiptags', action='store_true',
@@ -127,7 +130,8 @@ if not args.path:
 setup = Setup(args.conffile)
 
 try:
-    package = Package.construct_from_package_path(setup, args.path, args.keypath)
+    package = Package.construct_from_package_path(
+        setup, args.path, key=args.key, keypath=args.keypath)
 except ObsoletaException as e:
     err(str(e))
     exit(e.ErrorCode.value)

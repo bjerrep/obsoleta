@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from log import deb, inf, inf_alt, war, err, Indent
-from common import Error, ErrorOk
+from log import deb, inf, inf_alt, inf_alt2, war, err, indent, unindent
+from common import Error, ErrorOk, printing_path
 import common
 from common import find_in_path
 from version import Version
@@ -24,6 +24,7 @@ class Obsoleta:
         self.args = args
         self.dirs_checked = 0
         self.roots = self.construct_root_list()
+        self.setup.root = min(self.roots, key=len)
         self.package_files = self.find_package_files(self.roots)
         self.loaded_packages = []
 
@@ -50,22 +51,23 @@ class Obsoleta:
             else:
                 err('attribute aggregation skipped due to errors in %s' % package.to_string())
 
-        if not self.setup.ignore_duplicates:
+        if self.setup.allow_duplicates:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
 
         inf('loading and parsing complete with %i errors' % self.get_error_count())
         if args.verbose:
-            _1 = Indent()
+            indent()
             for package in self.loaded_packages:
                 first_error, errors = self.get_errors(package)
                 if errors:
                     err('errors in %s' % (package.to_extra_string()))
-                    _2 = Indent()
+                    indent()
                     for error in errors:
                         err(error.print())
-                    del _2
+                    unindent()
+            unindent()
 
         if setup.cache:
             self.write_cache()
@@ -84,7 +86,26 @@ class Obsoleta:
         roots.append(os.getenv('OBSOLETA_ROOT', ''))
         roots += self.setup.paths
         roots = [os.path.abspath(p) for p in roots if p]  # fully qualified non-empty paths
-        roots = list(set(roots))  # remove any duplicates
+
+        # prepare to remove any duplicate paths, both literally as well as paths already
+        # covered by a parent path.
+        roots = sorted(roots, key=len)
+        to_delete = []
+
+        # in order to complicate things then paths seperated by a distance longer than
+        # the current Setup.depth should both be preserved.
+        for i in range(len(roots)):
+            delete = [root for root in roots[i + 1:] if root.startswith(roots[0])]
+            for d in delete:
+                difference_path = d.replace(roots[0], '')
+                difference_path = difference_path[1:]
+                distance = difference_path.count('/')
+                if distance < self.setup.depth:
+                    to_delete.append(d)
+
+        for delete in to_delete:
+            inf('removing duplicate path %s from list of root paths' % delete)
+            roots.remove(delete)
 
         if not roots:
             roots = '.'
@@ -92,18 +113,17 @@ class Obsoleta:
 
     def find_package_files(self, roots):
         inf('searching %i roots' % len(roots))
+        indent()
         package_files = []
-        _ = Indent()
         for root in roots:
             inf('path = %s' % root)
-            __ = Indent()
             self.dirs_checked = find_in_path(root, 'obsoleta.json', self.setup.depth, package_files)
 
-        del(_)
         inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
+        unindent()
         return package_files
 
-    def get_duplicates(self, package_list):
+    def get_duplicates_by_name(self, package_list):
         if not package_list:
             return []
         names = [p.get_name() for p in package_list]
@@ -112,9 +132,9 @@ class Obsoleta:
 
     def load(self, json_files):
         json_files = sorted(json_files)
-        _1 = Indent()
         for file in json_files:
-            deb('parsing %s:' % file)
+            inf_alt2('loading %s:' % printing_path(file))
+            indent()
             try:
                 try:
                     try:
@@ -129,31 +149,37 @@ class Obsoleta:
                         path = os.path.dirname(file)
                         find_in_path(path, 'obsoleta.key', 2, key_files)
                         packages = [
-                            Package.construct_from_package_path(self.setup, file, key_file, dictionary=dictionary)
-                            for key_file in key_files]
+                            Package.construct_from_package_path(
+                                self.setup, file, keypath=key_path, dictionary=dictionary)
+                            for key_path in key_files]
                     else:
                         packages = [Package.construct_from_package_path(self.setup, file, dictionary=dictionary), ]
 
                 except (BadPackageFile, MissingKeyFile) as e:
                     if self.setup.keepgoing:
-                        deb('keep going is set, ignoring invalid package %s' % file)
+                        war('keep going is set, ignoring invalid package %s' % file)
                         continue
                     else:
                         raise e
 
                 # multislot packages have more than one package from construction above
                 for package in packages:
-                    duplicates = self.get_duplicates(package.get_dependencies())
+                    duplicates = package.find_equals_no_upgrade(self.loaded_packages)
                     if duplicates:
-                        raise DuplicatePackage('%s have duplicate packages in its dependency list (%s)' %
-                                       (str(package), str(duplicates)))
-                    try:
-                        dupe = self.loaded_packages.index(package)
+                        message = ''
+                        for duplicate in list([package]) + duplicates:
+                            message += ('\n%s\n- located in "%s"' %
+                                       (str(duplicate), printing_path(duplicate.get_path())))
+                        raise DuplicatePackage(message)
+
+                    dupe = package.find_equals_no_upgrade(self.loaded_packages)
+                    if dupe:
                         message = 'duplicate package %s in %s, already exists as %s' % \
-                                  (package, package.package_path, self.loaded_packages[dupe].package_path)
-                        if self.setup.ignore_duplicates or self.setup.keepgoing:
+                                  (package, package.package_path, dupe[0].package_path)
+
+                        if not self.setup.allow_duplicates or self.setup.keepgoing:
                             reason = ''
-                            if self.setup.ignore_duplicates:
+                            if not self.setup.allow_duplicates:
                                 reason = ' (ignore duplicates)'
                             if self.setup.keepgoing:
                                 reason += ' (keepgoing)'
@@ -161,22 +187,23 @@ class Obsoleta:
                             self.loaded_packages.append(package)
                         else:
                             raise DuplicatePackage(message)
-                    except ValueError:
+                    else:
                         self.loaded_packages.append(package)
 
             except Exception as e:
                 if self.setup.keepgoing:
-                    inf('keep going is set, ignoring invalid package %s' % file)
+                    war('keep going is set, ignoring invalid package %s' % file)
                 else:
                     raise e
+            unindent()
 
     def resolve_dependencies(self, package, level=0):
         if level == 0:
-            inf_alt('>resolving ' + str(package))
+            inf_alt('resolving ' + str(package))
         else:
             inf('resolving dependency ' + str(package))
 
-        _1 = Indent()
+        indent()
 
         dependencies = package.get_dependencies()
 
@@ -185,12 +212,12 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                errorcode, resolved = self.find_all(dependency)
+                errorcode, resolved = self.find_all_dependencies(dependency)
 
                 if resolved:
                     resolved = max(resolved)
                     deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
-                    _2 = Indent()
+                    indent()
                     resolved.parent = package
                     resolved = copy.copy(resolved)
                     if level > 1:
@@ -208,7 +235,7 @@ class Obsoleta:
 
                     package.dependencies.append(resolved)
                     dep_success = self.resolve_dependencies(resolved, level)
-                    del _2
+                    unindent()
                     if not dep_success:
                         return False
                 else:
@@ -223,23 +250,25 @@ class Obsoleta:
                     inf('package ' + dependency.to_string() + ' does not exist')
 
             level -= 1
+        unindent()
         return True
 
     def aggregate_attributes(self, package, level=0):
-        """ Starting from the bottom of the dependency tree then add attributes from upstreams to their
-            downstream parent packages in case any downstream attributes are undefined, and the upstream
-            attributes are not. (attributes are arch, track and buildtype).
-            This will catch illegal situations where e.g. two upstreams have different arch and the downstream
-            didn't ask for an explicit arch. If the downstream asked for an explicit arch it would have
-            failed while running 'resolve_dependencies'.
-            This Aggregate attributes are stored in the 'implicit_attributes' dictionary in a given package.
+        """
+        Starting from the bottom of the dependency tree then add attributes from upstreams to their
+        downstream parent packages in case any downstream attributes are undefined, and the upstream
+        attributes are not. (attributes are arch, track and buildtype).
+        This will catch illegal situations where e.g. two upstreams have different arch and the downstream
+        didn't ask for an explicit arch. If the downstream asked for an explicit arch it would have
+        failed while running 'resolve_dependencies'.
+        This Aggregate attributes are stored in the 'implicit_attributes' dictionary in a given package.
         """
         dependencies = package.get_dependencies()
         if dependencies:
-            _1 = Indent()
+            indent()
 
             for dependency in dependencies:
-                errorcode, resolved_list = self.find_all(dependency)
+                errorcode, resolved_list = self.find_all_dependencies(dependency)
 
                 for resolved in resolved_list:
                     if not self.aggregate_attributes(resolved, level):
@@ -249,13 +278,14 @@ class Obsoleta:
                     if self.setup.using_arch:
                         resolved_arch = resolved.get_arch(implicit=True)
                         package_arch = package.get_arch(implicit=True)
+
                         if resolved_arch != anyarch and resolved_arch != package_arch:
                             if package_arch != anyarch:
                                 error = Error(
                                     ErrorCode.ARCH_MISMATCH, resolved, 'arch collision with ' + package.to_string())
                                 resolved.add_error(error)
                                 try:
-                                    package.get_dependency(resolved).add_error(error)
+                                    package.find_dependency(resolved, strict=True).add_error(error)
                                 except:
                                     pass
                                 if self.args.verbose:
@@ -264,6 +294,7 @@ class Obsoleta:
                             else:
                                 deb('setting implicit arch for %s to %s' % (package.get_name(), resolved_arch))
                                 package.set_implicit('arch', resolved.get_arch())
+            unindent()
 
         return True
 
@@ -283,14 +314,17 @@ class Obsoleta:
         except:
             return []
 
-    def find_all(self, target_package):
-        """" Find any packages matching 'target_package'.
-             If used for a package depends section it will find all upstream candidates.
+    def find_all_dependencies(self, target_package):
         """
-        candidates = []
-        for package in self.loaded_packages:
-            if package == target_package:
-                candidates.append(package)
+        Find dependencies, either as native obsoleta packages or external
+        libraries.
+        """
+        candidates = target_package.find_equals_no_upgrade(self.loaded_packages)
+
+        if not candidates:
+            for package in self.loaded_packages:
+                if package.__eq__(target_package, False):
+                    candidates.append(package)
 
         if not candidates:
             candidates = self.locate_external_lib(target_package)
@@ -302,42 +336,65 @@ class Obsoleta:
                      target_package,
                      'no upstreams matches %s' % target_package.to_string()), candidates
 
-    def find_package(self, package):
-        for loaded_package in self.loaded_packages:
-            if loaded_package == package:
-                return loaded_package
-        return None
+    def find_all_packages(self, package):
+        matches = package.find_equal_or_better(self.loaded_packages)
+
+        if not matches:
+            return Error(ErrorCode.PACKAGE_NOT_FOUND, package), matches
+
+        return ErrorOk(), matches
+
+    def find_first_package(self, package, strict=False):
+        """
+        Return the package requested. If strict is True it is an error if more than one
+        is found, otherwise just the first found is returned.
+        """
+        error, matches = self.find_all_packages(package)
+
+        if error.has_error():
+            return error, []
+
+        if len(matches) > 1:
+            if strict:
+                ret = []
+                for package in self.matches:
+                    error = package.dump(ret, error, skip_dependencies=True)
+                message = 'Package "%s", candidates are %s' % (package, str(ret))
+                return Error(ErrorCode.PACKAGE_NOT_UNIQUE, package, message), matches
+            else:
+                inf('buildorder shown for %s, other candidates were %s (find_any is True)' % (matches[0], matches[1:]))
+
+        return ErrorOk(), matches[0]
 
     def locate_upstreams(self, target_package):
-        """" Find any upstream packages listed in the 'target_package' depends section
+        """"
+        Find any upstream packages listed in the 'target_package' depends section
         """
         candidates = []
 
-        target_package = self.find_package(target_package)
-        if not target_package:
-            err = Error(ErrorCode.PACKAGE_NOT_FOUND,
-                        target_package,
-                        "package not found, %s" % target_package)
-            return err, candidates
+        error, match = self.find_first_package(target_package)
+        if error.has_error():
+            return error, match
 
-        dependencies = target_package.get_dependencies()
+        dependencies = match.get_dependencies()
         if not dependencies:
             return ErrorOk(), candidates
 
         for upstream in dependencies:
-            found = self.find_package(upstream)
+            error, found = self.find_first_package(upstream)
             if found:
                 candidates.append(found)
             else:
                 err = Error(ErrorCode.PACKAGE_NOT_FOUND,
-                            target_package,
-                            "no upstream %s found for %s" % (upstream, target_package))
+                            match,
+                            "no upstream %s found for %s" % (upstream, match))
                 return err, candidates
         return ErrorOk(), candidates
 
     def locate_downstreams(self, target_package, downstream_filter, downstream_packages=None):
-        """" Find any downstream packages that references the 'target_package' in their
-             depends section
+        """
+        Find any downstream packages that references the 'target_package' in their
+        depends section
         """
         if downstream_packages is None:
             downstream_packages = []
@@ -364,14 +421,14 @@ class Obsoleta:
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
-        _ = Indent()
+        indent()
 
         for package in self.loaded_packages:
             package_list = []
             self.get_package_list(package, package_list)
             unique_packages = set(package_list)
 
-            names = self.get_duplicates(unique_packages)
+            names = self.get_duplicates_by_name(unique_packages)
 
             for name in names:
                 candidate = []
@@ -393,6 +450,7 @@ class Obsoleta:
                             if self.args.verbose:
                                 err('ERROR: ' + err1.to_string())
                                 err('ERROR: ' + err2.to_string())
+        unindent()
 
     def get_package_list(self, package, packages):
         packages.append(package)
@@ -402,43 +460,40 @@ class Obsoleta:
         return packages
 
     def dump_tree(self, root_package):
-        """ Return a list of all package compact names in the root_package tree.
-            If there are multiple candidates found it is flagged as an error and the list
-            will contain only the possible candidates preventing a unique match.
-            If there are no errors then the list will contain a full recursive dump with
-            indention for dependencies matching their depth in the tree.
+        """
+        Return a list of all package compact names in the root_package tree.
+        If there are multiple candidates found it is flagged as an error and the list
+        will contain only the possible candidates preventing a unique match.
+        If there are no errors then the list will contain a full recursive dump with
+        indention for dependencies matching their depth in the tree.
         """
         ret = []
         error = ErrorOk()
-        found = 0
-        for package in self.loaded_packages:
-            if package == root_package:
-                found += 1
 
-        if not found:
+        matches = root_package.find_equal_or_better(self.loaded_packages)
+
+        if not matches:
             return Error(ErrorCode.PACKAGE_NOT_FOUND, root_package), ret
 
-        if found > 1 and root_package.get_name() != '*':
-            for package in self.loaded_packages:
-                if package == root_package:
-                    error = package.dump(ret, error, skip_dependencies=True)
+        if len(matches) > 1 and root_package.get_name() != '*':
+            for package in matches:
+                error = package.dump(ret, error, skip_dependencies=True)
             message = 'Package "%s", candidates are %s' % (root_package, str(ret))
             return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package, message), ret
 
-        for package in self.loaded_packages:
-            if package == root_package:
-                error = package.dump(ret, error, skip_dependencies=False)
+        for package in matches:
+            error = package.dump(ret, error, skip_dependencies=False)
         return error, ret
 
     def dump_build_order(self, root_package):
-        error = None
-
         packages_build_order = []
         package_list = []
-        for package in self.loaded_packages:
-            if package == root_package:
-                self.get_package_list(package, package_list)
-                break
+
+        error, match = self.find_first_package(root_package)
+        if error.has_error():
+            return error, match, []
+
+        self.get_package_list(match, package_list)
 
         packages = list(dict.fromkeys(package_list))
         package_copy = packages
@@ -480,7 +535,7 @@ class Obsoleta:
         if errors is None:
             errors = []
         anypackage = package.get_name() == '*'
-        if not self.loaded_packages or (not anypackage and package not in self.loaded_packages):
+        if not self.loaded_packages or (not anypackage and not package.find_equal_or_better(self.loaded_packages)):
             return Error(ErrorCode.PACKAGE_NOT_FOUND, package), errors
 
         if not package:
@@ -494,7 +549,7 @@ class Obsoleta:
             for _package in self.loaded_packages:
                 _package.error_list_append(errors)
         else:
-            package = self.loaded_packages[self.loaded_packages.index(package)]
+            package = package.find_equal_or_better(self.loaded_packages)[0]
             package.error_list_append(errors)
 
         if errors:
@@ -537,7 +592,7 @@ class Obsoleta:
         dependency = '<tr><td><font color="orange">%s=%s</font></td></tr>\n'
         footer = '</table></font>>];\n'
 
-        errorcode, packages = self.find_all(target_package)
+        errorcode, packages = self.find_all_dependencies(target_package)
         for package in packages:
             dest_file = package.to_compact_string('_', True) + '.gv'
             inf('generating digraph for %s as %s' % (package, dest_file))
@@ -557,7 +612,7 @@ class Obsoleta:
                     if _package.get_buildtype() != buildtype_unknown:
                         markup += specialization % ('Buildtype', _package.get_buildtype())
                     if _package.get_nof_dependencies():
-                        for dep in _package.get_original_dependencies():
+                        for dep in _package.get_dependencies():
                             markup += dependency % ('Depends', html.escape(dep.to_string()))
                     markup += footer
                     f.write('\n' + markup + '\n')
@@ -565,7 +620,7 @@ class Obsoleta:
                     if _package.get_nof_dependencies():
                         for dep in _package.get_dependencies():
                             f.write('"%s" -> "%s"\n' % (_package.get_name(), dep.get_name()))
-                            _errorcode, _packages = self.find_all(dep)
+                            _errorcode, _packages = self.find_all_dependencies(dep)
                             try:
                                 write_package(_packages[0])
                             except:

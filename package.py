@@ -1,14 +1,12 @@
 from log import logger as log
-from log import Indent as Indent
-from log import deb, inf, war
+from log import deb, inf, war, indent, unindent, get_indent
 from version import Version, VersionAny
-from common import Error, get_package_filepath, get_key_filepath
+from common import Error, get_package_filepath, get_key_filepath, printing_path
 from errorcodes import ErrorCode
 from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile
 from exceptions import CompactParseError, UnknownException, IllegalDependency
 from enum import Enum
 import json, os, copy
-
 
 buildtype_unknown = 'unknown'
 anyarch = 'anyarch'
@@ -43,25 +41,28 @@ class Layout(Enum):
 
 
 class Package:
-    def __init__(self, setup, package_path, compact, dictionary, key_file=None):
+    def __init__(self, setup, package_path, compact, dictionary, key=None, keypath=None):
         self.setup = setup
         self.parent = None
         self.package_path = package_path
-        self.dependencies = None
-        self.original_dependencies = None
+        self.dependencies = []
         self.direct_dependency = True
         self.implicit_attributes = {}
         self.errors = None
-        self.key = None
+        self.slot_key = None
         self.original_dict = None
         self.layout = Layout.standard
         self.string = None
         self.slot_unresolved = False
+        self.explicit_anyarch = False
+
+        if keypath:
+            key = Package.load_key(keypath)
 
         if compact:
             self.from_compact(compact, package_path)
         elif package_path:
-            self.from_package_path(package_path, key_file, dictionary)
+            self.from_package_path(package_path, key=key, dictionary=dictionary)
         else:
             self.from_dict(dictionary)
 
@@ -70,10 +71,12 @@ class Package:
         return cls(setup, None, None, dictionary)
 
     @classmethod
-    def construct_from_package_path(cls, setup, package_path, key_file=None, dictionary=None):
+    def construct_from_package_path(cls, setup, package_path, key=None, keypath=None, dictionary=None):
         """ Returns the package object for package at the given path. A multislot package
-            requires the specific keyfile to use (there might be more than one) """
-        return cls(setup, package_path, None, dictionary, key_file)
+            requires the specific key to use. """
+        if keypath:
+            key = Package.load_key(os.path.join(package_path, keypath))
+        return cls(setup, package_path, None, dictionary, key=key)
 
     @classmethod
     def construct_from_compact(cls, setup, compact, package_path=None):
@@ -90,6 +93,21 @@ class Package:
         if isinstance(package_or_compact, Package):
             return package_or_compact
         return Package.construct_from_compact(setup, package_or_compact)
+
+    @classmethod
+    def load_key(self, keypath):
+        try:
+            fqn = get_key_filepath(keypath)
+            with open(fqn) as f:
+                _json = f.read()
+                dictionary = json.loads(_json)
+                return dictionary['key']
+        except FileNotFoundError:
+            raise MissingKeyFile('%s not found' % fqn)
+        except json.JSONDecodeError as e:
+            raise InvalidKeyFile(str(e) + ' ' + fqn)
+        except Exception as e:
+            raise UnknownException(str(e) + ' ' + fqn)
 
     def from_dict(self, dictionary):
         if not self.original_dict:
@@ -124,6 +142,8 @@ class Package:
         if self.setup.using_arch:
             try:
                 self.arch = dictionary["arch"]
+                if self.arch == anyarch:
+                    self.explicit_anyarch = True
             except:
                 self.arch = anyarch
         elif pedantic and 'arch' in dictionary:
@@ -135,7 +155,7 @@ class Package:
                     self.buildtype = dictionary['buildtype']
                 except:
                     raise CompactParseError('invalid buildtype "%s" %s' %
-                                           (dictionary['buildtype'], path))
+                                            (dictionary['buildtype'], path))
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
@@ -148,7 +168,8 @@ class Package:
             if dependencies:
                 if not self.dependencies:
                     self.dependencies = []
-                _ = Indent()
+                deb('parsing dependencies')
+                indent()
 
                 for dependency in dependencies:
                     package = Package(self.setup, None, None, dependency)
@@ -162,7 +183,8 @@ class Package:
                             package.track = self.track
                     if self.setup.using_arch:
                         if package.arch == anyarch:
-                            package.arch = self.arch
+                            if not package.explicit_anyarch:
+                                package.arch = self.arch
                         if self.arch != anyarch and package.arch != self.arch:
                             package.add_error(
                                 Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
@@ -170,13 +192,12 @@ class Package:
                         if package.buildtype == buildtype_unknown:
                             package.buildtype = self.buildtype
 
-                    if package_copy != package:
+                    if package_copy == package:
                         deb('%s -> %s (inherited values)' % (package_copy.to_extra_string(), package.to_extra_string()))
 
                     self.dependencies.append(package)
-                del(_)
+                unindent()
                 self.dependencies.sort()
-                self.original_dependencies = self.dependencies
 
         except KeyError:
             pass
@@ -185,8 +206,9 @@ class Package:
             raise e
 
     def verify_merge_tracks(self, dict):
-        """ Sanity check that the tracks are valid after a multislot merge. A downstream track can't
-            be at a higher track than any upstreams.
+        """
+        Sanity check that the tracks are valid after a multislot merge. A downstream track can't
+        be at a higher track than any upstreams.
         """
         dependencies = dict.get("depends")
         if dependencies is None:
@@ -194,18 +216,26 @@ class Package:
         track = dict.get("track")
         if not track:
             track = Track.anytrack.name
+        message = ("\nDownstream package '%s' with track '%s' (%s)\nin %s\n - " %
+                   (dict['name'], track, str(dict.get('arch')), self.get_path()))
         for dependency in dependencies:
             dep_track = dependency.get("track")
             if dep_track and (track_from_string(track) > track_from_string(dep_track)):
-                message = ("Downstream package %s with track '%s' can't depend on %s with track '%s'. (%s)" %
-                          (dict['name'], track, dependency['name'], dep_track, str(dict.get('arch'))))
+                message += ("Can't depend on upstream package '%s' with track '%s'." %
+                          (dependency['name'], dep_track))
                 raise IllegalDependency(message)
 
     def merge(self, slot_section, key_section):
         """
-        Add new or replace existing entries in the slot_section with entries from the key_section.
-        The yikes-ness arises when individuel entries in the 'depends' lists are merged as well.
+        slot and multislot merge. Update entries in the slot and in the
+        slot depends sections with entries from the key_section.
         """
+        slot_arch = slot_section.get('arch')
+        key_arch = key_section.get('arch')
+        if slot_arch and key_arch and slot_arch != key_arch:
+            raise IllegalDependency("mixing arch. %s is arch '%s' but slot specifies arch '%s'" %
+                                    (slot_section['name'], slot_arch, key_arch))
+
         result = dict(slot_section, **key_section)
 
         if key_section.get('depends'):
@@ -225,7 +255,7 @@ class Package:
         self.verify_merge_tracks(result)
         return result
 
-    def from_package_path(self, package_path, multislot_key_file, dictionary=None):
+    def from_package_path(self, package_path, key, dictionary=None):
         if package_path.endswith('obsoleta.json'):
             self.package_path = os.path.dirname(package_path)
 
@@ -237,7 +267,7 @@ class Package:
             # So if we have a key file, and there is a package file in the up dir, lets silently relocate
             # and go with that further below. If all this sounds awful then set 'relaxed_multislot' to false.
             try:
-                if self.setup.relaxed_multislot and not multislot_key_file and not os.path.exists(json_file):
+                if self.setup.relaxed_multislot and not key and not os.path.exists(json_file):
                     key_file = os.path.join(self.package_path, 'obsoleta.key')
                     if os.path.exists(key_file):
                         updir = os.path.split(os.path.abspath(self.package_path))[0]
@@ -246,7 +276,7 @@ class Package:
                             inf('assuming that this is a multislotted build dir. Using package file %s' %
                                 updir_package_file)
                             json_file = updir_package_file
-                            multislot_key_file = key_file
+                            self.slot_key = self.load_key(key_file)
             except:
                 # there was an attempt, and it failed. Now just fall over
                 pass
@@ -257,80 +287,62 @@ class Package:
                     dictionary = json.loads(_json)
                 except:
                     raise BadPackageFile('malformed json in %s' % json_file)
+        else:
+            dictionary = copy.deepcopy(dictionary)
 
         self.original_dict = dictionary
 
-        _ = Indent()
         if 'slot' in dictionary:
             deb('parsing \'%s\' in %s (slot)' %
-                (dictionary['slot']['name'], package_path))
+                (dictionary['slot']['name'], printing_path(package_path)))
             self.layout = Layout.slot
 
-            key_file = get_key_filepath(self.package_path)
-            self.key = self.get_key_from_keyfile(key_file)
+            if key:
+                self.slot_key = key
+            else:
+                self.slot_key = Package.load_key(get_key_filepath(self.package_path))
             slot_section = dictionary['slot']
 
             try:
-                key_section = dictionary[self.key]
+                key_section = dictionary[self.slot_key]
             except KeyError:
                 raise InvalidKeyFile('failed to find slot in package file %s with key "%s"' %
-                                    (os.path.abspath(package_path), self.key))
+                                     (os.path.abspath(package_path), self.slot_key))
 
             merged = self.merge(slot_section, key_section)
             self.from_dict(merged)
-            inf('parsing \'%s\' in %s (slot) -> %s' %
-                (dictionary['slot']['name'], package_path, self.to_string()))
+            inf('registered \'%s\' in slot %s -> %s' %
+                (dictionary['slot']['name'], printing_path(package_path), self.to_string()))
 
         elif 'multislot' in dictionary:
-            deb('parsing \'%s\' in %s (multislot)' %
-                (dictionary['multislot']['name'], package_path))
+            deb('parsing \'%s\' in multislot %s' %
+                (dictionary['multislot']['name'], printing_path(package_path)))
             self.layout = Layout.multislot
 
-            if not multislot_key_file:
+            if not key:
                 self.slot_unresolved = True
                 self.from_dict(dictionary['multislot'])
                 return
 
-            try:
-                multislot_key_file = get_key_filepath(multislot_key_file)
-            except:
-                raise InvalidKeyFile('missing or invalid keyfile "%s"' % multislot_key_file)
-
-            try:
-                self.key = self.get_key_from_keyfile(multislot_key_file)
-            except Exception:
-                self.key = self.get_key_from_keyfile(os.path.join(package_path, multislot_key_file))
+            self.slot_key = key
 
             slot_section = dictionary['multislot']
             try:
-                key_section = dictionary[self.key]
+                key_section = dictionary[self.slot_key]
             except KeyError:
                 raise InvalidKeyFile('failed to find multislot in package file %s with key "%s"' %
-                                    (os.path.abspath(package_path), self.key))
+                                     (os.path.abspath(package_path), self.slot_key))
             merged = self.merge(slot_section, key_section)
             self.from_dict(merged)
-            inf('parsing \'%s\' in %s (multislot) -> %s' %
-                (dictionary['multislot']['name'], package_path, self.to_string()))
+            inf('registered \'%s\' in multislot %s -> %s' %
+                (dictionary['multislot']['name'], printing_path(package_path), self.to_string()))
         else:
             try:
                 name = dictionary['name']
             except KeyError:
                 raise BadPackageFile('missing name')
             self.from_dict(dictionary)
-            inf('parsing \'%s\' in %s -> %s' % (name, package_path, self.to_string()))
-
-    def get_key_from_keyfile(self, keyfile):
-        try:
-            with open(keyfile) as f:
-                _json = f.read()
-                dictionary = json.loads(_json)
-                return dictionary['key']
-        except FileNotFoundError:
-            raise MissingKeyFile('%s not found' % keyfile)
-        except json.JSONDecodeError as e:
-            raise InvalidKeyFile(str(e) + ' ' + keyfile)
-        except Exception as e:
-            raise UnknownException(str(e) + ' ' + keyfile)
+            inf('registered \'%s\' in %s -> %s' % (name, printing_path(package_path), self.to_string()))
 
     def from_compact(self, compact, package_path):
         self.name = '*'
@@ -355,7 +367,7 @@ class Package:
             expected_entries = 2 + optionals
             if found_entries > expected_entries:
                 raise CompactParseError('compact name contains %i fields but expected %i fields (check optionals)' %
-                                       (found_entries, expected_entries))
+                                        (found_entries, expected_entries))
             try:
                 current = 'name'
                 self.name = entries.pop(0)
@@ -430,28 +442,37 @@ class Package:
         return self.version
 
     def get_arch(self, implicit=False):
-        if not implicit or self.arch != anyarch:
-            return self.arch
         try:
-            return self.implicit_attributes['arch']
+            if not implicit or self.arch != anyarch:
+                return self.arch
+            try:
+                return self.implicit_attributes['arch']
+            except:
+                return self.arch
         except:
-            return self.arch
+            return anyarch
 
     def get_track(self, implicit=False):
-        if not implicit or self.track != Track.anytrack:
-            return self.track
         try:
-            return self.implicit_attributes['track']
+            if not implicit or self.track != Track.anytrack:
+                return self.track
+            try:
+                return self.implicit_attributes['track']
+            except:
+                return self.track
         except:
-            return self.track
+            return Track.anytrack
 
     def get_buildtype(self, implicit=False):
-        if not implicit or self.buildtype != buildtype_unknown:
-            return self.buildtype
         try:
-            return self.implicit_attributes['buildtype']
+            if not implicit or self.buildtype != buildtype_unknown:
+                return self.buildtype
+            try:
+                return self.implicit_attributes['buildtype']
+            except:
+                return self.buildtype
         except:
-            return self.buildtype
+            return buildtype_unknown
 
     def set_implicit(self, key, value):
         self.implicit_attributes[key] = value
@@ -467,10 +488,17 @@ class Package:
         return self.parent
 
     def get_depends_path(self, depends_package):
-        return self.get_dependency(depends_package).package_path
+        return self.find_dependency(depends_package).package_path
 
-    def get_key(self):
-        return self.key
+    def get_slot_key(self):
+        return self.slot_key
+
+    def get_package_key(self):
+        if self.layout == Layout.standard:
+            return None
+        if self.layout == Layout.slot:
+            return 'slot'
+        return 'multislot'
 
     def get_value(self, key):
         return self.original_dict[key]
@@ -512,8 +540,10 @@ class Package:
         return ret
 
     def to_extra_string(self):
-        # As to_string() but adds the errorcount in case there are errors, and dependencies if there are any.
-        # Only used for printing
+        """
+        As to_string() but adds the errorcount in case there are errors, and dependencies if there are any.
+        Only used for printing
+        """
         extra = ''
         if not self.direct_dependency:
             extra += ':(lookup)'
@@ -532,21 +562,34 @@ class Package:
     def __repr__(self):
         return self.to_string()
 
-    def __eq__(self, other):
-        """ The equality check uses the set of rules that exists for checking for equality for
-            each of the name, version, track, arch and buildtypes attributes. For some specific examples
-            of how versions are checked see 'test_versions.py' and for the rest they honor the
-            wildcards anytrack, anyarch and unknown for buildtype. The current rule that the
-            'production' track may not be mixed with other tracks are also enforced here.
+    def __eq__(self, other, strict=True):
         """
-        if other.name != '*' and (self.name != other.name or self.version != other.version):
+        The equality check uses the set of rules that exists for checking for equality for
+        each of the name, version, track, arch and buildtypes attributes. For some specific examples
+        of how versions are checked see 'test_versions.py' and for the rest they honor the
+        wildcards anytrack, anyarch and unknown for buildtype. The current rule that the
+        'production' track may not be mixed with other tracks are also enforced here.
+        """
+        if self.name != '*' and other.name != '*' and (self.name != other.name):
+            return False
+
+        if ((not self.version.is_any()) and (not other.version.is_any()) and
+                (self.version != other.version)):
             return False
 
         if self.setup.using_track:
             if other.track == Track.production and self.track != Track.production:
                 return False
-            if not (self.track >= other.track):
-                return False
+            if strict:
+                if ((self.track == Track.anytrack and other.track != Track.anytrack) or
+                        (self.track != Track.anytrack and other.track == Track.anytrack)):
+                    return False
+                if self.track != other.track:
+                    return False
+            else:
+                if not (self.track >= other.track):
+                    return False
+
         if self.setup.using_arch:
             if not (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch):
                 return False
@@ -563,10 +606,32 @@ class Package:
         return True
 
     def is_duplicate(self, other):
+        """
+        Return True if the other package has the same name and same arch. Used to
+        catch that a package with a given name is found more than once in a
+        dependency tree which will be the case if it can be found in e.g. multiple
+        versions. Generally this is more or less illegal and should be fixed.
+        Advanced users might want to allow exactly this but then they should fix
+        this code instead.
+        """
         match = self.name == other.name
         if self.setup.using_arch and match:
             match = self.arch == other.arch
         return match
+
+    def find_equal_or_better(self, package_list):
+        ret = []
+        for package in package_list:
+            if package.__eq__(self, False):
+                ret.append(package)
+        return ret
+
+    def find_equals_no_upgrade(self, package_list):
+        ret = []
+        for package in package_list:
+            if package == self:
+                ret.append(package)
+        return ret
 
     def __lt__(self, other):
         return self.version < other.version
@@ -575,41 +640,38 @@ class Package:
         return hash(self.to_string())
 
     def dump(self, ret, error=None, skip_dependencies=False):
-        if error.has_error():
+        if error and error.has_error():
             return error
 
         if self.errors:
             return self.errors[0]
 
-        title = Indent.indent() + self.to_string()
+        title = get_indent() + self.to_string()
         ret.append(title)
 
         if not skip_dependencies and self.dependencies:
-            _ = Indent()
+            indent()
             for dependency in self.dependencies:
                 error = dependency.dump(ret, error)
-            del _
+            unindent()
         return error
 
-    def get_dependency(self, depends_package):
-        """ Always prepare for getting a None in return, especially when it definitely
-            wasn't expected
+    def find_dependency(self, depends_package, strict=False):
+        """
+        Always prepare for getting a None in return, especially when it definitely
+        wasn't expected
         """
         for dependency in self.dependencies:
-            if dependency == depends_package:
+            if dependency.__eq__(depends_package, strict):
                 return dependency
         return None
 
     def get_dependencies(self):
-        """ Return the dependencies. Once the dependencies are resolved (by obsoleta) these
-            dependencies are replaced with the resolved upstreams.
+        """
+        Return the dependencies. Once the dependencies are resolved (by obsoleta) these
+        dependencies are replaced with the resolved upstreams.
         """
         return self.dependencies
-
-    def get_original_dependencies(self):
-        """ Return the dependencies as they were loaded from package file.
-        """
-        return self.original_dependencies
 
     def get_nof_dependencies(self):
         try:

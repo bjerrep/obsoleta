@@ -7,10 +7,11 @@
       ""
       ],
   "depth" : 4,
-  "using_arch": "true",
-  "using_track": "true",
-  "using_buildtype": "true",
-  "allow_duplicates": "false",
-  "keepgoing": "false",
-  "semver": "false"
+  "using_arch": true,
+  "using_track": true,
+  "using_buildtype": true,
+  "allow_duplicates": false,
+  "keepgoing": false,
+  "semver": false,
+  "relative_trace_paths": false
 }

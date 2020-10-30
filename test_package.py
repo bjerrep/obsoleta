@@ -16,7 +16,7 @@ try:
     _package = package.Package.construct_from_package_path(
         setup,
         'testdata/G4_test_multislot_bad_key',
-        key_file='build_bad_key')
+        'bad_key')
     test_true(False)
 except exceptions.InvalidKeyFile as e:
     print(str(e))

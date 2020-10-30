@@ -25,6 +25,10 @@ parser.add_argument('--blacklist_paths', action='store',
                     help=': separated list of blacklist substrings')
 parser.add_argument('--keepgoing', action='store_true',
                     help='attempt to ignore e.g. packages with otherwise fatal errors')
+parser.add_argument('--key',
+                    help='multislot key to use. See also --keypath.')
+parser.add_argument('--keypath',
+                    help='path to multislot key file to use. See also --key.')
 
 parser.add_argument('--check', action='store_true',
                     help='command: check a specified package')
@@ -126,7 +130,8 @@ try:
 
     if args.path:
         try:
-            package = Package.construct_from_package_path(setup, args.path)
+            package = Package.construct_from_package_path(
+                setup, args.path, key=args.key, keypath=args.keypath)
         except FileNotFoundError as e:
             err(str(e))
             exit(ErrorCode.PACKAGE_NOT_FOUND.value)
@@ -177,7 +182,8 @@ try:
         deb('packages listed in buildorder')
         error, resolved = obsoleta.buildorder(package)
 
-        if error.get_errorcode() == ErrorCode.RESOLVE_ERROR:
+        if (error.get_errorcode() == ErrorCode.RESOLVE_ERROR or
+                error.get_errorcode() == ErrorCode.PACKAGE_NOT_UNIQUE):
             err(error.get_message())
             exit_code = error.get_errorcode()
         elif error.has_error():
@@ -232,14 +238,15 @@ try:
         if not args.version:
             exit_code = ErrorCode.MISSING_INPUT
         else:
-            package = obsoleta.find_package(package)
-            error, messages = obsoleta.bump(package, args.version)
+            error, package = obsoleta.find_first_package(package)
+            if error.is_ok():
+                error, messages = obsoleta.bump(package, args.version)
             if error.is_ok():
                 print_result_nl("\n".join(line for line in messages))
                 exit_code = ErrorCode.OK
             else:
                 err('unable to locate %s' % package)
-                exit_code = ErrorCode.PACKAGE_NOT_FOUND
+                exit_code = error.get_errorcode()
 
     elif args.digraph:
         obsoleta.generate_digraph(package)

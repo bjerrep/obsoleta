@@ -1,21 +1,22 @@
 import logging, sys
 from errorcodes import ErrorCode
 
-indent = ''
+indent_string = ''
 
 
-class Indent():
-    def __init__(self):
-        global indent
-        indent += '  '
+def indent():
+    global indent_string
+    indent_string += '  '
 
-    def __del__(self):
-        global indent
-        indent = indent[:-2]
 
-    @staticmethod
-    def indent():
-        return indent
+def unindent():
+    global indent_string
+    indent_string = indent_string[:-2]
+
+
+def get_indent():
+    global indent_string
+    return indent_string
 
 
 RESET = '\033[0m'
@@ -45,7 +46,7 @@ if logging.getLevelName(logging.DEBUG) == 'DEBUG':
 def deb(msg, newline=True):
     if not newline:
         handler.terminator = ""
-    logger.debug(indent + msg)
+    logger.debug(indent_string + msg)
     if not newline:
         handler.terminator = "\n"
 
@@ -53,7 +54,7 @@ def deb(msg, newline=True):
 def inf(msg, newline=True):
     if not newline:
         handler.terminator = ""
-    logger.info(indent + msg)
+    logger.info(indent_string + msg)
     if not newline:
         handler.terminator = "\n"
 
@@ -61,17 +62,25 @@ def inf(msg, newline=True):
 def inf_alt(msg, newline=True):
     if not newline:
         handler.terminator = ""
-    logger.info(indent + '\033[37m\033[44m' + msg)
+    logger.info(indent_string + '\033[37m\033[44m' + msg)
+    if not newline:
+        handler.terminator = "\n"
+
+
+def inf_alt2(msg, newline=True):
+    if not newline:
+        handler.terminator = ""
+    logger.info(indent_string + '\033[37m\033[100m' + msg)
     if not newline:
         handler.terminator = "\n"
 
 
 def war(msg):
-    logger.warning(indent + msg)
+    logger.warning(indent_string + msg)
 
 
 def err(msg):
-    logger.error(indent + msg)
+    logger.error(indent_string + msg)
 
 
 def cri(msg, exit_code=ErrorCode.UNSET):

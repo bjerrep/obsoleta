@@ -6,5 +6,6 @@ __pycache__
 
 *.calltree
 *.profile
+*.png
 
 local
