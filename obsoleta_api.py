@@ -3,8 +3,8 @@ from package import Package
 from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
 from dixi_api import DixiApi
-from log import deb
-import os
+from log import deb, inf, war
+import os, copy
 
 
 class ObsoletaApi:
@@ -38,9 +38,9 @@ class ObsoletaApi:
         error, packages = self.obsoleta.find_all_packages(package_or_compact)
         return error, packages
 
-    def find_first_package(self, package_or_compact):
+    def find_first_package(self, package_or_compact, strict=False):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        error, package = self.obsoleta.find_first_package(package_or_compact)
+        error, package = self.obsoleta.find_first_package(package_or_compact, strict)
         return error, package
 
     def check(self, package_or_compact):
@@ -116,53 +116,86 @@ class ObsoletaApi:
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
         self.obsoleta.generate_digraph(package_or_compact)
 
-    def bump(self, package_or_compact, new_version):
+    def bump(self, package_or_compact, new_version, dryrun=False):
         """ Replace the version in any downstream package(s) where package is found
             in the dependency list and also the version for the package itself.
 
-            Param: 'package'. Package from the loaded package files list
-            Param: 'new_version', version as a string.
+            Param: 'package_or_compact'. Package to bump. It may contain "all" as arch (name:::all)
+                    in which case the package will be bumped for all arch it is found in.
+            Param: 'new_version'. Version as a string.
+            Param: 'dryrun'. Dont actually modify any files, just write what would have been done.
             Returns: tuple(errorcode, [informational text messages])
         """
+        def bump_package(package_or_compact, new_version, dryrun):
+            ret = []
+            package = Package.auto_package(self.setup, package_or_compact)
+            dixi_api = DixiApi(self.setup)
 
-        ret = []
-        package = Package.auto_package(self.setup, package_or_compact)
-        dixi_api = DixiApi(self.setup)
-
-        # the package given is the upstream package in this context, bump it as the first thing
-        dixi_api.load(package)
-        old_version = dixi_api.set_version(new_version)[0]
-        package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
-        ret.append('bumped upstream {%s} from %s to %s in "%s"' %
-                   (dixi_api.get_package().to_string(),
-                    old_version,
-                    new_version,
-                    package_path))
-        dixi_api.save()
-
-        # now bump all downstreams referencing the package in their depends section
-        error, downstreams = self.downstreams(package, DownstreamFilter.ExplicitReferences)
-
-        if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-            ret.append('no {%s} downstream packages found' % package.to_string())
-        elif error.has_error():
-            return error, ['downstream search failed for {%s}' % package, ]
-        else:
-            for downstream_package in downstreams:
-                # Make the version bump. Notice that Dixi is forced to reload the
-                # package since it gets a path rather than a package from Obsoleta.
-                # The Obsoleta packages are too digested to be of use here.
-                dixi_api.load(downstream_package.get_path())
-                old_version = dixi_api.set_version(new_version, package)[0]
-
-                # generate a message about what was done
-                parent_path = dixi_api.get_package(package).get_parent().get_path()
-                package_path = os.path.relpath(parent_path, self.get_common_path())
-
-                message = ('bumped downstream {%s} from %s to %s in "%s"' %
-                          (dixi_api.get_package(package).to_string(), old_version, new_version, package_path))
-                ret.append(message)
-                deb(message)
+            # the package given is the upstream package in this context, bump it as the first thing
+            dixi_api.load(package)
+            old_version = dixi_api.set_version(new_version)[0]
+            package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
+            ret.append('bumped upstream {%s} from %s to %s in "%s"' %
+                       (dixi_api.get_package().to_string(),
+                        old_version,
+                        new_version,
+                        package_path))
+            if not dryrun:
                 dixi_api.save()
 
+            # now bump all downstreams referencing the package in their depends section
+            error, downstreams = self.downstreams(package, DownstreamFilter.ExplicitReferences)
+
+            if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
+                ret.append('no {%s} downstream packages found' % package.to_string())
+            elif error.has_error():
+                return error, ['downstream search failed for {%s}' % package, ]
+            else:
+                for downstream_package in downstreams:
+                    # Make the version bump. Notice that Dixi is forced to reload the
+                    # package since it gets a path rather than a package from Obsoleta.
+                    # The Obsoleta packages are too digested to be of use here.
+                    dixi_api.load(downstream_package.get_path())
+                    old_version = dixi_api.set_version(new_version, package)[0]
+
+                    # generate a message about what was done
+                    parent_path = dixi_api.get_package(package).get_parent().get_path()
+                    package_path = os.path.relpath(parent_path, self.get_common_path())
+
+                    message = ('bumped downstream {%s} from %s to %s in "%s"' %
+                              (dixi_api.get_package(package).to_string(), old_version, new_version, package_path))
+                    ret.append(message)
+                    deb(message)
+                    if not dryrun:
+                        dixi_api.save()
+
+            return ErrorOk(), ret
+
+        if dryrun:
+            inf(' - this is a dryrun, changes are not saved -')
+
+        relaxed = False
+
+        if package_or_compact.get_arch() == 'all':
+            relaxed = True
+            all_archs = self.obsoleta.get_all_archs()
+            packages = []
+            for arch in all_archs:
+                _p = copy.copy(package_or_compact)
+                _p.set_arch(arch)
+                packages.append(_p)
+            packages = sorted(packages, key=Package.to_string)
+        else:
+            packages = [package_or_compact]
+
+        ret = []
+        for package in packages:
+            error, _package = self.obsoleta.find_first_package(package, strict=True)
+            if error.has_error():
+                if relaxed:
+                    war('relaxed mode, ignoring not found %s' % package)
+                    continue
+                return error, 'failed to find unique package to process'
+            error, messages = bump_package(_package, new_version, dryrun)
+            ret += messages
         return ErrorOk(), ret

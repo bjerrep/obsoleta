@@ -47,9 +47,12 @@ parser.add_argument('--digraph', action='store_true',
                     help='command: make dependency plot for the package given with --package')
 
 parser.add_argument('--bump', action='store_true',
-                    help='command: bump the version for --package, both downstream and upstream. Requires --version')
+                    help='command: bump the version for --package, both downstream and upstream. Requires --version. '
+                         'Use the nonstandard "all" as arch to get all architectures bumped thoughout.')
 parser.add_argument('--version',
                     help='the new version x.y.z, used with --bump')
+parser.add_argument('--dryrun', action='store_true',
+                    help='do not actually modify any package files for --bump')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
@@ -238,14 +241,12 @@ try:
         if not args.version:
             exit_code = ErrorCode.MISSING_INPUT
         else:
-            error, package = obsoleta.find_first_package(package)
-            if error.is_ok():
-                error, messages = obsoleta.bump(package, args.version)
+            error, messages = obsoleta.bump(package, args.version, args.dryrun)
             if error.is_ok():
                 print_result_nl("\n".join(line for line in messages))
                 exit_code = ErrorCode.OK
             else:
-                err('unable to locate %s' % package)
+                err(error.get_message())
                 exit_code = error.get_errorcode()
 
     elif args.digraph:

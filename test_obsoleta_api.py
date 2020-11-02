@@ -145,20 +145,23 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 
-def bump(compact, path):
+def bump(compact, path, compact_all=None):
     populate_local_temp(path)
     obsoleta = ObsoletaApi(setup, args)
     package = Package.construct_from_compact(setup, compact)
 
     # establish a new version number to use
-    error, package = obsoleta.find_first_package(package)
+    error, package = obsoleta.find_first_package(package, strict=False)
     test_ok(error)
     old_ver = package.get_version()
-    new_ver = Version(old_ver).increase(Position.BUILD)
-    test_true(old_ver != new_ver, 'version update')
+    version = Version(old_ver).increase(Position.BUILD)
+    test_true(old_ver != version, 'version update')
+
+    if compact_all:
+        package = Package.construct_from_compact(setup, compact_all)
 
     # .. and make the bump
-    error, result = obsoleta.bump(package, new_ver)
+    error, result = obsoleta.bump(package, version)
     test_ok(error)
 
     # use a check() to verify that the bump was a success
@@ -183,6 +186,15 @@ test_eq(message, [
 title('TOA 6C', 'bump multislot')
 message = bump('b:::windows', 'testdata/G1_test_multislot')
 test_eq(message, [
+    'bumped upstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+    'bumped downstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "a"'])
+
+title('TOA 6D', 'bump multislot with "all"')
+message = bump('b', 'testdata/G1_test_multislot', 'b:::all')
+print(message)
+test_eq(message, [
+    'bumped upstream {b:1.1.1:anytrack:linux:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+    'no {b:1.1.1:anytrack:linux:unknown} downstream packages found',
     'bumped upstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
     'bumped downstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "a"'])
 

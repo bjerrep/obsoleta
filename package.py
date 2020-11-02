@@ -422,7 +422,7 @@ class Package:
             dictionary['buildtype'] = self.buildtype
 
         if add_path and self.package_path:
-            dictionary['path'] = self.package_path
+            dictionary['path'] = printing_path(self.package_path)
 
         if self.dependencies:
             deps = []
@@ -480,6 +480,10 @@ class Package:
     def set_version(self, version):
         self.string = None
         self.version = version
+
+    def set_arch(self, arch):
+        self.string = None
+        self.arch = arch
 
     def get_path(self):
         return self.package_path

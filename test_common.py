@@ -12,10 +12,7 @@ def test_eq(result, expected=True):
         exit(ErrorCode.TEST_FAILED.value)
 
 
-def test_ok(errorcode, output=None):
-    if isinstance(errorcode, Error):
-        errorcode = errorcode.get_errorcode()
-
+def test_ok(error, output=None):
     if output:
         if isinstance(output, list):
             try:
@@ -25,8 +22,8 @@ def test_ok(errorcode, output=None):
             except:
                 output = ''
         print_result(output)
-    if errorcode != ErrorCode.OK:
-        print_result_nl(' - failed with "%s' % ErrorCode.to_string(errorcode.value))
+    if error.has_error():
+        print_result_nl(' - failed with "%s"' % error)
         exit(1)
     else:
         print_result_nl(' - pass')

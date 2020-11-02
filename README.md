@@ -484,6 +484,8 @@ Sounds about right. A new --check will tell that the x86 arch still adds up . An
 
 `7.9.13`
 
+If a package should be bumped for all architectures for which it is found the arch can be specified as "all". This is a special arch keyword dedicated to --bump. The compact name will then be name:::all.
+
 # Generators
 
 Dixi has experimental support for auto generating C source files making it possible to add runtime version checking to a C/C++ based system. More [here](GENERATORS.md)

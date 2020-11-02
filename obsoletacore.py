@@ -357,14 +357,20 @@ class Obsoleta:
         if len(matches) > 1:
             if strict:
                 ret = []
-                for package in self.matches:
-                    error = package.dump(ret, error, skip_dependencies=True)
+                for _package in matches:
+                    error = _package.dump(ret, error, skip_dependencies=True)
                 message = 'Package "%s", candidates are %s' % (package, str(ret))
-                return Error(ErrorCode.PACKAGE_NOT_UNIQUE, package, message), matches
+                return Error(ErrorCode.PACKAGE_NOT_UNIQUE, _package, message), matches
             else:
-                inf('buildorder shown for %s, other candidates were %s (find_any is True)' % (matches[0], matches[1:]))
+                inf('find_any=True: returning %s but other candidates were %s' % (matches[0], matches[1:]))
 
         return ErrorOk(), matches[0]
+
+    def get_all_archs(self):
+        archs = []
+        for package in self.loaded_packages:
+            archs.append(package.get_arch())
+        return list(set(archs))
 
     def locate_upstreams(self, target_package):
         """"
@@ -558,9 +564,8 @@ class Obsoleta:
 
     def get_error_count(self):
         errors = 0
-        if self.loaded_packages:
-            for loaded_package in self.loaded_packages:
-                errors += len(loaded_package.error_list_append([]))
+        for loaded_package in self.loaded_packages:
+            errors += len(loaded_package.error_list_append([]))
         return errors
 
     def serialize(self):

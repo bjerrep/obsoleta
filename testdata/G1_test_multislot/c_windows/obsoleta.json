@@ -1,5 +1,10 @@
 {
-  "name": "c",
-  "version": "2.2.2",
-  "arch": "windows"
+  "slot": {
+    "name": "c",
+    "version": "2.2.2",
+    "arch": "windows"
+  },
+  "win": {
+    "arch": "windows"
+  }
 }
