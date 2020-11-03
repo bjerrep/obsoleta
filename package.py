@@ -535,10 +535,14 @@ class Package:
         return self.string
 
     def to_compact_string(self, delimiter=None, safe=False):
+        """
+        It is possible to get the default ':' delimiter replaced with a custom one but notice
+        that this currently does not include the '.' delimiters in the version part which remains
+        as they are.
+        """
         ret = self.to_string()
         if delimiter:
             ret = ret.replace(':', delimiter)
-            ret = ret.replace('.', delimiter)
         if safe:
             ret = ret.replace('*', 'any')
         return ret
