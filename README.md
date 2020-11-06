@@ -484,7 +484,13 @@ Sounds about right. A new --check will tell that the x86 arch still adds up . An
 
 `7.9.13`
 
+#### Bump trivia
+
 If a package should be bumped for all architectures for which it is found the arch can be specified as "all". This is a special arch keyword dedicated to --bump. The compact name will then be name:::all.
+
+Downstreams using a ranged version for an upstream dependency can be exempted for bumping. One scenario is that a awfully big downstream, which seldom changes, depends on a small and highly active helper asset that everyone depends on and that constantly gets bumped. So the downstream would like to be left alone to avoid e.g. endless rebuilding as the helper asset spins along.  There are two ways to accomplish this. The first way is that the downstream can add a "bump": false for the upstream dependency which is then unconditionally ignored when bumping. The second way is to invoke obsoleta with the argument --skip_bumping_ranged_versions after which dependencies with ranged versions (">=" style) will be skipped.
+
+
 
 # Generators
 

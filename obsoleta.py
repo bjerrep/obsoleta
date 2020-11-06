@@ -53,6 +53,8 @@ parser.add_argument('--version',
                     help='the new version x.y.z, used with --bump')
 parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify any package files for --bump')
+parser.add_argument('--skip_bumping_ranged_versions', action='store_true',
+                    help='still evaluating this one. Added here for testing...')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')

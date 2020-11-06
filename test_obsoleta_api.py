@@ -145,8 +145,9 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 
-def bump(compact, path, compact_all=None):
+def bump(compact, path, compact_all=None, skip_ranged_versions=False):
     populate_local_temp(path)
+    args.set_skip_bumping_ranged_versions(skip_ranged_versions)
     obsoleta = ObsoletaApi(setup, args)
     package = Package.construct_from_compact(setup, compact)
 
@@ -164,6 +165,8 @@ def bump(compact, path, compact_all=None):
     error, result = obsoleta.bump(package, version)
     test_ok(error)
 
+    args.set_skip_bumping_ranged_versions(False)
+
     # use a check() to verify that the bump was a success
     obsoleta = ObsoletaApi(setup, args)
     error, messages = obsoleta.check(compact)
@@ -173,30 +176,46 @@ def bump(compact, path, compact_all=None):
 
 title('TOA 6A', 'bump slot - b')
 message = bump('b', 'testdata/G2_test_slot')
-test_eq(message, [
-    'bumped upstream {b:2.2.2:anytrack:anyarch:unknown} from 2.2.2 to 2.2.3 in "b"',
-    'bumped downstream {b:2.2.2:anytrack:linux:unknown} from 2.2.2 to 2.2.3 in "a"'])
+test_eq(message, ['bumped upstream "b" (b:2.2.2:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "b"',
+                  'bumped downstream "a" (b:*:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "a"'])
 
 title('TOA 6B', 'bump slot - d:::linux')
 message = bump('d:::linux', 'testdata/G2_test_slot')
-test_eq(message, [
-    'bumped upstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 4.4.5 in "d"',
-    'bumped downstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 4.4.5 in "a"'])
+test_eq(message, ['bumped upstream "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 4.4.5 in "d"',
+                  'bumped downstream "a" (d:*:anytrack:linux:unknown) from 4.4.4 to 4.4.5 in "a"'])
 
 title('TOA 6C', 'bump multislot')
 message = bump('b:::windows', 'testdata/G1_test_multislot')
-test_eq(message, [
-    'bumped upstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-    'bumped downstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "a"'])
+test_eq(message, ['bumped upstream "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+                  'bumped downstream "a" (b:*:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "a"'])
 
-title('TOA 6D', 'bump multislot with "all"')
+title('TOA 6D', 'bump multislot with "b:::all"')
 message = bump('b', 'testdata/G1_test_multislot', 'b:::all')
 print(message)
-test_eq(message, [
-    'bumped upstream {b:1.1.1:anytrack:linux:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-    'no {b:1.1.1:anytrack:linux:unknown} downstream packages found',
-    'bumped upstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-    'bumped downstream {b:1.1.1:anytrack:windows:unknown} from 1.1.1 to 1.1.2 in "a"'])
+test_eq(message, ['bumped upstream "b" (b:1.1.1:anytrack:linux:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+                  'no {b:1.1.1:anytrack:linux:unknown} downstream packages found',
+                  'bumped upstream "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+                  'bumped downstream "a" (b:*:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "a"'])
+
+title('TOA 6E', 'bump multislot for y:::windows (y is a windows only package found in "b" windows slot depends list)')
+message = bump('y', 'testdata/G1_test_multislot', 'y:::windows')
+print(message)
+test_eq(message, ['bumped upstream "y" (y:8.8.8:anytrack:windows:unknown) from 8.8.8 to 8.8.9 in "y_windows"',
+                  'bumped downstream "b" (y:*:anytrack:windows:unknown) from 8.8.8 to 8.8.9 in "b_multi_out_of_source"'])
+
+title('TOA 6F', 'bump multislot for z (but downstream "b" will not be bumped for z since z has a bump:false)')
+message = bump('z', 'testdata/G1_test_multislot')
+print(message)
+test_eq(message, ['bumped upstream "z" (z:99.99.99:anytrack:anyarch:unknown) from 99.99.99 to 99.99.100 in "z_anyarch"',
+                  'skipped downstream "b" (z:99.99.99:anytrack:anyarch:unknown) from >=99 to 99.99.100 in "z_anyarch". bump=True, skipranged=False',
+                  'skipped downstream "b" (z:99.99.99:anytrack:anyarch:unknown) from >=99 to 99.99.100 in "z_anyarch". bump=True, skipranged=False'])
+
+title('TOA 6G', 'bump multislot for w (but downstream "b" will not be bumped for w since skip_bumping_ranged_versions=True)')
+message = bump('w', 'testdata/G1_test_multislot', skip_ranged_versions=True)
+print(message)
+test_eq(message, ['bumped upstream "w" (w:88.88.88:anytrack:anyarch:unknown) from 88.88.88 to 88.88.89 in "w"',
+                  'skipped downstream "b" (w:88.88.88:anytrack:anyarch:unknown) from >=88 to 88.88.89 in "w". bump=False, skipranged=True',
+                  'skipped downstream "b" (w:88.88.88:anytrack:anyarch:unknown) from >=88 to 88.88.89 in "w". bump=False, skipranged=True'])
 
 # ---------------------------------------------------------------
 
@@ -210,7 +229,7 @@ package = Package.construct_from_package_path(
     'local/temp/b_multi_out_of_source',
     keypath='build_linux')
 error, messages = obsoleta.tree(package)
-test_eq(str(messages), "['b:1.1.1:anytrack:linux:unknown', '  c:2.2.2:anytrack:linux:unknown']")
+test_eq(str(messages), "['b:1.1.1:anytrack:linux:unknown', '  c:2.2.2:anytrack:linux:unknown', '  x:3.2.1:anytrack:anyarch:unknown', '  w:88.88.88:anytrack:anyarch:unknown', '  z:99.99.99:anytrack:anyarch:unknown']")
 test_ok(error)
 
 title('TOA 7b', 'select a multislot from path and key rather than a compact package name')
@@ -219,5 +238,5 @@ package = Package.construct_from_package_path(
     'local/temp/b_multi_out_of_source',
     key='nix')
 error, messages = obsoleta.tree(package)
-test_eq(str(messages), "['b:1.1.1:anytrack:linux:unknown', '  c:2.2.2:anytrack:linux:unknown']")
+test_eq(str(messages), "['b:1.1.1:anytrack:linux:unknown', '  c:2.2.2:anytrack:linux:unknown', '  x:3.2.1:anytrack:anyarch:unknown', '  w:88.88.88:anytrack:anyarch:unknown', '  z:99.99.99:anytrack:anyarch:unknown']")
 test_ok(error)

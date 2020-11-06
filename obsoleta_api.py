@@ -4,6 +4,7 @@ from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
 from dixi_api import DixiApi
 from log import deb, inf, war
+from version import Version
 import os, copy
 
 
@@ -134,12 +135,18 @@ class ObsoletaApi:
             # the package given is the upstream package in this context, bump it as the first thing
             dixi_api.load(package)
             old_version = dixi_api.set_version(new_version)[0]
+            if old_version == str(new_version):
+                return ErrorOk(), ret
+
             package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
-            ret.append('bumped upstream {%s} from %s to %s in "%s"' %
-                       (dixi_api.get_package().to_string(),
+            message = 'bumped upstream "%s" (%s) from %s to %s in "%s"' % (
+                        dixi_api.get_package().get_name(),
+                        dixi_api.get_package().to_string(),
                         old_version,
                         new_version,
-                        package_path))
+                        package_path)
+            deb(message)
+            ret.append(message)
             if not dryrun:
                 dixi_api.save()
 
@@ -152,20 +159,47 @@ class ObsoletaApi:
                 return error, ['downstream search failed for {%s}' % package, ]
             else:
                 for downstream_package in downstreams:
-                    # Make the version bump. Notice that Dixi is forced to reload the
-                    # package since it gets a path rather than a package from Obsoleta.
-                    # The Obsoleta packages are too digested to be of use here.
-                    dixi_api.load(downstream_package.get_path())
+                    # Make the version bump. Notice that the downstream package is reloaded
+                    # since the Obsoleta packages are by now too digested to be of use here.
+                    dixi_api.load(downstream_package.get_path(), downstream_package.slot_key)
+
+                    old_version = dixi_api.get_version(package)
+                    skip_ranged = self.args.skip_bumping_ranged_versions and not Version(old_version).unique()
+                    try:
+                        skip_bump = dixi_api.dixi.get_original_dict(package)['bump'] is False
+                    except:
+                        skip_bump = False
+                    if skip_ranged or skip_bump:
+                        message = ('skipped downstream "%s" (%s) from %s to %s in "%s". bump=%s, skipranged=%s' % (
+                            downstream_package.get_name(),
+                            package.to_string(),
+                            old_version,
+                            new_version,
+                            package_path,
+                            skip_bump,
+                            skip_ranged))
+                        deb(message)
+                        ret.append(message)
+                        continue
+
+                    package.set_version('*')
                     old_version = dixi_api.set_version(new_version, package)[0]
+                    if old_version == str(new_version):
+                        continue
 
                     # generate a message about what was done
-                    parent_path = dixi_api.get_package(package).get_parent().get_path()
-                    package_path = os.path.relpath(parent_path, self.get_common_path())
+                    path = downstream_package.get_path()
+                    package_path = os.path.relpath(path, self.get_common_path())
 
-                    message = ('bumped downstream {%s} from %s to %s in "%s"' %
-                              (dixi_api.get_package(package).to_string(), old_version, new_version, package_path))
-                    ret.append(message)
+                    message = ('bumped downstream "%s" (%s) from %s to %s in "%s"' % (
+                                downstream_package.get_name(),
+                                package.to_string(),
+                                old_version,
+                                new_version,
+                                package_path))
                     deb(message)
+                    ret.append(message)
+
                     if not dryrun:
                         dixi_api.save()
 
@@ -179,6 +213,7 @@ class ObsoletaApi:
         if package_or_compact.get_arch() == 'all':
             relaxed = True
             all_archs = self.obsoleta.get_all_archs()
+            inf('bumping for the architectures %s' % str(all_archs))
             packages = []
             for arch in all_archs:
                 _p = copy.copy(package_or_compact)

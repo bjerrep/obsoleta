@@ -9,7 +9,7 @@
       }
     ]
   },
-  "build_a": {
+  "key_build_a": {
     "arch": "x86_64",
     "depends": [
       {
@@ -19,9 +19,9 @@
       }
     ]
   },
-  "build_b": {
+  "key_build_b": {
     "arch": "x86"
   },
-  "build_x": {
+  "key_build_x": {
   }
 }

@@ -6,13 +6,33 @@
       {
         "name": "c",
         "version": "2.2.2"
-      }
+      },
+      {
+        "name": "x",
+        "version": "3.2.1"
+      },
+      {
+        "name": "z",
+        "version": ">=99",
+        "bump": false
+      },
+      {
+        "name": "w",
+        "version": ">=88",
+        "about": "tested with bumping w with skip_bumping_ranged_versions=True"
+      }      
     ]
   },
   "nix": {
     "arch": "linux"
   },
   "win": {
-    "arch": "windows"
+    "arch": "windows",
+    "depends": [
+      {
+        "name": "y",
+        "version": "8.8.8"
+      }
+    ]
   }
 }

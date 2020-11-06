@@ -294,7 +294,7 @@ title('J1', "bump a downstream package")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package a --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream {a:1.1.1:anytrack:linux:unknown} from 1.1.1 to 7.9.13 in "a"
+test_eq("""bumped upstream "a" (a:1.1.1:anytrack:linux:unknown) from 1.1.1 to 7.9.13 in "a"
 no {a:1.1.1:anytrack:linux:unknown} downstream packages found""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
@@ -302,16 +302,16 @@ title('J1b', "bump d from slot")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13 --verbose' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "d"
-bumped downstream {d:4.4.4:anytrack:linux:unknown} from 4.4.4 to 7.9.13 in "a\"""" in output)
+test_eq("""bumped upstream "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "d"
+bumped downstream "a" (d:*:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "a\"""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
 title('J2', "bump b from slot (bump example in readme)")
 root = populate_local_temp('testdata/F2_test_duplicate_package_slotted_ok')
 exitcode, output = execute(fixed + '--root %s --bump --package b:::x86 --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"
-bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2\"""" in output)
+test_eq("""bumped upstream "b" (b:2.1.2:development:x86:unknown) from 2.1.2 to 7.9.13 in "b"
+bumped downstream "a" (b:*:development:x86:unknown) from 2.1.2 to 7.9.13 in "a2\"""" in output)
 exitcode, output = execute(fixed + '--root %s --package a::development:x86 --check' % root, ErrorCode.OK)
 
 title('K1', 'simple sunshine with external lib dependency --check')

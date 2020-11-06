@@ -96,6 +96,7 @@ class Args:
     verbose = False
     info = False
     keypath = None
+    skip_bumping_ranged_versions = False
 
     def set_depth(self, depth):
         self.depth = depth
@@ -105,6 +106,9 @@ class Args:
 
     def set_slot_path(self, keypath):
         self.keypath = keypath
+
+    def set_skip_bumping_ranged_versions(self, skip_bumping_ranged_versions):
+        self.skip_bumping_ranged_versions = skip_bumping_ranged_versions
 
 
 class Error:

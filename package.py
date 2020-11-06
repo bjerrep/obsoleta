@@ -479,7 +479,7 @@ class Package:
 
     def set_version(self, version):
         self.string = None
-        self.version = version
+        self.version = Version(version)
 
     def set_arch(self, arch):
         self.string = None
@@ -672,6 +672,7 @@ class Package:
         for dependency in self.dependencies:
             if dependency.__eq__(depends_package, strict):
                 return dependency
+
         return None
 
     def get_dependencies(self):
