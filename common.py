@@ -35,7 +35,11 @@ class Setup:
     obsoleta_root = None
     depth = 1
     semver = False
-    relaxed_multislot = False       # allow a multislot key dir to be given as package root. Naughty,
+    # allow a multislot key dir to be given as package root. Naughty,
+    relaxed_multislot = False
+    # Register a multislot package according to the slots it lists in the package file.
+    # The alternative is that only the slots for which a physical keyfile is found is parsed.
+    parse_multislot_directly = True
 
     def __init__(self, configuration_file=None):
         global _setup
@@ -74,6 +78,8 @@ class Setup:
                 self.semver = conf.get('semver')
                 self.relaxed_multislot = conf.get('relaxed_multislot')
                 self.relative_trace_paths = conf.get('relative_trace_paths')
+                if conf.get('parse_multislot_directly') is not None:
+                    self.parse_multislot_directly = conf.get('parse_multislot_directly')
                 try:
                     self.depth = int(conf['depth'])
                 except KeyError:

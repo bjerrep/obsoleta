@@ -19,7 +19,11 @@ class DixiApi:
         if isinstance(path_or_package, Package):
             self.dixi = Dixi(path_or_package)
         else:
-            self.dixi = Dixi(Package.construct_from_package_path(self.setup, path_or_package, key=key, keypath=self.args.keypath))
+            self.dixi = Dixi(Package.construct_from_package_path(
+                self.setup,
+                path_or_package,
+                key=key,
+                keypath=self.args.keypath))
 
     def get_package(self, depend_package=None):
         return self.dixi.get_package(depend_package)

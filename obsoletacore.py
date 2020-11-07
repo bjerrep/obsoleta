@@ -130,6 +130,16 @@ class Obsoleta:
         names = [name for name, count in collections.Counter(names).items() if count > 1]
         return names
 
+    def dictionary_is_valid(self, dictionary):
+        """
+        Since the package file can contain all sorts of stuff this helper will decide
+        if the dictionary blob is actually obsoleta specific.
+        """
+        try:
+            return dictionary.get('name') or dictionary.get('version') or dictionary.get('arch')
+        except:
+            return False
+
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
@@ -145,13 +155,20 @@ class Obsoleta:
                         raise BadPackageFile('malformed json in %s' % file)
 
                     if dictionary.get('multislot'):
-                        key_files = []
-                        path = os.path.dirname(file)
-                        find_in_path(path, 'obsoleta.key', 2, key_files)
-                        packages = [
-                            Package.construct_from_package_path(
-                                self.setup, file, keypath=key_path, dictionary=dictionary)
-                            for key_path in key_files]
+                        if self.setup.parse_multislot_directly:
+                            packages = []
+                            for key in dictionary.keys():
+                                if key != 'multislot' and self.dictionary_is_valid(dictionary[key]):
+                                    packages.append(Package.construct_from_package_path(
+                                        self.setup, file, key=key, dictionary=dictionary))
+                        else:
+                            key_files = []
+                            path = os.path.dirname(file)
+                            find_in_path(path, 'obsoleta.key', 2, key_files)
+                            packages = [
+                                Package.construct_from_package_path(
+                                    self.setup, file, keypath=key_path, dictionary=dictionary)
+                                for key_path in key_files]
                     else:
                         packages = [Package.construct_from_package_path(self.setup, file, dictionary=dictionary), ]
 
