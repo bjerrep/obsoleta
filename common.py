@@ -23,26 +23,27 @@ class Setup:
     The setup class represents the settings in the configuration
     file (default 'obsoleta.conf')
     """
-    paths = []
-    blacklist_paths = []
-    using_track = False
-    using_arch = False
-    using_buildtype = False
-    using_all_optionals = False
-    allow_duplicates = True
-    keepgoing = False
-    cache = False
-    obsoleta_root = None
-    depth = 1
-    semver = False
-    # allow a multislot key dir to be given as package root. Naughty,
-    relaxed_multislot = False
-    # Register a multislot package according to the slots it lists in the package file.
-    # The alternative is that only the slots for which a physical keyfile is found is parsed.
-    parse_multislot_directly = True
-
     def __init__(self, configuration_file=None):
         global _setup
+
+        self.paths = []
+        self.blacklist_paths = []
+        self.using_track = False
+        self.using_arch = False
+        self.using_buildtype = False
+        self.using_all_optionals = False
+        self.allow_duplicates = True
+        self.keepgoing = False
+        self.cache = False
+        self.obsoleta_root = None
+        self.depth = 1
+        self.semver = False
+        # allow a multislot key dir to be given as package root. Naughty,
+        self.relaxed_multislot = False
+        # Register a multislot package according to the slots it lists in the package file.
+        # The alternative is that only the slots for which a physical keyfile is found is parsed.
+        self.parse_multislot_directly = True
+
         _setup = self
 
         Setup.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
@@ -66,7 +67,7 @@ class Setup:
                     self.paths += expanded.split(os.pathsep)
                 blacklist_paths = conf.get('blacklist_paths')
                 if blacklist_paths:
-                    Setup.blacklist_paths = blacklist_paths
+                    self.blacklist_paths = blacklist_paths
                 self.using_arch = conf.get('using_arch')
                 self.using_track = conf.get('using_track')
                 self.using_buildtype = conf.get('using_buildtype')
@@ -193,7 +194,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
     for entry in scan_list:
         if entry.is_dir():
             is_blacklisted = False
-            for blacklist in Setup.blacklist_paths:
+            for blacklist in _setup.blacklist_paths:
                 if blacklist in os.path.join(path, entry.name):
                     deb('- blacklisted, ignoring %s recursively' % entry.path)
                     is_blacklisted = True
