@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from log import deb, inf, inf_alt, inf_alt2, war, err, indent, unindent
 from common import Error, ErrorOk, printing_path
-import common
 from common import find_in_path
 from version import Version
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
@@ -19,7 +18,6 @@ class DownstreamFilter(Enum):
 
 class Obsoleta:
     def __init__(self, setup, args):
-        common._setup = setup
         self.setup = setup
         self.args = args
         self.dirs_checked = 0
