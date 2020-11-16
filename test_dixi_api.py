@@ -143,3 +143,23 @@ test_eq(track_a, 'testing')
 test_eq(track_b, 'testing')
 test_eq(track_c, 'testing')
 args.set_slot_path(None)
+
+
+title('TDA_5', 'setvalue and getvalue in depends section')
+package_dir = populate_local_temp('testdata/dixi/simple')
+dixi = DixiApi(setup, args)
+dixi.load(package_dir)
+depends_package = Package.construct_from_compact(setup, 'b')
+# get current version for 'b' (note that there is a dedicated get_version())
+_version = dixi.get_value('version', depends_package)
+test_eq(_version, '0.1.3')
+# change the version for 'b' and verify
+dixi.set_value('version', '1.1.1', depends_package)
+_version = dixi.get_value('version', depends_package)
+test_eq(_version, '1.1.1')
+# get a nonexistent value
+_value = dixi.get_value('nah', depends_package)
+test_eq(_value, None)
+# get a boolean set to False
+_value = dixi.get_value('what_about_a_boolean', depends_package)
+test_eq(_value, False)

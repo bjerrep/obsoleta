@@ -229,14 +229,22 @@ try:
 
     elif args.getvalue:
         try:
-            ret = dx.get_value(args.getvalue)
+            depends_package = Package.construct_from_compact(setup, args.depends)
+        except:
+            depends_package = None
+        try:
+            ret = dx.get_value(args.getvalue, depends_package)
         except:
             cri('key not found, "%s"' % args.getvalue, ErrorCode.SYNTAX_ERROR)
 
     elif args.setvalue:
         try:
+            depends_package = Package.construct_from_compact(setup, args.depends)
+        except:
+            depends_package = None
+        try:
             key, value = args.setvalue.split(maxsplit=1)
-            ret = dx.set_value(key, value)
+            ret = dx.set_value(key, value, depends_package)
             save_pending = True
         except Exception as e:
             cri('got ' + str(e), ErrorCode.SYNTAX_ERROR)

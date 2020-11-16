@@ -7,13 +7,14 @@
   "depends": [
     {
       "name": "b",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "track": "development",
-      "buildtype": "debug"
+      "buildtype": "debug",
+      "what_about_a_boolean": false
     },
     {
       "name": "c",
-      "version": "0.1.2",
+      "version": "0.1.4",
       "track": "production",
       "buildtype": "debug"
     }

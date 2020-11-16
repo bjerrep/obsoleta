@@ -117,6 +117,9 @@ prepare_local('slotted')
 exitcode, output = execute(fixed + '--depends b --setversion 1.1.1')
 exitcode, output = execute(fixed + '--depends b --getversion')
 test_eq(output, '1.1.1')
+exitcode, output = execute(fixed + '--getversion')
+test_eq(output, '0.1.2')
+
 
 title('R1B', 'slotted getversion with invalid key')
 prepare_local('slotted_invalid_key')

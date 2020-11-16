@@ -38,11 +38,11 @@ class DixiApi:
         slot, version = self.dixi.getter('version', depends_package)
         return version
 
-    def get_value(self, key):
-        return self.dixi.get_value(key)
+    def get_value(self, key, depends_package=None):
+        return self.dixi.get_value(key, depends_package)
 
-    def set_value(self, key, value):
-        return self.dixi.set_value(key, value)
+    def set_value(self, key, value, depends_package=None):
+        return self.dixi.set_value(key, value, depends_package)
 
     def set_track(self, track, track_scope=TrackSetScope.UPGRADE):
         if isinstance(track, Track):

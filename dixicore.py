@@ -208,8 +208,8 @@ class Dixi:
         except KeyError:
             return buildtype_unknown
 
-    def get_value(self, key):
-        return self.getter(key)[1]
+    def get_value(self, key, depends_package=None):
+        return self.getter(key, depends_package)[1]
 
-    def set_value(self, key, value):
-        return self.setter(None, key, value)
+    def set_value(self, key, value, depends_package=None):
+        return self.setter(None, key, value, depends_package)
