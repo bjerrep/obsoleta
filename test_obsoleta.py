@@ -268,8 +268,11 @@ exitcode, output = execute(fixed + '--root %s --path %s/a --package a --tree --d
 test_eq("""a:1.1.1:anytrack:windows:unknown
   b:2.2.2:anytrack:anyarch:unknown""" in output)
 
-title('G3', "duplicates in depends")
-exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.ILLEGAL_DEPENDENCY)
+title('G3', "verify that a depend package can overwrite a slotted original")
+exitcode, output = execute(fixed + '--root testdata/G3_duplicates_in_depends --package a --tree', ErrorCode.OK)
+test_eq("""a:0.1.2:development:x86_64:debug
+  b:1.2.3:development:x86_64:debug
+  c:2.3.4:development:x86_64:debug""" in output)
 
 title('G5', "track degradation")
 exitcode, output = execute(fixed + '--root testdata/G5_test_multislot_track_degradation --package a --check', ErrorCode.ILLEGAL_DEPENDENCY)

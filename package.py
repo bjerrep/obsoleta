@@ -246,8 +246,8 @@ class Package:
             for key_depends in key_section['depends']:
                 for slot_depends in slot_section['depends']:
                     if key_depends['name'] == slot_depends['name']:
-                        new_entries.append(dict(slot_depends, **key_depends))
-                        break
+                        # then do nothing and keep the new entry
+                        continue
                     if slot_depends not in new_entries:
                         new_entries.append(slot_depends)
 
