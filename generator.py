@@ -72,7 +72,7 @@ def generate_c(package_or_path, src_dest, inc_dest):
                     dest.write(source)
 
     # in case the caller calls 'save' then save the generate history as well
-    package.unmodified_dict["generate_c"] = {"autorefresh": "true", "rel_src": src_dest, "rel_inc": inc_dest}
+    package.original_dict["generate_c"] = {"autorefresh": "true", "rel_src": src_dest, "rel_inc": inc_dest}
 
 
 if __name__ == "__main__":
