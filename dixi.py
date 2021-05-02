@@ -27,6 +27,8 @@ parser.add_argument('--printtemplate', action='store_true',
                     help='print a blank obsoleta.json')
 parser.add_argument('--printkey', metavar='key:value',
                     help='print a obsoleta.key on stdout. Argument value is the (multi)slot name')
+parser.add_argument('--printcinclude', action='store_true',
+                    help='print a include file for C with assorted #defines')
 
 parser.add_argument('--generate_c', action='store_true',
                     help='generate c code for runtime obsoleta usage')
@@ -95,7 +97,7 @@ parser.add_argument('--getvalue',
                     help='command: get the value for the given key')
 parser.add_argument('--setvalue',
                     help='command: set the value for the given key. Use quotes as in '
-                         '"key value becomes everything else"')
+                         '"key value". Use True/False for boolean values')
 
 
 args = parser.parse_args()
@@ -246,11 +248,16 @@ try:
             key, value = args.setvalue.split(maxsplit=1)
             ret = dx.set_value(key, value, depends_package)
             save_pending = True
+        except ObsoletaException as e:
+            cri('got ' + str(e), e.ErrorCode)
         except Exception as e:
             cri('got ' + str(e), ErrorCode.SYNTAX_ERROR)
 
     elif args.print:
         print_result(dx.to_merged_json())
+
+    elif args.printcinclude:
+        ret = dx.to_c_header()
 
     elif args.generate_c:
         generator.generate_c(package,

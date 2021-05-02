@@ -412,6 +412,9 @@ class Package:
             'version': str(self.version)
         }
 
+        if self.get_readonly():
+            dictionary['readonly'] = True
+
         if self.setup.using_track and self.track != Track.anytrack:
             dictionary['track'] = TrackToString[self.track.value]
 
@@ -490,6 +493,26 @@ class Package:
 
     def get_parent(self):
         return self.parent
+
+    def get_readonly(self):
+        try:
+            if self.layout == Layout.standard:
+                return self.original_dict.get('readonly')
+            return self.original_dict[self.get_package_key()].get('readonly')
+        except:
+            return False
+
+    def set_readonly(self, value:bool):
+        """
+        It is always allowed to set the read only state
+        """
+        try:
+            if self.layout == Layout.standard:
+                self.original_dict['readonly'] = value
+            else:
+                self.original_dict[self.get_package_key()]['readonly'] = value
+        except:
+            pass
 
     def get_depends_path(self, depends_package):
         return self.find_dependency(depends_package).package_path

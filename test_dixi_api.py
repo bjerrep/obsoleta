@@ -5,8 +5,10 @@ from common import Args, Setup, Position
 from dixicore import TrackSetScope
 from package import Package, Track
 from log import logger
-import logging
+import exceptions, errorcodes
 from version import Version
+import logging
+
 
 logger.setLevel(logging.INFO)
 
@@ -163,3 +165,19 @@ test_eq(_value, None)
 # get a boolean set to False
 _value = dixi.get_value('what_about_a_boolean', depends_package)
 test_eq(_value, False)
+
+
+title('TDA_6', 'readonly package handling')
+package_dir = populate_local_temp('testdata/A2_test_simple/a')
+dixi = DixiApi(setup, args)
+dixi.load(package_dir)
+dixi.set_readonly()
+dixi.set_readonly(False)
+dixi.set_readonly()
+dixi.save()
+dixi.load(package_dir)
+try:
+    dixi.set_value('version', '3.2.1')
+    raise exceptions.ObsoletaException('test_dixi_api', errorcodes.ErrorCode.TEST_FAILED)
+except exceptions.ModifyingReadonlyPackage:
+    pass

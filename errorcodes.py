@@ -25,6 +25,7 @@ class ErrorCode(Enum):
     PACKAGE_NOT_UNIQUE = 20
     RESOLVE_ERROR = 21
     ILLEGAL_DEPENDENCY = 22
+    MODIFYING_READONLY_PACKAGE = 23
 
     @staticmethod
     def to_string(errorcode):
@@ -51,7 +52,8 @@ class ErrorCode(Enum):
              'Option disabled',
              'Package not unique',
              'Resolve error',
-             'Illegal dependency'
+             'Illegal dependency',
+             'Package is readonly'
              ]
 
         return ErrorCodeToString[errorcode]

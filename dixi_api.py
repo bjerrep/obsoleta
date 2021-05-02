@@ -38,6 +38,16 @@ class DixiApi:
         slot, version = self.dixi.getter('version', depends_package)
         return version
 
+    def set_readonly(self, value:bool=True):
+        """
+        The only allowed set operation after set_readonly(True) is
+        set_readonly(False) to remove the read only state.
+        """
+        self.dixi.set_readonly(value)
+
+    def get_readonly(self):
+        self.dixi.getter('readonly')
+
     def get_value(self, key, depends_package=None):
         return self.dixi.get_value(key, depends_package)
 

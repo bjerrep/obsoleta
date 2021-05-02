@@ -135,18 +135,25 @@ class ObsoletaApi:
             # the package given is the upstream package in this context, bump it as the first thing
             dixi_api.load(package)
             old_version = dixi_api.set_version(new_version)[0]
-            if old_version == str(new_version):
-                return ErrorOk(), ret
-
             package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
-            message = 'bumped upstream "%s" (%s) from %s to %s in "%s"' % (
-                        dixi_api.get_package().get_name(),
-                        dixi_api.get_package().to_string(),
-                        old_version,
-                        new_version,
-                        package_path)
-            deb(message)
+
+            if old_version == str(new_version):
+                message = 'not bumping upstream "%s" (%s) already at version %s in "%s"' % (
+                    dixi_api.get_package().get_name(),
+                    dixi_api.get_package().to_string(),
+                    old_version,
+                    package_path)
+            else:
+                message = 'bumped upstream "%s" (%s) from %s to %s in "%s"' % (
+                    dixi_api.get_package().get_name(),
+                    dixi_api.get_package().to_string(),
+                    old_version,
+                    new_version,
+                    package_path)
+
             ret.append(message)
+            deb(message)
+
             if not dryrun:
                 dixi_api.save()
 

@@ -48,6 +48,11 @@ class CompactParseError(ObsoletaException):
         super().__init__(msg, ErrorCode.COMPACT_PARSE_ERROR)
 
 
+class ModifyingReadonlyPackage(ObsoletaException):
+    def __init__(self, msg):
+        super().__init__(msg, ErrorCode.MODIFYING_READONLY_PACKAGE)
+
+
 class UnknownException(ObsoletaException):
     def __init__(self, msg):
         super().__init__(msg, ErrorCode.UNKNOWN_EXCEPTION)
