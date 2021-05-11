@@ -5,6 +5,7 @@ from common import Args, Setup, Position
 from dixicore import TrackSetScope
 from package import Package, Track
 from log import logger
+import dixi_find_best
 import exceptions, errorcodes
 from version import Version
 import logging
@@ -181,3 +182,11 @@ try:
     raise exceptions.ObsoletaException('test_dixi_api', errorcodes.ErrorCode.TEST_FAILED)
 except exceptions.ModifyingReadonlyPackage:
     pass
+
+
+title('TDA_DFB', 'dixi find best utility script')
+with open('testdata/dixi/dixi_find_files/candidates') as f:
+    candidates = f.readlines()
+package = Package.construct_from_compact(setup, 'a:1.1.>=2:anytrack:anyarch:unknown')
+best_candidate = dixi_find_best.find_best_candidate(setup, package, candidates)
+test_eq(best_candidate.to_compact_string(), 'a:1.1.3:anytrack:anyarch:unknown')

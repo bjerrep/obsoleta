@@ -422,9 +422,11 @@ Run ./dixi.py --help to get the current list of commands and optional modifiers 
 There are also the free form get/setters of key:values external to obsoleta:
 
 	--getvalue key
-	--setvalue "key this is the value"
+	--setvalue "key value"
 
-Use the get/setters in the first part for obsoleta specific entries, the free form get/setters for anything else (e.g. a toolchain that might decide the obsoleta.json files is a good place to save information in)
+Use the get/setters in the first part for obsoleta specific entries, the free form get/setters for anything else (e.g. a toolchain that might decide the obsoleta.json files is a good place to save information in). 
+
+If 'value' are 'True' or 'False' it will be converted to a boolean type as opposed to be saved as a string.
 
 
 
@@ -470,7 +472,7 @@ Check that the x86 arch is ok (in this testset there is a x86_64 arch which is m
 
 Due to the absence of complaints it is. Now bump b for arch x86:
 
-`/obsoleta.py --conf testdata/test.conf --root local/temp --bump --package b:::x86 --version 7.9.13`
+`./obsoleta.py --conf testdata/test.conf --root local/temp --bump --package b:::x86 --version 7.9.13`
 
 which gives
 
