@@ -243,13 +243,19 @@ class Package:
                 slot_section['depends'] = []
 
             new_entries = copy.copy(key_section['depends'])
+
+            new_entries_names = []
+            for entry in new_entries:
+                new_entries_names.append(entry["name"])
+
             for key_depends in key_section['depends']:
                 for slot_depends in slot_section['depends']:
                     if key_depends['name'] == slot_depends['name']:
                         # then do nothing and keep the new entry
                         continue
-                    if slot_depends not in new_entries:
+                    if slot_depends['name'] not in new_entries_names:
                         new_entries.append(slot_depends)
+                        new_entries_names.append(slot_depends['name'])
 
             result['depends'] = new_entries
         self.verify_merge_tracks(result)
