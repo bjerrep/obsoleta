@@ -387,29 +387,40 @@ class Obsoleta:
             archs.append(package.get_arch())
         return list(set(archs))
 
-    def locate_upstreams(self, target_package):
+    def locate_upstreams(self, target_package, full_tree=False, candidates=None):
         """"
-        Find any upstream packages listed in the 'target_package' depends section
+        Resolve all upstream packages listed in the 'target_package' depends section
+        in case full_tree is the default False, and if full tree is True, then resolve all dependencies
+        recursively.
+        Returns tupple (error, list of the resolved packages).
+        If all packages were resolved then error will contain ErrorCode.OK.
         """
-        candidates = []
+        if candidates is None:
+            candidates = []
 
-        error, match = self.find_first_package(target_package)
+        error, target = self.find_first_package(target_package)
         if error.has_error():
-            return error, match
+            return error, target
 
-        dependencies = match.get_dependencies()
+        dependencies = target.get_dependencies()
         if not dependencies:
             return ErrorOk(), candidates
 
         for upstream in dependencies:
-            error, found = self.find_first_package(upstream)
-            if found:
-                candidates.append(found)
+            if full_tree:
+                error, candidates = self.locate_upstreams(upstream, full_tree, candidates)
+                if error.has_error():
+                    return error, candidates
+                candidates.append(upstream)
             else:
-                err = Error(ErrorCode.PACKAGE_NOT_FOUND,
-                            match,
-                            "no upstream %s found for %s" % (upstream, match))
-                return err, candidates
+                error, found = self.find_first_package(upstream)
+                if found:
+                    candidates.append(found)
+                else:
+                    err = Error(ErrorCode.PACKAGE_NOT_FOUND,
+                                target,
+                                "no upstream %s found for %s" % (upstream, target))
+                    return err, candidates
         return ErrorOk(), candidates
 
     def locate_downstreams(self, target_package, downstream_filter, downstream_packages=None):
@@ -482,7 +493,7 @@ class Obsoleta:
 
     def dump_tree(self, root_package):
         """
-        Return a list of all package compact names in the root_package tree.
+        Return a list of all package compactpyt names in the root_package tree.
         If there are multiple candidates found it is flagged as an error and the list
         will contain only the possible candidates preventing a unique match.
         If there are no errors then the list will contain a full recursive dump with

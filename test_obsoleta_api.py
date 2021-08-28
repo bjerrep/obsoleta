@@ -11,13 +11,12 @@ import logging, os
 
 logger.setLevel(logging.INFO)
 
-populate_local_temp('testdata/G2_test_slot')
-
 args = Args()
 args.set_depth(2)
 args.set_root('local/temp')
 setup = Setup('testdata/test.conf')
 
+populate_local_temp('testdata/G2_test_slot')
 obsoleta = ObsoletaApi(setup, args)
 
 # check
@@ -79,12 +78,21 @@ test_ok(error)
 
 # find upstream packages, i.e packages that the package argument depend on
 
-title('TOA 4A', 'upstream - a has 4 upstreams')
+title('TOA 4A', 'upstream - a has 4 directly listed upstreams')
 error, messages = obsoleta.upstreams('a:*::linux')
 print(messages)
 test_ok(error)
 test_eq(str(messages), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anyarch:unknown, '
                        'd:4.4.4:anytrack:linux:unknown, e:5.5.5:anytrack:linux:unknown]')
+
+title('TOA 4A2', 'upstream - a has 5 upstreams in total')
+error, messages_4A2 = obsoleta.upstreams('a:*::linux', full_tree=True)
+print(messages_4A2)
+test_ok(error)
+test_eq(str(messages_4A2), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anyarch:unknown, '
+                       'd:4.4.4:anytrack:linux:unknown, f:6.6.6:anytrack:linux:unknown, '
+                       'e:5.5.5:anytrack:linux:unknown]')
+
 
 title('TOA 4B', 'upstream - as TOA 4A')
 package = Package.construct_from_compact(setup, 'a:*::linux')
@@ -147,6 +155,7 @@ test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 def bump(compact, path, compact_all_arch=None, skip_ranged_versions=False):
     populate_local_temp(path)
+    obsoleta = ObsoletaApi(setup, args)
     args.set_skip_bumping_ranged_versions(skip_ranged_versions)
     obsoleta = ObsoletaApi(setup, args)
     package = Package.construct_from_compact(setup, compact)
@@ -225,7 +234,6 @@ test_eq(message,
 # ---------------------------------------------------------------
 
 populate_local_temp('testdata/G1_test_multislot')
-
 obsoleta = ObsoletaApi(setup, args)
 
 title('TOA 7', 'select a multislot from path and keypath rather than a compact package name')
@@ -249,8 +257,10 @@ test_eq(str(messages), "['b:1.1.1:anytrack:linux:unknown', '  c:2.2.2:anytrack:l
 test_ok(error)
 
 
-title('TOA 8a', 'use parse_multislot_directly=True, the actual key files are not used')
 populate_local_temp('testdata/G1_test_multislot')
+obsoleta = ObsoletaApi(setup, args)
+
+title('TOA 8a', 'use parse_multislot_directly=True, the actual key files are not used')
 parse_multislot_directly = setup.parse_multislot_directly
 setup.parse_multislot_directly = True
 os.remove('local/temp/b_multi_out_of_source/build_linux/obsoleta.key')
@@ -258,9 +268,27 @@ os.remove('local/temp/b_multi_out_of_source/build_win/obsoleta.key')
 error, messages = obsoleta.tree(package)
 test_ok(error)
 #
-title('TOA 8b', 'use parse_multislot_directly=False, the actual key files are required')
+
 populate_local_temp('testdata/G1_test_multislot')
+obsoleta = ObsoletaApi(setup, args)
+
+title('TOA 8b', 'use parse_multislot_directly=False, the actual key files are required')
 setup.parse_multislot_directly = False
 error, messages = obsoleta.tree(package)
 test_ok(error)
 setup.parse_multislot_directly = parse_multislot_directly
+
+
+populate_local_temp('testdata/B5_test_missing_package')
+obsoleta = ObsoletaApi(setup, args)
+
+title('TOA 9A', 'upstream() with missing upstream package "c" is default ok')
+error, messages = obsoleta.upstreams('a')
+test_eq(str(messages), '[b:0.1.0:anytrack:anyarch:unknown]')
+test_ok(error)
+
+title('TOA 9B', 'upstream with missing package "c" fails with full_tree=True')
+error, messages = obsoleta.upstreams('a', full_tree=True)
+test_eq('Package not found: c:1.2.3:anytrack:anyarch:unknown from parent b:0.1.0:anytrack:anyarch:unknown',
+        error.to_string())
+test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
