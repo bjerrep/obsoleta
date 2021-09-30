@@ -40,6 +40,7 @@ class Setup:
         self.semver = False
         # allow a multislot key dir to be given as package root. Naughty,
         self.relaxed_multislot = False
+        self.keep_track = False
         # Register a multislot package according to the slots it lists in the package file.
         # The alternative is that only the slots for which a physical keyfile is found is parsed.
         self.parse_multislot_directly = True
@@ -78,6 +79,7 @@ class Setup:
                 self.cache = conf.get('cache')
                 self.semver = conf.get('semver')
                 self.relaxed_multislot = conf.get('relaxed_multislot')
+                self.keep_track = conf.get('keep_track')
                 self.relative_trace_paths = conf.get('relative_trace_paths')
                 if conf.get('parse_multislot_directly') is not None:
                     self.parse_multislot_directly = conf.get('parse_multislot_directly')

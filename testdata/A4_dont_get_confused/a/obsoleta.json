@@ -8,6 +8,10 @@
       "name": "x",
       "version": "2.2.2",
       "track": "testing"      
-    }
+    },
+    {
+      "name": "y",
+      "version": "3.3.3"
+    }    
   ]
 }

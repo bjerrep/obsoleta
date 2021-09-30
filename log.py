@@ -43,6 +43,10 @@ if logging.getLevelName(logging.DEBUG) == 'DEBUG':
     logging.addLevelName(logging.CRITICAL, LIGHT_RED2 + '%3.3s' % logging.getLevelName(logging.CRITICAL))
 
 
+def get_log_level():
+    return logger.level
+
+
 def deb(msg, newline=True):
     if not newline:
         handler.terminator = ""

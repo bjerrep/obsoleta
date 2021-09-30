@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from log import deb, inf, inf_alt, inf_alt2, war, err, indent, unindent
+from log import deb, inf, inf_alt, inf_alt2, war, err, get_log_level, indent, unindent
 from common import Error, ErrorOk, printing_path
 from common import find_in_path
 from version import Version
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
 from package import Package, anyarch, buildtype_unknown, Track
-import os, copy, collections, json, html, datetime
+import os, copy, collections, json, html, datetime, logging
 from enum import Enum
 
 
@@ -262,7 +262,8 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    inf('package ' + dependency.to_string() + ' does not exist')
+                    if get_log_level() <= logging.INFO:
+                        war('package ' + dependency.to_string() + ' does not exist, required by ' + package.to_string())
 
             level -= 1
         unindent()
@@ -331,14 +332,17 @@ class Obsoleta:
 
     def find_all_dependencies(self, target_package):
         """
-        Find dependencies, either as native obsoleta packages or external
-        libraries.
+        Find dependencies, either as native obsoleta packages or external libraries.
+        Prefer perfect hits but if none is found then look for 'equal or better' packages.
         """
         candidates = target_package.find_equals_no_upgrade(self.loaded_packages)
 
         if not candidates:
             for package in self.loaded_packages:
-                if package.__eq__(target_package, False):
+                if self.setup.keep_track or target_package.keep_track:
+                    if package.package_is_equal_or_better(target_package):
+                        candidates.append(package)
+                elif package.package_is_equal_or_better_relaxed_track(target_package):
                     candidates.append(package)
 
         if not candidates:
@@ -352,7 +356,7 @@ class Obsoleta:
                      'no upstreams matches %s' % target_package.to_string()), candidates
 
     def find_all_packages(self, package):
-        matches = package.find_equal_or_better(self.loaded_packages)
+        matches = package.find_equal_or_better_in_list(self.loaded_packages)
 
         if not matches:
             return Error(ErrorCode.PACKAGE_NOT_FOUND, package), matches
@@ -502,7 +506,7 @@ class Obsoleta:
         ret = []
         error = ErrorOk()
 
-        matches = root_package.find_equal_or_better(self.loaded_packages)
+        matches = root_package.find_equal_or_better_in_list(self.loaded_packages)
 
         if not matches:
             return Error(ErrorCode.PACKAGE_NOT_FOUND, root_package), ret
@@ -567,7 +571,7 @@ class Obsoleta:
         if errors is None:
             errors = []
         anypackage = package.get_name() == '*'
-        if not self.loaded_packages or (not anypackage and not package.find_equal_or_better(self.loaded_packages)):
+        if not self.loaded_packages or (not anypackage and not package.find_equal_or_better_in_list(self.loaded_packages)):
             return Error(ErrorCode.PACKAGE_NOT_FOUND, package), errors
 
         if not package:
@@ -581,7 +585,7 @@ class Obsoleta:
             for _package in self.loaded_packages:
                 _package.error_list_append(errors)
         else:
-            package = package.find_equal_or_better(self.loaded_packages)[0]
+            package = package.find_equal_or_better_in_list(self.loaded_packages)[0]
             package.error_list_append(errors)
 
         if errors:

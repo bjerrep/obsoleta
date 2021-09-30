@@ -100,7 +100,8 @@ e:1.1.1:anytrack:c64:unknown""" in output)
 title('A12', 'simple sunshine - dont get confused')
 exitcode, output = execute(fixed + '--root testdata/A4_dont_get_confused:testdata/A4_dont_get_confused/a --package a --tree', ErrorCode.OK)
 test_eq("""a:0.1.2:testing:linux_x86_64:unknown
-  x:2.2.2:testing:linux_x86_64:unknown""", output)
+  x:2.2.2:testing:linux_x86_64:unknown
+  y:3.3.3:production:linux_x86_64:unknown""", output)
 
 title('B1', 'no json files found (bad path)')
 exitcode, output = execute(fixed + '--root nonexisting --package a --check', ErrorCode.BAD_PATH)

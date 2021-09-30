@@ -55,6 +55,7 @@ class Package:
         self.string = None
         self.slot_unresolved = False
         self.explicit_anyarch = False
+        self.keep_track = False
 
         if keypath:
             key = Package.load_key(keypath)
@@ -118,6 +119,8 @@ class Package:
             path = get_package_filepath(dictionary.get('path'))
         else:
             path = 'unknown'
+
+        self.keep_track = dictionary.get('keeptrack')
 
         try:
             self.name = dictionary['name']
@@ -599,7 +602,7 @@ class Package:
     def __repr__(self):
         return self.to_string()
 
-    def __eq__(self, other, strict=True):
+    def package_is_equal_or_better(self, other, strict_track=True):
         """
         The equality check uses the set of rules that exists for checking for equality for
         each of the name, version, track, arch and buildtypes attributes. For some specific examples
@@ -617,14 +620,12 @@ class Package:
         if self.setup.using_track:
             if other.track == Track.production and self.track != Track.production:
                 return False
-            if strict:
-                if ((self.track == Track.anytrack and other.track != Track.anytrack) or
-                        (self.track != Track.anytrack and other.track == Track.anytrack)):
-                    return False
+
+            if strict_track:
                 if self.track != other.track:
                     return False
             else:
-                if not (self.track >= other.track):
+                if self.track < other.track:
                     return False
 
         if self.setup.using_arch:
@@ -642,6 +643,12 @@ class Package:
                             other.buildtype == buildtype_unknown)
         return True
 
+    def package_is_equal_or_better_relaxed_track(self, other):
+        return self.package_is_equal_or_better(other, False)
+
+    def __eq__(self, other):
+        return self.package_is_equal_or_better(other)
+
     def is_duplicate(self, other):
         """
         Return True if the other package has the same name and same arch. Used to
@@ -656,12 +663,23 @@ class Package:
             match = self.arch == other.arch
         return match
 
-    def find_equal_or_better(self, package_list):
+    def find_equal_or_better_in_list(self, package_list):
         ret = []
         for package in package_list:
-            if package.__eq__(self, False):
+            if package.package_is_equal_or_better_relaxed_track(self):
                 ret.append(package)
         return ret
+
+    def find_dependency(self, depends_package, strict=False):
+        """
+        Always prepare for getting a None in return, especially when it definitely
+        wasn't expected
+        """
+        for dependency in self.dependencies:
+            if dependency.package_is_equal_or_better(depends_package, strict):
+                return dependency
+
+        return None
 
     def find_equals_no_upgrade(self, package_list):
         ret = []
@@ -692,17 +710,6 @@ class Package:
                 error = dependency.dump(ret, error)
             unindent()
         return error
-
-    def find_dependency(self, depends_package, strict=False):
-        """
-        Always prepare for getting a None in return, especially when it definitely
-        wasn't expected
-        """
-        for dependency in self.dependencies:
-            if dependency.__eq__(depends_package, strict):
-                return dependency
-
-        return None
 
     def get_dependencies(self):
         """

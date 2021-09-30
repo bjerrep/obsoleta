@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import copy
+
 from test_common import title, test_true, test_ok, test_eq, test_error, populate_local_temp
 from common import Position, Setup
 from obsoleta_api import Args, ObsoletaApi
@@ -291,4 +293,24 @@ title('TOA 9B', 'upstream with missing package "c" fails with full_tree=True')
 error, messages = obsoleta.upstreams('a', full_tree=True)
 test_eq('Package not found: c:1.2.3:anytrack:anyarch:unknown from parent b:0.1.0:anytrack:anyarch:unknown',
         error.to_string())
+test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
+
+
+title('TOA 10', 'Test that the switch "keep_track" makes it impossible to resolve "y" ("a" is testing but "y" only exists as production')
+
+# getting started, "y" in testing is happy to find an "y" in production
+populate_local_temp('testdata/A4_dont_get_confused')
+obsoleta = ObsoletaApi(setup, args)
+error, messages = obsoleta.tree('a')
+test_eq(str(messages), "['a:0.1.2:testing:linux_x86_64:unknown', '  x:2.2.2:testing:linux_x86_64:unknown', '  y:3.3.3:production:linux_x86_64:unknown']")
+test_ok(error)
+
+# "y" dependency in testing has keeptrack:true and refuses to use the single "y" in production
+error, messages = obsoleta.tree('b')
+test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
+
+# reload with a setup file setting the global keep_track to true. Same result as above.
+keep_track_setup = Setup('testdata/test_keep_track.conf')
+obsoleta = ObsoletaApi(keep_track_setup, args)
+error, messages = obsoleta.tree('a')
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)

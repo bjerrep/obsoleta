@@ -15,7 +15,7 @@ def find_best_candidate(setup, package, candidates):
 
     for i in candidates:
         can = Package.construct_from_compact(setup, i)
-        if package.__eq__(can):
+        if package == can:
             matches.append(can)
 
     if not matches:

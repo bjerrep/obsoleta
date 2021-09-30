@@ -1,0 +1,13 @@
+{
+  "name": "b",
+  "version": "0.1.2",
+  "arch": "linux_x86_64",
+  "track": "testing",
+  "depends": [
+    {
+      "name": "y",
+      "version": "3.3.3",
+      "keeptrack": true
+    }    
+  ]
+}

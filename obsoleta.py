@@ -55,6 +55,8 @@ parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify any package files for --bump')
 parser.add_argument('--skip_bumping_ranged_versions', action='store_true',
                     help='still evaluating this one. Added here for testing...')
+parser.add_argument('--keeptrack', action='store_true',
+                    help='require that tracks are alike and refuse to "upgrade" them')
 
 parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
@@ -117,6 +119,10 @@ setup = Setup(args.conffile)
 if args.depth:
     # a depth given on the commandline overrules any depth there might have been in the configuration file
     setup.depth = int(args.depth)
+
+if args.keeptrack:
+    setup.keep_track = int(args.keeptrack)
+
 if args.keepgoing:
     setup.keepgoing = True
 

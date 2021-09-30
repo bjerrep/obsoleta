@@ -210,6 +210,12 @@ is not legal:
 
 Complaining about the package b:0.1.2:testing:anyarch:unknown which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
 
+**keep_track**
+
+It is possible to specify a "keeptrack":true on specific dependencies (or as a commandline switch or permanently in the setup file) which will refuse to resolve a dependency with a package with 'a better track' as described in the previous paragraph. A use case could be that an upstream package contains some extras in the development track that you want to make sure is available in a development build.
+
+
+
 ### Arch
 
 The arch (architecture) attribute acts as an appendix to the name so e.g. a library can coexist in multiple flavors for the otherwise same name, version, track and buildtype.
