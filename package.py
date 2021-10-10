@@ -56,6 +56,7 @@ class Package:
         self.slot_unresolved = False
         self.explicit_anyarch = False
         self.keep_track = False
+        self.package_section = None
 
         if keypath:
             key = Package.load_key(keypath)
@@ -310,7 +311,7 @@ class Package:
                 self.slot_key = key
             else:
                 self.slot_key = Package.load_key(get_key_filepath(self.package_path))
-            slot_section = dictionary['slot']
+            self.package_section = dictionary['slot']
 
             try:
                 key_section = dictionary[self.slot_key]
@@ -318,7 +319,7 @@ class Package:
                 raise InvalidKeyFile('failed to find slot in package file %s with key "%s"' %
                                      (os.path.abspath(package_path), self.slot_key))
 
-            merged = self.merge(slot_section, key_section)
+            merged = self.merge(self.package_section, key_section)
             self.from_dict(merged)
             inf('registered \'%s\' in slot %s -> %s' %
                 (dictionary['slot']['name'], printing_path(package_path), self.to_string()))
@@ -335,13 +336,13 @@ class Package:
 
             self.slot_key = key
 
-            slot_section = dictionary['multislot']
+            self.package_section = dictionary['multislot']
             try:
                 key_section = dictionary[self.slot_key]
             except KeyError:
                 raise InvalidKeyFile('failed to find multislot in package file %s with key "%s"' %
                                      (os.path.abspath(package_path), self.slot_key))
-            merged = self.merge(slot_section, key_section)
+            merged = self.merge(self.package_section, key_section)
             self.from_dict(merged)
             inf('registered \'%s\' in multislot %s -> %s' %
                 (dictionary['multislot']['name'], printing_path(package_path), self.to_string()))
@@ -416,10 +417,15 @@ class Package:
                 raise CompactParseError(str(e))
 
     def to_dict(self, add_path=False):
-        dictionary = {
-            'name': self.name,
-            'version': str(self.version)
-        }
+        if not self.package_section and self.original_dict:
+            dictionary = copy.deepcopy(self.original_dict)
+        elif self.package_section:
+            dictionary = copy.deepcopy(self.package_section)
+        else:
+            dictionary = {
+                'name': self.name,
+                'version': str(self.version)
+            }
 
         if self.get_readonly():
             dictionary['readonly'] = True
@@ -436,11 +442,12 @@ class Package:
         if add_path and self.package_path:
             dictionary['path'] = printing_path(self.package_path)
 
+        dictionary.pop('depends', None)
+
         if self.dependencies:
-            deps = []
+            dictionary['depends'] = []
             for dependency in self.dependencies:
-                deps.append(dependency.to_dict(add_path))
-            dictionary['depends'] = deps
+                dictionary['depends'].append(dependency.to_dict(add_path))
 
         return dictionary
 
@@ -511,7 +518,7 @@ class Package:
         except:
             return False
 
-    def set_readonly(self, value:bool):
+    def set_readonly(self, value: bool):
         """
         It is always allowed to set the read only state
         """

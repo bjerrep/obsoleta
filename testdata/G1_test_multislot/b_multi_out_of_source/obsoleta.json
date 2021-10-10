@@ -20,7 +20,11 @@
         "name": "w",
         "version": ">=88",
         "about": "tested with bumping w with skip_bumping_ranged_versions=True"
-      }      
+      },
+      {
+        "name": "y",
+        "version": "8.8.8"
+      }
     ]
   },
   "nix": {

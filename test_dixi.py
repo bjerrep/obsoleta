@@ -243,6 +243,7 @@ exitcode, output = execute(fixed + '--keypath build_a --print')
 test_eq("""{
   "name": "a",
   "version": "0.1.2",
+  "mykey": true,
   "arch": "x86_64",
   "depends": [
     {

@@ -43,8 +43,17 @@ if logging.getLevelName(logging.DEBUG) == 'DEBUG':
     logging.addLevelName(logging.CRITICAL, LIGHT_RED2 + '%3.3s' % logging.getLevelName(logging.CRITICAL))
 
 
-def get_log_level():
-    return logger.level
+def get_info_log_level():
+    return logger.level <= logging.INFO
+
+
+def set_log_level(verbose=False, info=False):
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    elif info:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.ERROR)
 
 
 def deb(msg, newline=True):

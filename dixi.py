@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import deb, inf, err, cri, print_result, logger
+from log import set_log_level, deb, inf, err, cri, print_result
 from common import Setup
 from common import Position
 from package import Package
@@ -7,7 +7,7 @@ from dixicore import Dixi, TrackSetScope
 from errorcodes import ErrorCode
 from exceptions import ObsoletaException
 import generator
-import json, logging, argparse, os
+import json, argparse, os
 
 # ---------------------------------------------------------------------------------------------
 
@@ -121,9 +121,9 @@ if args.printkey:
     exit(ErrorCode.OK.value)
 
 if args.verbose:
-    logger.setLevel(logging.DEBUG)
+    set_log_level(verbose=True)
 elif args.info:
-    logger.setLevel(logging.INFO)
+    set_log_level(info=True)
 
 if not args.path:
     deb('no path given, using current directory')

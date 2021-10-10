@@ -1,4 +1,3 @@
-from common import Args
 from package import Package, Track
 from dixicore import Dixi, TrackSetScope
 
@@ -7,23 +6,23 @@ class DixiApi:
     """ Python api for dixi.
         Might in time just be merged into dixicore and then there will just be 'dixi'.
     """
-    def __init__(self, setup, args=Args()):
+    def __init__(self, setup):
         """ Notice that the constructor does not give a usable DixiApi since it isn't told what package
             to work with. It should always be followed by a call to load()
         """
         self.setup = setup
-        self.args = args
         self.dixi = None
 
-    def load(self, path_or_package, key=None):
+    def load(self, path_or_package, key=None, keypath=None):
         if isinstance(path_or_package, Package):
             self.dixi = Dixi(path_or_package)
         else:
-            self.dixi = Dixi(Package.construct_from_package_path(
+            package = Package.construct_from_package_path(
                 self.setup,
                 path_or_package,
                 key=key,
-                keypath=self.args.keypath))
+                keypath=keypath)
+            self.dixi = Dixi(package)
 
     def get_package(self, depend_package=None):
         return self.dixi.get_package(depend_package)
@@ -38,7 +37,7 @@ class DixiApi:
         slot, version = self.dixi.getter('version', depends_package)
         return version
 
-    def set_readonly(self, value:bool=True):
+    def set_readonly(self, value: bool = True):
         """
         The only allowed set operation after set_readonly(True) is
         set_readonly(False) to remove the read only state.

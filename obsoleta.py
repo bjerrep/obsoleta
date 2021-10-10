@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-from log import logger
-from log import inf, deb, err, print_result, print_result_nl
+from log import set_log_level, inf, deb, err, print_result, print_result_nl
 from common import Setup
 from errorcodes import ErrorCode
 from package import Package
 from obsoletacore import Obsoleta, DownstreamFilter
 from obsoleta_api import ObsoletaApi
 from exceptions import ObsoletaException
-import argparse, json, logging, os, traceback
+import argparse, json, os, traceback
 
 # This is the script for calling obsoleta from the command line.
 
@@ -82,9 +81,9 @@ if args.yappi:
     yappirun.start_yappi()
 
 if args.verbose:
-    logger.setLevel(logging.DEBUG)
+    set_log_level(verbose=True)
 elif args.info:
-    logger.setLevel(logging.INFO)
+    set_log_level(info=True)
 
 valid_package_action = args.tree or args.check or args.buildorder or args.listmissing or \
                        args.upstream or args.downstream or args.bump or args.digraph

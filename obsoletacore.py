@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from log import deb, inf, inf_alt, inf_alt2, war, err, get_log_level, indent, unindent
+from log import deb, inf, inf_alt, inf_alt2, war, err, get_info_log_level, indent, unindent
 from common import Error, ErrorOk, printing_path
 from common import find_in_path
 from version import Version
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
 from package import Package, anyarch, buildtype_unknown, Track
-import os, copy, collections, json, html, datetime, logging
+import os, copy, collections, json, html, datetime
 from enum import Enum
 
 
@@ -262,7 +262,7 @@ class Obsoleta:
                     resolved.add_error(error)
                     resolved.parent = package
                     package.dependencies.append(resolved)
-                    if get_log_level() <= logging.INFO:
+                    if get_info_log_level():
                         war('package ' + dependency.to_string() + ' does not exist, required by ' + package.to_string())
 
             level -= 1
@@ -425,7 +425,7 @@ class Obsoleta:
                                 target,
                                 "no upstream %s found for %s" % (upstream, target))
                     return err, candidates
-        return ErrorOk(), candidates
+        return ErrorOk(), sorted(list(set(candidates)))
 
     def locate_downstreams(self, target_package, downstream_filter, downstream_packages=None):
         """
@@ -450,7 +450,7 @@ class Obsoleta:
                                                     downstream_packages=downstream_packages)
 
         if downstream_packages:
-            return ErrorOk(), downstream_packages
+            return ErrorOk(), sorted(list(set(downstream_packages)))
         return Error(ErrorCode.PACKAGE_NOT_FOUND,
                      target_package,
                      "%s not found" % target_package), downstream_packages

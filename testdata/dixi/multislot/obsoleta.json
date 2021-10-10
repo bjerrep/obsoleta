@@ -2,6 +2,7 @@
   "multislot": {
     "name": "a",
     "version": "0.1.2",
+    "mykey": true,
     "depends": [
       {
         "name": "b",

@@ -3,7 +3,7 @@ from package import Package
 from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
 from dixi_api import DixiApi
-from log import deb, inf, war
+from log import deb, inf
 from version import Version
 import os, copy
 
@@ -197,13 +197,18 @@ class ObsoletaApi:
                     # generate a message about what was done
                     path = downstream_package.get_path()
                     package_path = os.path.relpath(path, self.get_common_path())
+                    extra = ''
+                    if downstream_package.get_slot_key():
+                        extra = ' (slot "%s")' % downstream_package.get_slot_key()
 
-                    message = ('bumped downstream "%s" (%s) from %s to %s in "%s"' % (
+                    message = ('bumped downstream "%s" (%s) from %s to %s in "%s"%s' % (
                                 downstream_package.get_name(),
                                 package.to_string(),
                                 old_version,
                                 new_version,
-                                package_path))
+                                package_path,
+                                extra))
+
                     deb(message)
                     ret.append(message)
 
@@ -220,6 +225,7 @@ class ObsoletaApi:
         if package_or_compact.get_arch() == 'all':
             relaxed = True
             all_archs = self.obsoleta.get_all_archs()
+
             inf('bumping for the architectures %s' % str(all_archs))
             packages = []
             for arch in all_archs:
@@ -235,7 +241,7 @@ class ObsoletaApi:
             error, _package = self.obsoleta.find_first_package(package, strict=True)
             if error.has_error():
                 if relaxed:
-                    war('relaxed mode, ignoring not found %s' % package)
+                    inf('relaxed mode, ignoring not found %s' % package)
                     continue
                 return error, 'failed to find unique package to process'
             error, messages = bump_package(_package, new_version, dryrun)

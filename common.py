@@ -1,4 +1,4 @@
-from log import deb, inf
+from log import set_log_level, deb, inf
 from errorcodes import ErrorCode
 from exceptions import BadPath
 import os, json, time, datetime
@@ -106,6 +106,17 @@ class Args:
     info = False
     keypath = None
     skip_bumping_ranged_versions = False
+    set_log_level()
+
+    def set_verbose_logging(self):
+        self.verbose = True
+        self.info = False
+        set_log_level(verbose=True)
+
+    def set_info_logging(self):
+        self.verbose = False
+        self.info = True
+        set_log_level(info=True)
 
     def set_depth(self, depth):
         self.depth = depth
