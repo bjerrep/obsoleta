@@ -2,7 +2,7 @@
 from test_common import title, test_true, test_ok, test_eq, test_error, populate_local_temp
 from common import Position, Setup
 from obsoleta_api import Args, ObsoletaApi
-from obsoletacore import DownstreamFilter
+from obsoletacore import UpDownstreamFilter
 from errorcodes import ErrorCode
 from version import Version
 from package import Package
@@ -77,13 +77,13 @@ test_ok(error)
 # find upstream packages, i.e packages that the package argument depend on
 
 title('TOA 4A', 'upstream - a has 4 directly listed upstreams')
-error, messages = obsoleta.upstreams('a:*::linux')
+error, messages = obsoleta.upstreams('a:*::linux', UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(str(messages), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anyarch:unknown,'
                        ' d:4.4.4:anytrack:linux:unknown, e:5.5.5:anytrack:linux:unknown]')
 
 title('TOA 4A2', 'upstream - a has 5 upstreams in total')
-error, messages_4A2 = obsoleta.upstreams('a:*::linux', full_tree=True)
+error, messages_4A2 = obsoleta.upstreams('a:*::linux')
 test_ok(error)
 test_eq(str(messages_4A2), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anyarch:unknown,'
                            ' d:4.4.4:anytrack:linux:unknown, e:5.5.5:anytrack:linux:unknown,'
@@ -92,7 +92,7 @@ test_eq(str(messages_4A2), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:
 title('TOA 4B', 'upstream - as TOA 4A')
 package = Package.construct_from_compact(setup, 'a:*::linux')
 
-error, messages2 = obsoleta.upstreams(package)
+error, messages2 = obsoleta.upstreams(package, UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
@@ -112,38 +112,38 @@ test_eq(messages, [])
 
 title('TOA 5A', 'downstream - b is used by downstream a')
 error, messages = obsoleta.downstreams('b:*::linux',
-                                       DownstreamFilter.ExplicitReferences)
+                                       UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 title('TOA 5B', 'downstream - b is used by downstream a (from compact)')
 package = Package.construct_from_compact(setup, 'b:*::linux')
 error, messages2 = obsoleta.downstreams(package,
-                                        DownstreamFilter.ExplicitReferences)
+                                        UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 5C', 'downstream - oups not found')
 package = Package.construct_from_compact(setup, 'oups:*::linux')
 error, messages = obsoleta.downstreams(package,
-                                       DownstreamFilter.ExplicitReferences)
+                                       UpDownstreamFilter.ExplicitReferences)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
 
-title('TOA 5D', 'downstream to f = a (DownstreamFilter.ExplicitReferences)')
+title('TOA 5D', 'downstream to f = a (UpDownstreamFilter.ExplicitReferences)')
 error, messages = obsoleta.downstreams('f:*::linux',
-                                       DownstreamFilter.ExplicitReferences)
+                                       UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(str(messages), '[e:5.5.5:anytrack:linux:unknown]')
 
-title('TOA 5E', 'downstream to f = a, e (DownstreamFilter.FollowDownstream)')
+title('TOA 5E', 'downstream to f = a, e (UpDownstreamFilter.FollowTree)')
 error, messages = obsoleta.downstreams('f:*::linux',
-                                       DownstreamFilter.FollowDownstream)
+                                       UpDownstreamFilter.FollowTree)
 test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown, e:5.5.5:anytrack:linux:unknown]')
 
-title('TOA 5F', 'downstream to f = a (DownstreamFilter.DownstreamOnly)')
+title('TOA 5F', 'downstream to f = a (UpDownstreamFilter.TreeOnly)')
 error, messages = obsoleta.downstreams('f:*::linux',
-                                       DownstreamFilter.DownstreamOnly)
+                                       UpDownstreamFilter.TreeOnly)
 test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
@@ -297,14 +297,14 @@ populate_local_temp('testdata/B5_test_missing_package')
 obsoleta = ObsoletaApi(setup, args)
 
 
-title('TOA 9A', 'upstream() with missing upstream package "c" is default ok')
-error, messages = obsoleta.upstreams('a')
+title('TOA 9A', 'upstream() using ExplicitReferences will not discover the missing upstream package "c" required by "b"')
+error, messages = obsoleta.upstreams('a', UpDownstreamFilter.ExplicitReferences)
 test_eq(str(messages), '[b:0.1.0:anytrack:anyarch:unknown]')
 test_ok(error)
 
 
-title('TOA 9B', 'upstream with missing package "c" fails with full_tree=True')
-error, messages = obsoleta.upstreams('a', full_tree=True)
+title('TOA 9B', 'upstream fails with missing package "c" required by "b" with default filter FollowTree')
+error, messages = obsoleta.upstreams('a')
 test_eq('Package not found: c:1.2.3:anytrack:anyarch:unknown from parent b:0.1.0:anytrack:anyarch:unknown',
         error.to_string())
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)

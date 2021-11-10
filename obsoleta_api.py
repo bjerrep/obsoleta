@@ -1,4 +1,4 @@
-from obsoletacore import Obsoleta, DownstreamFilter
+from obsoletacore import Obsoleta, UpDownstreamFilter
 from package import Package
 from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
@@ -80,33 +80,34 @@ class ObsoletaApi:
                 ret.append(err)
         return error, ret
 
-    def upstreams(self, package_or_compact, as_path_list=False, full_tree=False):
-        """ Find all/any upstream packages and return them as a list. (Upstream: packages matching the name)
+    def upstreams(self, package_or_compact, filter=UpDownstreamFilter.FollowTree, as_path_list=False):
+        """ Find all/any upstream packages and return them as a list. (Upstream: packages that this
+            package depends on as given by the depends section).
             Param: 'package_or_compact' is a Package object or a string with compact name.
-            Param: 'as_path_list' if default false return Package objects else path strings.
+            Param: 'filter' of type UpDownstreamFilter
+            Param: 'as_path_list', returns the paths rather than the package object list.
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        error, result = self.obsoleta.locate_upstreams(package_or_compact, full_tree)
+        error, result = self.obsoleta.locate_upstreams(package_or_compact,
+                                                       filter=filter)
         if error.has_error():
             return error, 'unable to locate %s' % package_or_compact
         if as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result
 
-    def downstreams(self, package_or_compact, downstream_filter, as_path_list=False):
+    def downstreams(self, package_or_compact, filter=UpDownstreamFilter.FollowTree, as_path_list=False):
         """ Find all/any downstream packages and return them as a list.
             (Downstream: packages depending on the package specified)
             Param: 'package_or_compact' is a Package object or a string with compact name.
+            Param: 'downstream_filter', see UpDownstreamFilter enum.
             Param: 'as_path_list' if default false return Package objects else path strings.
-            Param: 'find_all' default False where only explicit downstreams are returned, i.e where
-                    the target package is listed directly in a downstream package depends list.
-                    Set to True to get the full dependency list
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
         error, result = self.obsoleta.locate_downstreams(package_or_compact,
-                                                         downstream_filter=downstream_filter)
+                                                         filter=filter)
         if error.has_error():
             return error, 'unable to locate downstreams for %s' % package_or_compact
         if as_path_list:
@@ -158,7 +159,7 @@ class ObsoletaApi:
                 dixi_api.save()
 
             # now bump all downstreams referencing the package in their depends section
-            error, downstreams = self.downstreams(package, DownstreamFilter.ExplicitReferences)
+            error, downstreams = self.downstreams(package, UpDownstreamFilter.ExplicitReferences)
 
             if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
                 ret.append('no {%s} downstream packages found' % package.to_string())

@@ -10,10 +10,10 @@ import os, copy, collections, json, html, datetime
 from enum import Enum
 
 
-class DownstreamFilter(Enum):
+class UpDownstreamFilter(Enum):
     ExplicitReferences = 0
-    FollowDownstream = 1
-    DownstreamOnly = 2
+    FollowTree = 1
+    TreeOnly = 2
 
 
 class Obsoleta:
@@ -391,16 +391,13 @@ class Obsoleta:
             archs.append(package.get_arch())
         return list(set(archs))
 
-    def locate_upstreams(self, target_package, full_tree=False, candidates=None):
+    def locate_upstreams(self, target_package, filter, upstream_packages=None):
         """"
-        Resolve all upstream packages listed in the 'target_package' depends section
-        in case full_tree is the default False, and if full tree is True, then resolve all dependencies
-        recursively.
-        Returns tupple (error, list of the resolved packages).
-        If all packages were resolved then error will contain ErrorCode.OK.
+        Param: 'filter' of type UpDownstreamFilter.ExplicitReferences or .FollowTree
+        Returns: tuple(errorcode, [upstream packages])
         """
-        if candidates is None:
-            candidates = []
+        if upstream_packages is None:
+            upstream_packages = []
 
         error, target = self.find_first_package(target_package)
         if error.has_error():
@@ -408,29 +405,32 @@ class Obsoleta:
 
         dependencies = target.get_dependencies()
         if not dependencies:
-            return ErrorOk(), candidates
+            return ErrorOk(), upstream_packages
 
         for upstream in dependencies:
-            if full_tree:
-                error, candidates = self.locate_upstreams(upstream, full_tree, candidates)
+            if filter == UpDownstreamFilter.FollowTree:
+                error, candidates = self.locate_upstreams(upstream,
+                                                          filter=filter,
+                                                          upstream_packages=upstream_packages)
                 if error.has_error():
                     return error, candidates
-                candidates.append(upstream)
+                upstream_packages.append(upstream)
             else:
                 error, found = self.find_first_package(upstream)
                 if found:
-                    candidates.append(found)
+                    upstream_packages.append(found)
                 else:
                     err = Error(ErrorCode.PACKAGE_NOT_FOUND,
                                 target,
                                 "no upstream %s found for %s" % (upstream, target))
-                    return err, candidates
-        return ErrorOk(), sorted(list(set(candidates)))
+                    return err, upstream_packages
+        return ErrorOk(), sorted(list(set(upstream_packages)))
 
-    def locate_downstreams(self, target_package, downstream_filter, downstream_packages=None):
+    def locate_downstreams(self, target_package, filter, downstream_packages=None):
         """
         Find any downstream packages that references the 'target_package' in their
-        depends section
+        depends section.
+        Returns: tuple(errorcode, [downstream packages])
         """
         if downstream_packages is None:
             downstream_packages = []
@@ -440,13 +440,13 @@ class Obsoleta:
             if package_deps:
                 for package in package_deps:
                     if package == target_package:
-                        if (downstream_filter != DownstreamFilter.DownstreamOnly or
+                        if (filter != UpDownstreamFilter.TreeOnly or
                                 not parent.parent):
                             downstream_packages.append(parent)
-                        if (downstream_filter == DownstreamFilter.FollowDownstream or
-                                downstream_filter == DownstreamFilter.DownstreamOnly):
+                        if (filter == UpDownstreamFilter.FollowTree or
+                                filter == UpDownstreamFilter.TreeOnly):
                             self.locate_downstreams(parent,
-                                                    downstream_filter=downstream_filter,
+                                                    filter=filter,
                                                     downstream_packages=downstream_packages)
 
         if downstream_packages:

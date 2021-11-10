@@ -3,7 +3,7 @@ from log import set_log_level, inf, deb, err, print_result, print_result_nl
 from common import Setup
 from errorcodes import ErrorCode
 from package import Package
-from obsoletacore import Obsoleta, DownstreamFilter
+from obsoletacore import Obsoleta
 from obsoleta_api import ObsoletaApi
 from exceptions import ObsoletaException
 import argparse, json, os, traceback
@@ -233,7 +233,7 @@ try:
             exit_code = ErrorCode.PACKAGE_NOT_FOUND
 
     elif args.downstream:
-        error, lookup = obsoleta.downstreams(package, DownstreamFilter.ExplicitReferences)
+        error, lookup = obsoleta.downstreams(package)
         if error.is_ok():
             print_result("\n".join(p.get_path() for p in lookup))
             exit_code = ErrorCode.OK
@@ -273,6 +273,6 @@ try:
 
 except Exception as e:
     err('command gave unexpected exception: %s' % str(e))
-    if args.verbose:
+    if args.verbose or args.info:
         print(traceback.format_exc())
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)
