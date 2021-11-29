@@ -27,6 +27,7 @@ formatter = logging.Formatter('%(levelname)s %(message)s\033[0m')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.WARNING)
+logger.propagate = False
 
 if logging.getLevelName(logging.DEBUG) == 'DEBUG':
     # don't touch the level names if already done by someone else

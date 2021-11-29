@@ -365,8 +365,8 @@ class Obsoleta:
 
     def find_first_package(self, package, strict=False):
         """
-        Return the package requested. If strict is True it is an error if more than one
-        is found, otherwise just the first found is returned.
+        Return the first package matching 'package'. If strict is True it is an error if
+        more than one candidate is found.
         """
         error, matches = self.find_all_packages(package)
 
@@ -439,7 +439,7 @@ class Obsoleta:
             package_deps = parent.get_dependencies()
             if package_deps:
                 for package in package_deps:
-                    if package == target_package:
+                    if package.package_is_equal_or_better(target_package, strict_track=False):
                         if (filter != UpDownstreamFilter.TreeOnly or
                                 not parent.parent):
                             downstream_packages.append(parent)
@@ -497,7 +497,7 @@ class Obsoleta:
 
     def dump_tree(self, root_package):
         """
-        Return a list of all package compactpyt names in the root_package tree.
+        Return a list of all package compact names in the root_package tree.
         If there are multiple candidates found it is flagged as an error and the list
         will contain only the possible candidates preventing a unique match.
         If there are no errors then the list will contain a full recursive dump with
@@ -590,7 +590,8 @@ class Obsoleta:
 
         if errors:
             errors = sorted(list(set(errors)))
-        return ErrorOk(), errors
+            return Error(ErrorCode.RESOLVE_ERROR, package), errors
+        return ErrorOk(), []
 
     def get_error_count(self):
         errors = 0

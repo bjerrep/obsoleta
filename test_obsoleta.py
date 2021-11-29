@@ -32,17 +32,17 @@ exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package \'*
 print(output)
 test_pass = """a:0.1.2:anytrack:anyarch:unknown
   b:1.1.2:anytrack:linux_x86_64:unknown
-    d:0.1.2:anytrack:linux_x86_64:release
     c:2.1.2:anytrack:anyarch:unknown
       e:1.2.3:anytrack:linux_x86_64:unknown
-d:0.1.2:anytrack:linux_x86_64:release
+    d:0.1.2:anytrack:linux_x86_64:release
 b:1.1.2:anytrack:linux_x86_64:unknown
-  d:0.1.2:anytrack:linux_x86_64:release
   c:2.1.2:anytrack:anyarch:unknown
     e:1.2.3:anytrack:linux_x86_64:unknown
-e:1.2.3:anytrack:linux_x86_64:unknown
+  d:0.1.2:anytrack:linux_x86_64:release
 c:2.1.2:anytrack:anyarch:unknown
-  e:1.2.3:anytrack:linux_x86_64:unknown""" in output
+  e:1.2.3:anytrack:linux_x86_64:unknown
+d:0.1.2:anytrack:linux_x86_64:release
+e:1.2.3:anytrack:linux_x86_64:unknown""" in output
 test_eq(test_pass)
 
 title('A3', 'simple sunshine --check')
@@ -50,18 +50,18 @@ exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a -
 
 title('A4', 'simple sunshine --buildorder')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --buildorder', ErrorCode.OK)
-test_eq("""d:0.1.2:anytrack:linux_x86_64:release
-e:1.2.3:anytrack:linux_x86_64:unknown
+test_eq("""e:1.2.3:anytrack:linux_x86_64:unknown
 c:2.1.2:anytrack:anyarch:unknown
+d:0.1.2:anytrack:linux_x86_64:release
 b:1.1.2:anytrack:linux_x86_64:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
 title('A5', 'simple sunshine --buildorder --printpaths')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a --buildorder --printpaths', ErrorCode.OK)
 output = output.split('\n')
-test_eq(output[0].endswith('d'))
-test_eq(output[1].endswith('e'))
-test_eq(output[2].endswith('c'))
+test_eq(output[0].endswith('e'))
+test_eq(output[1].endswith('c'))
+test_eq(output[2].endswith('d'))
 test_eq(output[3].endswith('b'))
 test_eq(output[4].endswith('a'))
 
@@ -72,9 +72,9 @@ test_eq(output is not None)
 title('A7', 'simple sunshine --buildorder a::anytrack')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package a::anytrack --buildorder', ErrorCode.OK)
 print(output)
-test_eq("""d:0.1.2:anytrack:linux_x86_64:release
-e:1.2.3:anytrack:linux_x86_64:unknown
+test_eq("""e:1.2.3:anytrack:linux_x86_64:unknown
 c:2.1.2:anytrack:anyarch:unknown
+d:0.1.2:anytrack:linux_x86_64:release
 b:1.1.2:anytrack:linux_x86_64:unknown
 a:0.1.2:anytrack:anyarch:unknown""" in output)
 
@@ -87,7 +87,7 @@ exitcode, output = execute(fixed + '--root testdata/A3_test_simple_bad_json --pa
 test_eq('A3_test_simple_bad_json/b' in output)
 
 title('A10', 'simple sunshine --listmissing "*"')
-exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package "*" --listmissing', ErrorCode.OK)
+exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package "*" --listmissing --nnl', ErrorCode.OK)
 test_eq("""b:1.1.1:anytrack:c64:unknown
 e:1.1.1:anytrack:c64:unknown
 y:1.1.1:anytrack:vic20:unknown""" in output)
@@ -98,7 +98,7 @@ test_eq("""b:1.1.1:anytrack:c64:unknown
 e:1.1.1:anytrack:c64:unknown""" in output)
 
 title('A12', 'simple sunshine - dont get confused')
-exitcode, output = execute(fixed + '--root testdata/A4_dont_get_confused:testdata/A4_dont_get_confused/a --package a --tree', ErrorCode.OK)
+exitcode, output = execute(fixed + '--root testdata/A4_dont_get_confused:testdata/A4_dont_get_confused/a --package a --tree --nnl', ErrorCode.OK)
 test_eq("""a:0.1.2:testing:linux_x86_64:unknown
   x:2.2.2:testing:linux_x86_64:unknown
   y:3.3.3:production:linux_x86_64:unknown""", output)
@@ -132,7 +132,7 @@ exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package fou
 test_eq("unable to locate upstream found:*:anytrack:anyarch:unknown" in output)
 
 title('B10', 'no package found, --listmissing z')
-exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package z --listmissing', ErrorCode.PACKAGE_NOT_FOUND)
+exitcode, output = execute(fixed + '--root testdata/E1_list_missing_packages --package z --listmissing', ErrorCode.OK)
 
 
 title('C1', "a anyarch <<< b anyarch <<< c arch is ok")
@@ -298,25 +298,24 @@ title('J1', "bump a downstream package")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package a --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream "a" (a:1.1.1:anytrack:linux:unknown) from 1.1.1 to 7.9.13 in "a"
-no {a:1.1.1:anytrack:linux:unknown} downstream packages found""" in output)
+test_eq("""bumping package "a" (a:1.1.1:anytrack:linux:unknown) from 1.1.1 to 7.9.13 in "a\"""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
 title('J1b', "bump d from slot")
 root = populate_local_temp('testdata/G2_test_slot')
-exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13 --verbose' % root, ErrorCode.OK)
+exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "d"
-bumped downstream "a" (d:*:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "a\"""" in output)
+test_eq("""bumping package "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "d"
+bumping dependency d:4.4.4:anytrack:linux:unknown in downstream "a" from 4.4.4 to 7.9.13 in "a" (slot "nix")""" in output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
 title('J2', "bump b from slot (bump example in readme)")
 root = populate_local_temp('testdata/F2_test_duplicate_package_slotted_ok')
 exitcode, output = execute(fixed + '--root %s --bump --package b:::x86 --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumped upstream "b" (b:2.1.2:development:x86:unknown) from 2.1.2 to 7.9.13 in "b"
-bumped downstream "a" (b:*:development:x86:unknown) from 2.1.2 to 7.9.13 in "a2\"""" in output)
-exitcode, output = execute(fixed + '--root %s --package a::development:x86 --check' % root, ErrorCode.OK)
+test_eq('bumping package "b" (b:2.1.2:development:x86:unknown) from 2.1.2 to 7.9.13 in "b"\n'
+'bumping dependency b:2.1.2:development:x86:unknown in downstream "a" from 2.1.2 to 7.9.13 in "a2" (slot "key2")\n'
+'bumping package "a" (a:0.1.2:development:x86:debug) from 0.1.2 to 1.1.2 in "a2"\n', output)
 
 title('K1', 'simple sunshine with external lib dependency --check')
 exitcode, output = execute(fixed + '--root testdata/K1_system_lib_dependency --package k1 --check', ErrorCode.OK)

@@ -371,7 +371,7 @@ class Package:
 
         compact = compact.replace("'*'", '*')
 
-        if compact != '*' and compact != 'all':
+        if compact != '*':
             entries = compact.split(':')
             found_entries = len(entries)
             expected_entries = 2 + optionals
@@ -497,8 +497,9 @@ class Package:
         self.implicit_attributes[key] = value
 
     def set_version(self, version):
-        self.string = None
+        self.string = ""
         self.version = Version(version)
+        return self
 
     def set_arch(self, arch):
         self.string = None
@@ -545,6 +546,11 @@ class Package:
 
     def get_value(self, key):
         return self.original_dict[key]
+
+    def get_package_value(self, key, depends_package):
+        for depends in self.package_section['depends']:
+            if depends_package.get_name() == depends['name']:
+                return depends[key]
 
     def set_value(self, key, value, depend_name=None):
         if depend_name:
@@ -696,7 +702,7 @@ class Package:
         return ret
 
     def __lt__(self, other):
-        return self.version < other.version
+        return self.to_string() < other.to_string()
 
     def __hash__(self):
         return hash(self.to_string())

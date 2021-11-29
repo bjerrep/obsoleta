@@ -45,13 +45,18 @@ parser.add_argument('--downstream', action='store_true',
 parser.add_argument('--digraph', action='store_true',
                     help='command: make dependency plot for the package given with --package')
 
+parser.add_argument('--bumpdirect', action='store_true',
+                    help='command: bump the version for --package but only where explicitly referenced, '
+                         'see also bump. Requires --version.')
 parser.add_argument('--bump', action='store_true',
-                    help='command: bump the version for --package, both downstream and upstream. Requires --version. '
-                         'Use the nonstandard "all" as arch to get all architectures bumped thoughout.')
+                    help='command: bump the version for --package where downstreams also get bumped recursively, '
+                         'see also bumpdirect. Requires --version.')
 parser.add_argument('--version',
                     help='the new version x.y.z, used with --bump')
 parser.add_argument('--dryrun', action='store_true',
                     help='do not actually modify any package files for --bump')
+parser.add_argument('--nnl', action='store_true',
+                    help='do not append the last newline in text output')
 parser.add_argument('--skip_bumping_ranged_versions', action='store_true',
                     help='still evaluating this one. Added here for testing...')
 parser.add_argument('--keeptrack', action='store_true',
@@ -86,7 +91,7 @@ elif args.info:
     set_log_level(info=True)
 
 valid_package_action = args.tree or args.check or args.buildorder or args.listmissing or \
-                       args.upstream or args.downstream or args.bump or args.digraph
+                       args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph
 
 valid_command = valid_package_action or args.dumpcache
 
@@ -104,7 +109,7 @@ if args.clearcache:
 # go-no-go checks
 
 if not valid_command:
-    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream, --downstream or --dumpcache')
+    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream, --downstream --bumpdirect --bump or --dumpcache')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not args.dumpcache and not args.package and not args.path:
@@ -157,6 +162,8 @@ except Exception as e:
         print(traceback.format_exc())
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)
 
+newline = not args.nnl
+
 # and now figure out what to do
 try:
     if exit_code != ErrorCode.OK:
@@ -182,7 +189,7 @@ try:
         inf('package tree for "%s"' % package)
         error, result = obsoleta.tree(package)
         if error.is_ok():
-            print_result("\n".join(result))
+            print_result("\n".join(result), newline)
         else:
             err(error.print())
         exit_code = error.get_errorcode()
@@ -192,13 +199,9 @@ try:
         deb('packages listed in buildorder')
         error, resolved = obsoleta.buildorder(package)
 
-        if (error.get_errorcode() == ErrorCode.RESOLVE_ERROR or
-                error.get_errorcode() == ErrorCode.PACKAGE_NOT_UNIQUE):
+        if error.has_error():
             err(error.get_message())
             exit_code = error.get_errorcode()
-        elif error.has_error():
-            err(' - unable to find somewhere to start, %s not found (circular dependency)' % package.to_string())
-            exit(ErrorCode.CIRCULAR_DEPENDENCY.value)
         else:
             for _package in resolved:
                 if args.printpaths:
@@ -215,18 +218,14 @@ try:
     elif args.listmissing:
         exit_code = ErrorCode.OK
         deb('list any missing packages for %s' % package)
-        error, missing = obsoleta.list_missing(package)
-        if error.has_error():
-            err('listmissing failed for package %s' % package)
-            exit_code = error.get_errorcode()
-        if missing:
-            for _error in missing:
-                print(_error.package.to_string())
+        error, missing_list = obsoleta.list_missing(package)
+        for missing in missing_list:
+            print(missing.package.to_string())
 
     elif args.upstream:
         error, lookup = obsoleta.upstreams(package)
         if error.is_ok():
-            print_result("\n".join(p.get_path() for p in lookup))
+            print_result("\n".join(p.get_path() for p in lookup), newline)
             exit_code = ErrorCode.OK
         else:
             err('unable to locate upstream %s' % package)
@@ -235,7 +234,7 @@ try:
     elif args.downstream:
         error, lookup = obsoleta.downstreams(package)
         if error.is_ok():
-            print_result("\n".join(p.get_path() for p in lookup))
+            print_result("\n".join(p.get_path() for p in lookup), newline)
             exit_code = ErrorCode.OK
         else:
             err('unable to locate downstream %s' % package)
@@ -244,11 +243,11 @@ try:
     elif args.dumpcache:
         pass
 
-    elif args.bump:
+    elif args.bumpdirect or args.bump:
         if not args.version:
             exit_code = ErrorCode.MISSING_INPUT
         else:
-            error, messages = obsoleta.bump(package, args.version, args.dryrun)
+            error, messages = obsoleta.bump(package, args.version, args.bump, args.dryrun)
             if error.is_ok():
                 print_result_nl("\n".join(line for line in messages))
                 exit_code = ErrorCode.OK

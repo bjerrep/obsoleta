@@ -78,6 +78,20 @@ if nay or aye != 19:
 
 # ------------------------------------------
 
+aye = 0
+
+aye += not Version('1.2.3').get_change('1.2.3')
+aye += Version('1.2.3').get_change('1.2.4') == Position.BUILD
+aye += Version('1.2.3').get_change('1.3.3') == Position.MINOR
+aye += Version('1.2.3').get_change('2.2.3') == Position.MAJOR
+aye += Version('>=1.2.3').get_change('>=2.2.3') == Position.MAJOR
+
+if aye != 5:
+    print('failed get_change tests')
+    exit(1)
+
+# ------------------------------------------
+
 try:
     _ = str(Version('1.2').increase(Position.MINOR))
 except:

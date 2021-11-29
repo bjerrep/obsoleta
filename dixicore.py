@@ -16,10 +16,15 @@ class TrackSetScope(Enum):
 class Dixi:
     def __init__(self, package):
         self.package = package
-        self.action = package.to_string() + ' - '
+        self.action = [package.to_string() + ' - ']
         self.new_track = False
 
     def get_target(self):
+        return self.package.get_name()
+
+    def get_package_name(self, package=None):
+        if package:
+            return package.get_name()
         return self.package.get_name()
 
     def to_merged_json(self):
@@ -45,8 +50,8 @@ class Dixi:
             return self.package.get_original_dict()
 
     def add_action(self, action):
-        self.action += action
-        inf(self.action)
+        self.action.append(action)
+        inf(action)
 
     def get_readonly(self):
         return self.package.get_readonly()
@@ -107,9 +112,12 @@ class Dixi:
         section, ver = self.getter('version', depends_package)
         org_version = str(Version(ver))
         self.setter(section, 'version', str(version), depends_package)
-        action = 'version for %s rewritten from %s to %s' % (self.get_target(), org_version, version)
+        action = 'version for %s rewritten from %s to %s' % \
+                 (self.get_package_name(depends_package), org_version, version)
         if section:
             action += ' (section: %s)' % section
+        elif self.package.get_slot_key():
+            action += ' (slot: %s)' % self.package.get_slot_key()
         self.add_action(action)
         return org_version, str(version)
 
@@ -144,7 +152,8 @@ class Dixi:
             unmodified_dict = self.package.get_original_dict()
             if add_description:
                 unmodified_dict['dixi_modified'] = get_local_time_tz()
-                unmodified_dict['dixi_action'] = self.action
+                action_string = " ".join(line for line in self.action)
+                unmodified_dict['dixi_action'] = action_string
             f.write(json.dumps(unmodified_dict, indent=2))
 
     def set_track(self, track, track_scope):

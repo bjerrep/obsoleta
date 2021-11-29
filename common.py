@@ -160,7 +160,9 @@ class Error:
         return ErrorCode.to_string(self.errorcode.value) + ': ' + self.package.to_string() + ' ' + str(self.message)
 
     def get_message(self):
-        return self.message
+        if self.message:
+            return self.message
+        return self.to_string()
 
     def print(self):
         if self.message:

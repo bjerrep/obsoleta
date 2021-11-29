@@ -472,6 +472,8 @@ A bump is the operation of updating the version for a given package anywhere it 
 
 Lets try it out. Copy the contents from *testdata/F2_test_duplicate_package_slotted_ok* to *local/temp* in order not to mess with the original testdata.
 
+`rm local/temp -rf && cp -R testdata/F2_test_duplicate_package_slotted_ok local/temp`
+
 Check that the x86 arch is ok (in this testset there is a x86_64 arch which is missing a 'b'):
 
 `./obsoleta.py --conf testdata/test.conf --root local/temp --check --package a:::x86`
@@ -482,11 +484,15 @@ Due to the absence of complaints it is. Now bump b for arch x86:
 
 which gives
 
-`bumped upstream {b:2.1.2:development:x86:unknown} from 2.1.2 to 7.9.13 in "b"`
+```
+bumping package "b" (b:2.1.2:development:x86:unknown) from 2.1.2 to 7.9.13 in "b"
+bumping dependency b:2.1.2:development:x86:unknown in downstream "a" from 2.1.2 to 7.9.13 in "a2" (slot "key2")
+bumping package "a" (a:0.1.2:development:x86:debug) from 0.1.2 to 1.1.2 in "a2"
+```
 
-`bumped downstream {b:2.1.2:development:x86:debug} from 2.1.2 to 7.9.13 in "a2"`
+Sounds about right. Note that the downstream package "a" which got a new 7.9.13 version for its "b" dependency also itself got an implicit version bump. In this case it was a major digit increase as the bumped package "b" had a change on the major digit. 
 
-Sounds about right. A new --check will tell that the x86 arch still adds up . And the version of 'b' from above is now:
+A new --check will tell that the x86 arch still adds up . And the version of 'b' from above is now:
 
 `./dixi.py --conf testdata/test.conf --path local/temp/b --getversion`
 
@@ -494,9 +500,9 @@ Sounds about right. A new --check will tell that the x86 arch still adds up . An
 
 #### Bump trivia
 
-If a package should be bumped for all architectures for which it is found the arch can be specified as "all". This is a special arch keyword dedicated to --bump. The compact name will then be name:::all.
+The example above used the command "--bump" which implicitly bumps all packages that got a change in their dependency section recursively throughout the entire tree. This is the real way to do it, but there also is a "--bumpdirect" that only bumps the package given and any downstream packages that directly references the package. It will still produce a valid tree but obviously its naughty to keep the version for a downstream package unchanged after modifying one of its upstream dependencies.
 
-Downstreams using a ranged version for an upstream dependency can be exempted for bumping. One scenario is that a awfully big downstream, which seldom changes, depends on a small and highly active helper asset that everyone depends on and that constantly gets bumped. So the downstream would like to be left alone to avoid e.g. endless rebuilding as the helper asset spins along.  There are two ways to accomplish this. The first way is that the downstream can add a "bump": false for the upstream dependency which is then unconditionally ignored when bumping. The second way is to invoke obsoleta with the argument --skip_bumping_ranged_versions after which dependencies with ranged versions (">=" style) will be skipped.
+Downstreams using a ranged version for an upstream dependency can be exempted for bumping. One scenario is that a awfully big downstream, which seldom changes, depends on a small and highly active helper asset that everyone depends on and that constantly gets bumped. So the downstream would like to be left alone to avoid e.g. endless rebuilding as the helper asset spins along.  There are two ways to accomplish this. The first way is that the downstream can add a "bump": false for the upstream dependency which is then unconditionally ignored when bumping. The second way is to invoke obsoleta with the argument --skip_bumping_ranged_versions after which dependencies with ranged versions (">=" style) will be skipped. And then there is a third solution which would be to fix the assets so the scenario doesn't arise.
 
 
 

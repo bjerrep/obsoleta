@@ -11,7 +11,7 @@ import os
 args = Args()
 args.set_depth(2)
 args.set_root('local/temp')
-# args.set_verbose_logging()
+# args.set_info_logging()
 setup = Setup('testdata/test.conf')
 
 populate_local_temp('testdata/G2_test_slot')
@@ -91,7 +91,6 @@ test_eq(str(messages_4A2), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:
 
 title('TOA 4B', 'upstream - as TOA 4A')
 package = Package.construct_from_compact(setup, 'a:*::linux')
-
 error, messages2 = obsoleta.upstreams(package, UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
@@ -148,7 +147,7 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 
-def test_bump(compact, path, compact_all_arch=None, skip_ranged_versions=False):
+def test_bump(compact, path, bump=False, skip_ranged_versions=False, package_for_check=None, dryrun=False):
     populate_local_temp(path)
     args.set_skip_bumping_ranged_versions(skip_ranged_versions)
     obsoleta = ObsoletaApi(setup, args)
@@ -161,18 +160,18 @@ def test_bump(compact, path, compact_all_arch=None, skip_ranged_versions=False):
     version = Version(old_ver).increase(Position.BUILD)
     test_true(old_ver != version, 'version update')
 
-    if compact_all_arch:
-        package = Package.construct_from_compact(setup, compact_all_arch)
-
     # .. and make the bump
-    error, result = obsoleta.bump(package, version)
+    error, result = obsoleta.bump(target_package, version, bump=bump, dryrun=dryrun)
     test_ok(error)
 
     args.set_skip_bumping_ranged_versions(False)
 
     # use a check() to verify that the bump was a success
     obsoleta = ObsoletaApi(setup, args)
-    error, messages = obsoleta.check(compact)
+    if package_for_check:
+        error, messages = obsoleta.check(package_for_check)
+    else:
+        error, messages = obsoleta.check(compact)
     test_ok(error)
     return result
 
@@ -180,56 +179,87 @@ def test_bump(compact, path, compact_all_arch=None, skip_ranged_versions=False):
 title('TOA 6A', 'bump slot - b')
 message = test_bump('b', 'testdata/G2_test_slot')
 test_eq(message,
-    ['bumped upstream "b" (b:2.2.2:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "b"',
-     'bumped downstream "a" (b:*:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "a" (slot "nix")'])
+    ['bumping package "b" (b:2.2.2:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "b"',
+     'bumping dependency b:2.2.2:anytrack:anyarch:unknown in downstream "a" from 2.2.2 to 2.2.3 in "a" (slot "nix")'])
+
+title('TOA 6A2', 'bump slot - b - dryrun')
+message = test_bump('b', 'testdata/G2_test_slot')
+test_eq(message,
+    ['bumping package "b" (b:2.2.2:anytrack:anyarch:unknown) from 2.2.2 to 2.2.3 in "b"',
+     'bumping dependency b:2.2.2:anytrack:anyarch:unknown in downstream "a" from 2.2.2 to 2.2.3 in "a" (slot "nix")'])
+error, tree_list = obsoleta.tree('a')
+test_eq(tree_list,
+    ['a:1.1.1:anytrack:linux:unknown',
+     '  b:2.2.2:anytrack:anyarch:unknown',
+     '  c:3.3.3:anytrack:anyarch:unknown',
+     '  d:4.4.4:anytrack:linux:unknown',
+     '  e:5.5.5:anytrack:linux:unknown',
+     '    f:6.6.6:anytrack:linux:unknown'])
 
 title('TOA 6B', 'bump slot - d:::linux')
 message = test_bump('d:::linux', 'testdata/G2_test_slot')
 test_eq(message,
-    ['bumped upstream "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 4.4.5 in "d"',
-     'bumped downstream "a" (d:*:anytrack:linux:unknown) from 4.4.4 to 4.4.5 in "a" (slot "nix")'])
+    ['bumping package "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 4.4.5 in "d"',
+     'bumping dependency d:4.4.4:anytrack:linux:unknown in downstream "a" from 4.4.4 to 4.4.5 in "a" (slot "nix")'])
+
+title('TOA 6B2', 'bump f')
+message = test_bump('f', 'testdata/G2_test_slot', bump=True, package_for_check='a')
+test_eq(message,
+    ['bumping package "f" (f:6.6.6:anytrack:linux:unknown) from 6.6.6 to 6.6.7 in "f"',
+     'bumping dependency f:6.6.6:anytrack:linux:unknown in downstream "e" from 6.6.6 to 6.6.7 in "e"',
+     'bumping package "e" (e:5.5.5:anytrack:linux:unknown) from 5.5.5 to 5.5.6 in "e"',
+     'bumping dependency e:5.5.5:anytrack:linux:unknown in downstream "a" from 5.5.5 to 5.5.6 in "a" (slot "nix")',
+     'bumping package "a" (a:1.1.1:anytrack:linux:unknown) from 1.1.1 to 1.1.2 in "a"'])
+
+title('TOA 6B3', 'bump f')
+message = test_bump('f', 'testdata/G2_test_slot', package_for_check='a')
+test_eq(message,
+    ['bumping package "f" (f:6.6.6:anytrack:linux:unknown) from 6.6.6 to 6.6.7 in "f"',
+     'bumping dependency f:6.6.6:anytrack:linux:unknown in downstream "e" from 6.6.6 to 6.6.7 in "e"'])
 
 title('TOA 6C', 'bump multislot')
-message = test_bump('b:::windows', 'testdata/G1_test_multislot')
+message = test_bump('b:::windows', 'testdata/G1_test_multislot', package_for_check='a')
 test_eq(message,
-    ['bumped upstream "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-     'bumped downstream "a" (b:*:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "a"'])
+    ['bumping package "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping dependency b:1.1.1:anytrack:windows:unknown in downstream "a" from 1.1.1 to 1.1.2 in "a"'])
 
-title('TOA 6D', 'bump multislot with "b:::all"')
-message = test_bump('b', 'testdata/G1_test_multislot', 'b:::all')
+title('TOA 6D', 'bump multislot for "b"')
+message = test_bump('b', 'testdata/G1_test_multislot', bump=True, package_for_check='a')
 test_eq(message,
-    ['bumped upstream "b" (b:1.1.1:anytrack:linux:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-     'no {b:1.1.1:anytrack:linux:unknown} downstream packages found',
-     'bumped upstream "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
-     'bumped downstream "a" (b:*:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "a"'])
+    ['bumping package "b" (b:1.1.1:anytrack:linux:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping package "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping dependency b:1.1.1:anytrack:windows:unknown in downstream "a" from 1.1.1 to 1.1.2 in "a"',
+     'bumping package "a" (a:0.0.0:anytrack:windows:unknown) from 0.0.0 to 0.0.1 in "a"'])
 
-title('TOA 6D2', 'bump multislot with "y:::all"')
-message = test_bump('b', 'testdata/G1_test_multislot', 'y:::all')
+title('TOA 6D2', 'bump multislot with "b" i.e for all archs')
+message = test_bump('b', 'testdata/G1_test_multislot')
 test_eq(message,
-    ['bumped upstream "y" (y:8.8.8:anytrack:linux:unknown) from 8.8.8 to 1.1.2 in "y_linux"',
-     'bumped downstream "b" (y:*:anytrack:linux:unknown) from 8.8.8 to 1.1.2 in "b_multi_out_of_source" (slot "nix")',
-     'bumped upstream "y" (y:8.8.8:anytrack:windows:unknown) from 8.8.8 to 1.1.2 in "y_windows"',
-     'bumped downstream "b" (y:*:anytrack:windows:unknown) from 8.8.8 to 1.1.2 in "b_multi_out_of_source" (slot "win")'])
+    ['bumping package "b" (b:1.1.1:anytrack:linux:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping package "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping dependency b:1.1.1:anytrack:windows:unknown in downstream "a" from 1.1.1 to 1.1.2 in "a"'])
 
 title('TOA 6E', 'bump multislot for y:::windows (y is a windows only package found in "b" windows slot depends list)')
-message = test_bump('y', 'testdata/G1_test_multislot', 'y:::windows')
+message = test_bump('y:::windows', 'testdata/G1_test_multislot', bump=True)
 test_eq(message,
-    ['bumped upstream "y" (y:8.8.8:anytrack:windows:unknown) from 8.8.8 to 8.8.9 in "y_windows"',
-     'bumped downstream "b" (y:*:anytrack:windows:unknown) from 8.8.8 to 8.8.9 in "b_multi_out_of_source" (slot "win")'])
+    ['bumping package "y" (y:8.8.8:anytrack:windows:unknown) from 8.8.8 to 8.8.9 in "y_windows"',
+     'bumping dependency y:8.8.8:anytrack:windows:unknown in downstream "b" from 8.8.8 to 8.8.9 in "b_multi_out_of_source" (slot "win")',
+     'bumping package "b" (b:1.1.1:anytrack:windows:unknown) from 1.1.1 to 1.1.2 in "b_multi_out_of_source"',
+     'bumping dependency b:1.1.1:anytrack:windows:unknown in downstream "a" from 1.1.1 to 1.1.2 in "a"',
+     'bumping package "a" (a:0.0.0:anytrack:windows:unknown) from 0.0.0 to 0.0.1 in "a"'])
 
 title('TOA 6F', 'bump multislot for z (but downstream "b" will not be bumped for z since z has a bump:false)')
 message = test_bump('z', 'testdata/G1_test_multislot')
 test_eq(message,
-    ['bumped upstream "z" (z:99.99.99:anytrack:anyarch:unknown) from 99.99.99 to 99.99.100 in "z_anyarch"',
-     'skipped downstream "b" (z:99.99.99:anytrack:anyarch:unknown) from >=99 to 99.99.100 in "z_anyarch". bump=True, skipranged=False',
-     'skipped downstream "b" (z:99.99.99:anytrack:anyarch:unknown) from >=99 to 99.99.100 in "z_anyarch". bump=True, skipranged=False'])
+    ['bumping package "z" (z:99.99.99:anytrack:anyarch:unknown) from 99.99.99 to 99.99.100 in "z_anyarch"',
+     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". skipbump=True, skipranged=False',
+     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". skipbump=True, skipranged=False'])
 
 title('TOA 6G', 'bump multislot for w (but downstream "b" will not be bumped for w since skip_bumping_ranged_versions=True)')
 message = test_bump('w', 'testdata/G1_test_multislot', skip_ranged_versions=True)
 test_eq(message,
-    ['bumped upstream "w" (w:88.88.88:anytrack:anyarch:unknown) from 88.88.88 to 88.88.89 in "w"',
-     'skipped downstream "b" (w:88.88.88:anytrack:anyarch:unknown) from >=88 to 88.88.89 in "w". bump=False, skipranged=True',
-     'skipped downstream "b" (w:88.88.88:anytrack:anyarch:unknown) from >=88 to 88.88.89 in "w". bump=False, skipranged=True'])
+    ['bumping package "w" (w:88.88.88:anytrack:anyarch:unknown) from 88.88.88 to 88.88.89 in "w"',
+     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". skipbump=False, skipranged=True',
+     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". skipbump=False, skipranged=True'])
 
 # ---------------------------------------------------------------
 
@@ -245,13 +275,12 @@ package = Package.construct_from_package_path(
 error, messages = obsoleta.tree(package)
 test_ok(error)
 test_eq(messages,
-    ['b:1.1.1:anytrack:linux:unknown',
-     '  c:2.2.2:anytrack:linux:unknown',
-     '  x:3.2.1:anytrack:anyarch:unknown',
-     '  w:88.88.88:anytrack:anyarch:unknown',
-     '  z:99.99.99:anytrack:anyarch:unknown',
-     '  y:8.8.8:anytrack:linux:unknown'])
-
+        ['b:1.1.1:anytrack:linux:unknown',
+         '  c:2.2.2:anytrack:linux:unknown',
+         '  w:88.88.88:anytrack:anyarch:unknown',
+         '  x:3.2.1:anytrack:anyarch:unknown',
+         '  y:8.8.8:anytrack:linux:unknown',
+         '  z:99.99.99:anytrack:anyarch:unknown'])
 
 title('TOA 7b', 'select a multislot from path and key rather than a compact package name')
 package = Package.construct_from_package_path(
@@ -262,10 +291,10 @@ error, messages = obsoleta.tree(package)
 test_eq(messages,
     ['b:1.1.1:anytrack:linux:unknown',
      '  c:2.2.2:anytrack:linux:unknown',
-     '  x:3.2.1:anytrack:anyarch:unknown',
      '  w:88.88.88:anytrack:anyarch:unknown',
-     '  z:99.99.99:anytrack:anyarch:unknown',
-     '  y:8.8.8:anytrack:linux:unknown'])
+     '  x:3.2.1:anytrack:anyarch:unknown',
+     '  y:8.8.8:anytrack:linux:unknown',
+     '  z:99.99.99:anytrack:anyarch:unknown'])
 test_ok(error)
 
 

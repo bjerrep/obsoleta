@@ -88,6 +88,9 @@ class Digit:
         if self.range == Digit.Range.Any or other.range == Digit.Range.Any:
             return Match.Smaller
 
+    def value(self):
+        return self.number
+
     def increase(self):
         self.number += 1
 
@@ -96,18 +99,20 @@ class Digit:
 
 
 class Version:
+    as_string = None
+
     def __init__(self, version=None):
         if isinstance(version, Version):
             self.digits = copy.deepcopy(version.digits)
             return
-        self.string = version
+        self.as_string = version
         self.digits = [Digit(digit) for digit in version.split('.')]
 
-    def __str__(self):
-        if self.string:
-            return self.string
-        self.string = ".".join(map(str, self.digits))
-        return self.string
+    def __repr__(self):
+        if self.as_string:
+            return self.as_string
+        self.as_string = ".".join(map(str, self.digits))
+        return self.as_string
 
     def __eq__(self, other):
         for a, b in zip(self.digits, other.digits):
@@ -142,10 +147,9 @@ class Version:
         return True
 
     def is_any(self):
-        return self.string == '*'
+        return self.as_string == '*'
 
     def increase(self, position):
-        self.string = None
         self.digits[position.value].increase()
         if common.get_setup() and common.get_setup().semver:
             if position == Position.MINOR:
@@ -153,11 +157,29 @@ class Version:
             elif position == Position.MAJOR:
                 self.digits[Position.MINOR.value].reset()
                 self.digits[Position.BUILD.value].reset()
+        # Not a joke. Python 3.9.7 really dislikes the as_string member variable.
+        # Try to set it to None and observe that it really doesn't like to get modified. Why ?!?!?
+        self.as_string = ".".join(map(str, self.digits))
         return self
 
     def set(self, position, value):
-        self.string = None
+        self.as_string = None
         self.digits[position.value] = Digit(value)
+
+    def get_change(self, other):
+        """
+        Returns Position of most important difference or None if the versions match.
+        Note: Raises an exception if it is not given 3 digit versions to work with.
+        """
+        if isinstance(other, str):
+            other = Version(other)
+        if self.digits[Position.MAJOR.value].value() != other.digits[Position.MAJOR.value].value():
+            return Position.MAJOR
+        if self.digits[Position.MINOR.value].value() != other.digits[Position.MINOR.value].value():
+            return Position.MINOR
+        if self.digits[Position.BUILD.value].value() != other.digits[Position.BUILD.value].value():
+            return Position.BUILD
+        return None
 
 
 VersionAny = Version('*')
