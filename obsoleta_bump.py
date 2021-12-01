@@ -1,6 +1,6 @@
 from dixi_api import DixiApi
 from package import Package, anyarch
-from log import deb, inf, indent, get_indent
+from log import deb, inf, indent, unindent, get_indent
 from common import ErrorOk
 from version import Version
 from exceptions import UnknownException, ObsoletaException
@@ -151,9 +151,13 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
                                              ret=ret)
                 if _error.has_error():
                     raise UnknownException(_error)
+
             else:
                 if not dryrun:
                     dixi_api.save()
+
+            if indent_messages:
+                unindent()
 
         return ErrorOk(), ret
 
