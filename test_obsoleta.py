@@ -305,8 +305,9 @@ title('J1b', "bump d from slot")
 root = populate_local_temp('testdata/G2_test_slot')
 exitcode, output = execute(fixed + '--root %s --bump --package d --version 7.9.13' % root, ErrorCode.OK)
 print(output)
-test_eq("""bumping package "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "d"
-bumping dependency d:4.4.4:anytrack:linux:unknown in downstream "a" from 4.4.4 to 7.9.13 in "a" (slot "nix")""" in output)
+test_eq('bumping package "d" (d:4.4.4:anytrack:linux:unknown) from 4.4.4 to 7.9.13 in "d"\n'
+'  bumping dependency d:4.4.4:anytrack:linux:unknown in downstream "a" from 4.4.4 to 7.9.13 in "a" (slot "nix")\n'
+'  bumping package "a" (a:1.1.1:anytrack:linux:unknown) from 1.1.1 to 2.1.1 in "a"\n', output)
 exitcode, output = execute(fixed + '--root %s --package a --check' % root, ErrorCode.OK)
 
 title('J2', "bump b from slot (bump example in readme)")
@@ -314,8 +315,8 @@ root = populate_local_temp('testdata/F2_test_duplicate_package_slotted_ok')
 exitcode, output = execute(fixed + '--root %s --bump --package b:::x86 --version 7.9.13' % root, ErrorCode.OK)
 print(output)
 test_eq('bumping package "b" (b:2.1.2:development:x86:unknown) from 2.1.2 to 7.9.13 in "b"\n'
-'bumping dependency b:2.1.2:development:x86:unknown in downstream "a" from 2.1.2 to 7.9.13 in "a2" (slot "key2")\n'
-'bumping package "a" (a:0.1.2:development:x86:debug) from 0.1.2 to 1.1.2 in "a2"\n', output)
+'  bumping dependency b:2.1.2:development:x86:unknown in downstream "a" from 2.1.2 to 7.9.13 in "a2" (slot "key2")\n'
+'  bumping package "a" (a:0.1.2:development:x86:debug) from 0.1.2 to 1.1.2 in "a2"\n', output)
 
 title('K1', 'simple sunshine with external lib dependency --check')
 exitcode, output = execute(fixed + '--root testdata/K1_system_lib_dependency --package k1 --check', ErrorCode.OK)

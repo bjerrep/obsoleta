@@ -548,7 +548,13 @@ class Package:
         return self.original_dict[key]
 
     def get_package_value(self, key, depends_package):
-        for depends in self.package_section['depends']:
+        try:
+            for depends in self.package_section['depends']:
+                if depends_package.get_name() == depends['name']:
+                    return depends[key]
+        except:
+            pass
+        for depends in self.original_dict['depends']:
             if depends_package.get_name() == depends['name']:
                 return depends[key]
 

@@ -247,7 +247,7 @@ try:
         if not args.version:
             exit_code = ErrorCode.MISSING_INPUT
         else:
-            error, messages = obsoleta.bump(package, args.version, args.bump, args.dryrun)
+            error, messages = obsoleta.bump(package, args.version, args.bump, args.dryrun, indent_messages=True)
             if error.is_ok():
                 print_result_nl("\n".join(line for line in messages))
                 exit_code = ErrorCode.OK
