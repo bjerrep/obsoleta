@@ -251,15 +251,15 @@ title('TOA 6F', 'bump multislot for z (but downstream "b" will not be bumped for
 message = test_bump('z', 'testdata/G1_test_multislot')
 test_eq(message,
     ['bumping package "z" (z:99.99.99:anytrack:anyarch:unknown) from 99.99.99 to 99.99.100 in "z_anyarch"',
-     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". skipbump=True, skipranged=False',
-     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". skipbump=True, skipranged=False'])
+     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". Reason: BUMPFALSE',
+     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (z:99.99.99:anytrack:anyarch:unknown) from 1.1.1 to 99.99.100 in "b_multi_out_of_source". Reason: BUMPFALSE'])
 
 title('TOA 6G', 'bump multislot for w (but downstream "b" will not be bumped for w since skip_bumping_ranged_versions=True)')
 message = test_bump('w', 'testdata/G1_test_multislot', skip_ranged_versions=True)
 test_eq(message,
     ['bumping package "w" (w:88.88.88:anytrack:anyarch:unknown) from 88.88.88 to 88.88.89 in "w"',
-     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". skipbump=False, skipranged=True',
-     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". skipbump=False, skipranged=True'])
+     'skipped downstream "b:1.1.1:anytrack:linux:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". Reason: SKIPRANGED',
+     'skipped downstream "b:1.1.1:anytrack:windows:unknown" (w:88.88.88:anytrack:anyarch:unknown) from 1.1.1 to 88.88.89 in "b_multi_out_of_source". Reason: SKIPRANGED'])
 
 # ---------------------------------------------------------------
 

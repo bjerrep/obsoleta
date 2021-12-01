@@ -238,28 +238,35 @@ test_eq('''{
 
 
 title('T2', 'print')
-prepare_local('multislot')
-exitcode, output = execute(fixed + '--keypath build_a --print')
+prepare_local('simple_print')
+exitcode, output = execute(fixed + '--print')
 test_eq("""{
   "name": "a",
   "version": "0.1.2",
-  "mykey": true,
-  "arch": "x86_64",
+  "track": "development",
+  "arch": "minix",
+  "buildtype": "debug",
+  "readonly": true,
   "depends": [
     {
       "name": "b",
-      "version": "2.2.2",
-      "arch": "x86_64"
+      "version": "0.1.3",
+      "track": "development",
+      "buildtype": "debug",
+      "what_about_a_boolean": false,
+      "arch": "minix"
     },
     {
       "name": "c",
-      "version": "3.3.3",
+      "version": "0.1.4",
       "track": "production",
-      "arch": "x86_64"
+      "buildtype": "debug",
+      "bump": false,
+      "arch": "minix"
     }
   ]
 }""" in output)
 
-print('test suite took %.3f secs' % (time.time() - start_time))
+print('test_dixi took %.3f secs' % (time.time() - start_time))
 
 print("\npass\n")

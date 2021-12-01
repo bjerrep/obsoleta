@@ -183,28 +183,38 @@ class ObsoletaApi:
                 path = downstream_package.get_path()
                 package_path = os.path.relpath(path, self.get_common_path())
 
+                skip_reason = ''
                 try:
-                    skip_ranged = (self.args.skip_bumping_ranged_versions and
-                                   not Version(downstream_package.get_package_value('version', package)).unique())
+                    if (self.args.skip_bumping_ranged_versions and
+                            not Version(downstream_package.get_package_value('version', package)).unique()):
+                        skip_reason += ' SKIPRANGED'
                 except:
-                    skip_ranged = False
+                    pass
 
                 try:
-                    skip_bump = downstream_package.get_package_value('bump', package) is False
+                    if downstream_package.get_package_value('bump', package) is False:
+                        skip_reason += ' BUMPFALSE'
                 except:
-                    skip_bump = False
+                    pass
 
-                if skip_ranged or skip_bump:
+                try:
+                    if downstream_package.get_readonly():
+                        skip_reason += ' READONLY'
+                except:
+                    pass
+
+                if skip_reason:
+                    skip_reason = ' Reason:' + skip_reason
                     downstream_version = dixi_api.get_version(downstream_package)
 
-                    message = ('skipped downstream "%s" (%s) from %s to %s in "%s". skipbump=%s, skipranged=%s' % (
+                    message = ('skipped downstream "%s" (%s) from %s to %s in "%s".%s' % (
                         downstream_package.to_string(),
                         package.to_string(),
                         downstream_version,
                         new_version,
                         package_path,
-                        skip_bump,
-                        skip_ranged))
+                        skip_reason))
+
                     deb(message)
                     ret.append(message)
                     continue

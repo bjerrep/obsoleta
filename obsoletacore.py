@@ -473,16 +473,18 @@ class Obsoleta:
                         candidate.append(_package)
 
                 for i in range(len(candidate)):
-                    for j in candidate[i + 1:]:
-                        if candidate[i].is_duplicate(j):
+                    for second_candidate in candidate[i + 1:]:
+                        if candidate[i].is_duplicate(second_candidate):
                             err1 = Error(ErrorCode.MULTIPLE_VERSIONS,
                                          candidate[i],
                                          'with parent %s' % candidate[i].parent)
-                            candidate[i].add_error(err1)
                             err2 = Error(ErrorCode.MULTIPLE_VERSIONS,
-                                         j,
-                                         'with parent %s' % j.parent)
-                            j.add_error(err2)
+                                         second_candidate,
+                                         'with parent %s' % second_candidate.parent)
+                            candidate[i].add_error(err1)
+                            candidate[i].add_error(err2)
+                            second_candidate.add_error(err1)
+                            second_candidate.add_error(err2)
                             if self.args.verbose:
                                 err('ERROR: ' + err1.to_string())
                                 err('ERROR: ' + err2.to_string())
