@@ -49,7 +49,7 @@ class Obsoleta:
             else:
                 err('attribute aggregation skipped due to errors in %s' % package.to_string())
 
-        if self.setup.allow_duplicates:
+        if not self.setup.allow_duplicates:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
@@ -227,32 +227,40 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                errorcode, resolved = self.find_all_dependencies(dependency)
+                errorcode, dependency_dependencies = self.find_all_dependencies(dependency)
 
-                if resolved:
-                    resolved = max(resolved)
-                    deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
-                    indent()
-                    resolved.parent = package
-                    resolved = copy.copy(resolved)
-                    if level > 1:
-                        resolved.set_lookup()
-                    resolved_dependencies = resolved.get_dependencies()
-                    if resolved_dependencies:
-                        for d in resolved_dependencies:
-                            circular_dependency = d.search_upstream()
-                            if circular_dependency:
-                                error = Error(ErrorCode.CIRCULAR_DEPENDENCY, d,
-                                              d.to_string() + ' required by ' + package.to_string())
-                                resolved.add_error(error)
-                                package.dependencies.append(resolved)
-                                return False
+                if dependency_dependencies:
+                    for resolved in dependency_dependencies:
+                        deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
 
-                    package.dependencies.append(resolved)
-                    dep_success = self.resolve_dependencies(resolved, level)
-                    unindent()
-                    if not dep_success:
-                        return False
+                        resolved.parent = package
+                        resolved = copy.copy(resolved)
+                        if level > 1:
+                            resolved.set_lookup()
+                        resolved_dependencies = resolved.get_dependencies()
+                        if resolved_dependencies:
+                            for d in resolved_dependencies:
+                                circular_dependency = d.search_upstream()
+
+                                if circular_dependency:
+                                    _error, loaded_package = self.find_first_package(d)
+
+                                    if loaded_package.get_errors():
+                                        continue
+                                    error = Error(ErrorCode.CIRCULAR_DEPENDENCY, d,
+                                                  d.to_string() + ' required by ' + resolved.to_extra_string())
+                                    if _error.is_ok():
+                                        loaded_package.add_error(error)
+                                    package.dependencies.append(resolved)
+                                    return False
+
+                        dep_success = self.resolve_dependencies(resolved, level)
+                        unindent()
+                        if not dep_success:
+                            return False
+
+                    selected_dependency = max(dependency_dependencies)
+                    package.dependencies.append(selected_dependency)
                 else:
                     resolved = copy.copy(dependency)
                     if level > 1:
@@ -460,8 +468,7 @@ class Obsoleta:
         indent()
 
         for package in self.loaded_packages:
-            package_list = []
-            self.get_package_list(package, package_list)
+            package_list = self.get_package_list(package)
             unique_packages = set(package_list)
 
             names = self.get_duplicates_by_name(unique_packages)
@@ -481,20 +488,20 @@ class Obsoleta:
                             err2 = Error(ErrorCode.MULTIPLE_VERSIONS,
                                          second_candidate,
                                          'with parent %s' % second_candidate.parent)
-                            candidate[i].add_error(err1)
-                            candidate[i].add_error(err2)
-                            second_candidate.add_error(err1)
-                            second_candidate.add_error(err2)
+                            package.add_error(err1)
+                            package.add_error(err2)
                             if self.args.verbose:
                                 err('ERROR: ' + err1.to_string())
                                 err('ERROR: ' + err2.to_string())
         unindent()
 
-    def get_package_list(self, package, packages):
+    def get_package_list(self, package, packages=None):
+        if packages is None:
+            packages = []
         packages.append(package)
         if package.dependencies:
             for dependency in package.dependencies:
-                self.get_package_list(dependency, packages)
+                packages.extend(self.get_package_list(dependency))
         return packages
 
     def dump_tree(self, root_package):
@@ -506,7 +513,6 @@ class Obsoleta:
         indention for dependencies matching their depth in the tree.
         """
         ret = []
-        error = ErrorOk()
 
         matches = root_package.find_equal_or_better_in_list(self.loaded_packages)
 
@@ -515,23 +521,28 @@ class Obsoleta:
 
         if len(matches) > 1 and root_package.get_name() != '*':
             for package in matches:
-                error = package.dump(ret, error, skip_dependencies=True)
+                package.dump(ret, skip_dependencies=True)
             message = 'Package "%s", candidates are %s' % (root_package, str(ret))
             return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package, message), ret
 
         for package in matches:
-            error = package.dump(ret, error, skip_dependencies=False)
-        return error, ret
+            errors = package.dump(ret, skip_dependencies=False)
+            if errors:
+                return errors[0], ret
+
+        return ErrorOk(), ret
 
     def dump_build_order(self, root_package):
         packages_build_order = []
-        package_list = []
 
         error, match = self.find_first_package(root_package)
         if error.has_error():
             return error, match, []
 
-        self.get_package_list(match, package_list)
+        if match.get_errors():
+            return match.get_errors()[0], match, []
+
+        package_list = self.get_package_list(match)
 
         packages = list(dict.fromkeys(package_list))
         package_copy = packages
@@ -573,7 +584,9 @@ class Obsoleta:
         if errors is None:
             errors = []
         anypackage = package.get_name() == '*'
-        if not self.loaded_packages or (not anypackage and not package.find_equal_or_better_in_list(self.loaded_packages)):
+
+        if (not self.loaded_packages or
+           (not anypackage and not package.find_equal_or_better_in_list(self.loaded_packages))):
             return Error(ErrorCode.PACKAGE_NOT_FOUND, package), errors
 
         if not package:
@@ -623,7 +636,8 @@ class Obsoleta:
         self.loaded_packages = [Package.construct_from_dict(self.setup, p) for p in cache]
 
     def generate_digraph(self, target_package):
-        header = '%s[label=<<font face="DejaVuSans" point-size="14"><table border="0" cellborder="0" cellspacing="0">\n'
+        header = '"%s"[label=<<font face="DejaVuSans" point-size="14">'\
+                 '<table border="0" cellborder="0" cellspacing="0">\n'
         title = '<tr><td><font point-size="20"><b>%s</b></font></td></tr>\n'
         specialization = '<tr><td><font color="blue">%s=%s</font></td></tr>\n'
         specialization_msg = '<tr><td><font color="blue">%s</font></td></tr>\n'

@@ -50,7 +50,7 @@ title('TDA_3A', 'call print() on multislotted package with keypath to use')
 package_dir = populate_local_temp('testdata/dixi/multislot')
 dixi = DixiApi(setup)
 dixi.load(package_dir, keypath='build_a')
-result = dixi.print()
+result = dixi.to_merged_json()
 test_eq(result == """{
   "name": "a",
   "version": "0.1.2",
@@ -76,7 +76,7 @@ title('TDA_3B', 'call print() on multislotted package without a keypath fails')
 package_dir = populate_local_temp('testdata/dixi/multislot')
 dixi = DixiApi(setup)
 dixi.load(package_dir)
-result = dixi.print()
+result = dixi.to_merged_json()
 test_eq(result == 'need the key for slot/multislot package merge')
 
 

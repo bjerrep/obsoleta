@@ -90,8 +90,8 @@ if args.verbose:
 elif args.info:
     set_log_level(info=True)
 
-valid_package_action = args.tree or args.check or args.buildorder or args.listmissing or \
-                       args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph
+valid_package_action = (args.tree or args.check or args.buildorder or args.listmissing or
+                        args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph)
 
 valid_command = valid_package_action or args.dumpcache
 
@@ -109,7 +109,8 @@ if args.clearcache:
 # go-no-go checks
 
 if not valid_command:
-    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream, --downstream --bumpdirect --bump or --dumpcache')
+    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream,'
+        ' --downstream --bumpdirect --bump or --dumpcache')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not args.dumpcache and not args.package and not args.path:
@@ -192,7 +193,7 @@ try:
             print_result("\n".join(result), newline)
         else:
             err(error.print())
-        exit_code = error.get_errorcode()
+            exit_code = error.get_errorcode()
 
     elif args.buildorder:
         exit_code = ErrorCode.OK

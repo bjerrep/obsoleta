@@ -713,12 +713,12 @@ class Package:
     def __hash__(self):
         return hash(self.to_string())
 
-    def dump(self, ret, error=None, skip_dependencies=False):
-        if error and error.has_error():
-            return error
+    def dump(self, ret, errors=None, skip_dependencies=False):
+        if errors is None:
+            errors = []
 
         if self.errors:
-            return self.errors[0]
+            return self.errors
 
         title = get_indent() + self.to_string()
         ret.append(title)
@@ -726,9 +726,9 @@ class Package:
         if not skip_dependencies and self.dependencies:
             indent()
             for dependency in self.dependencies:
-                error = dependency.dump(ret, error)
+                errors.extend(dependency.dump(ret))
             unindent()
-        return error
+        return list(set(errors))
 
     def get_dependencies(self):
         """

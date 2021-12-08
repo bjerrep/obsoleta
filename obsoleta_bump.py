@@ -174,7 +174,7 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
     current_version = current_package.get_version()
     dependency_digit = Version(current_version).get_change(new_version)
     if not dependency_digit:
-        raise ObsoletaException('bump from %s to %s failed' % (current_version, new_version))
+        raise ObsoletaException('bump from %s to %s failed' % (current_version, new_version), ErrorCode.SYNTAX_ERROR)
 
     if package_or_compact.get_arch() == anyarch:
         relaxed = True

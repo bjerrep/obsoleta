@@ -50,8 +50,8 @@ class ObsoletaApi:
 
     def tree(self, package_or_compact):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
-        error = self.obsoleta.dump_tree(package_or_compact)
-        return error
+        errors, ret = self.obsoleta.dump_tree(package_or_compact)
+        return errors, ret
 
     def buildorder(self, package_or_compact, printpaths=False):
         package_or_compact = Package.auto_package(self.setup, package_or_compact)
@@ -133,4 +133,8 @@ class ObsoletaApi:
             The implementation is found in obsoleta_bump.py.
         """
 
-        return self.bump_impl(package_or_compact, new_version, bump=bump, dryrun=dryrun, indent_messages=indent_messages)
+        return self.bump_impl(package_or_compact,
+                              new_version,
+                              bump=bump,
+                              dryrun=dryrun,
+                              indent_messages=indent_messages)

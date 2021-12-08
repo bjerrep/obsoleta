@@ -157,7 +157,7 @@ test_eq("c:1.2.4:anytrack:anyarch:unknown" in output)
 title('C6', 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package d --check', ErrorCode.OK)
 
-title('C7', 'fail to list buildorder as there are a circular dependency')
+title('C7', 'fail to list buildorder as there are a circular dependency, a <<< b <<< c <<< a')
 exitcode, output = execute(fixed + '--root testdata/C7_test_circular_dependency --package a --buildorder', ErrorCode.CIRCULAR_DEPENDENCY)
 
 title('C8', 'named architecture -> named architecture -> "anyarch" is ok')

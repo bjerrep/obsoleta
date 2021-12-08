@@ -65,10 +65,7 @@ class DixiApi:
     def get_layout(self):
         return self.dixi.get_package().get_layout()
 
-    def print(self):
-        """
-        Returns pretty printed json string but doesn't actually print anything
-        """
+    def to_merged_json(self):
         return self.dixi.to_merged_json()
 
     def save(self):

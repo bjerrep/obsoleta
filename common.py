@@ -166,7 +166,11 @@ class Error:
 
     def print(self):
         if self.message:
-            return '%s, %s' % (ErrorCode.to_string(self.errorcode.value), self.message)
+            try:
+                package_string = self.package.to_string()
+            except:
+                package_string = ''
+            return '%s %s, %s' % (ErrorCode.to_string(self.errorcode.value), package_string, self.message)
         try:
             return '%s, %s' % (ErrorCode.to_string(self.errorcode.value), self.package.to_string())
         except:
