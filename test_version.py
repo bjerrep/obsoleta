@@ -1,5 +1,5 @@
-from version import Version, VersionAny
 from common import Position
+from version import Version, VersionAny
 
 aye = 0
 nay = 0
@@ -25,7 +25,7 @@ nay += v124 <= v123
 nay += v123 >= v124
 
 if nay or aye != 7:
-    print('failed plain numbers (%i/%i)' % (nay, aye))
+    print(f'failed plain numbers ({nay}/{aye})')
     exit(1)
 
 # ------------------------------------------
@@ -39,15 +39,42 @@ aye += Version('1.2.>=3') == Version('1.2.>=3')
 
 aye += Version('1.>2.3') == Version('1.3.3')
 aye += Version('1.3.3') == Version('1.>2.3')
+
+aye += Version('1.2.3') >= Version('>=1.>=2.>=3')
+aye += Version('2.2.3') >= Version('>=1.>=2.>=3')
+aye += Version('1.3.3') >= Version('>=1.>=2.>=3')
+aye += Version('1.2.4') >= Version('>=1.>=2.>=3')
+
+aye += Version('1.2.3') == Version('>=1.>=2.>=3')
+aye += Version('2.2.3') == Version('>=1.>=2.>=3')
+aye += Version('1.3.3') == Version('>=1.>=2.>=3')
+aye += Version('1.2.4') == Version('>=1.>=2.>=3')
+
+aye += Version('2.0.0') > Version('>=1.>=2.>=3')
+nay += Version('2.0.0') < Version('>=1.>=2.>=3')
+aye += Version('1.3.0') > Version('>=1.>=2.>=3')
+aye += Version('1.2.4') > Version('>=1.>=2.>=3')
+
+aye += Version('>=1.>=2.>=3') == Version('2.0.0')
+aye += Version('>=1.>=2.>=3') == Version('1.3.0')
+aye += Version('>=1.>=2.>=3') == Version('1.2.4')
+
+nay += Version('2.0.1') >= Version('>=2.>=0.>=2')
+aye += Version('2.0.1') < Version('>=2.>=0.>=2')
+nay += Version('3.0.1') < Version('>=2.>=0.>=2')
+nay += Version('>=2.>=0.>=2') <= Version('2.0.1')
+aye += Version('>=2.>=0.>=2') > Version('2.0.1')
+
 nay += v123 == Version('1.>2.3')
 
-if nay or aye != 5:
-    print('failed simple range equality test (%i/%i)' % (nay, aye))
+if nay != 4 or aye != 21:
+    print(f'failed simple range equality test ({nay}/{aye})')
     exit(1)
 
 # ------------------------------------------
 
 aye = 0
+nay = 0
 
 aye += VersionAny == VersionAny
 aye += Version('1.*') == Version('1.*')
@@ -73,7 +100,7 @@ aye += v123 > VersionAny
 aye += v123 < VersionAny
 
 if nay or aye != 19:
-    print('fail wildchar test (%i/%i)' % (nay, aye))
+    print(f'fail wildchar test ({nay}/{aye})')
     exit(1)
 
 # ------------------------------------------
