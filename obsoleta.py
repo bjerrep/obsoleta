@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from log import set_log_level, inf, deb, err, print_result, print_result_nl
-from common import Setup
+from common import Conf
 from errorcodes import ErrorCode
 from package import Package
 from obsoletacore import Obsoleta
@@ -119,25 +119,25 @@ if not args.dumpcache and not args.package and not args.path:
 
 # parse configuration file
 
-setup = Setup(args.conffile)
+conf = Conf(args.conffile)
 
 if args.depth:
     # a depth given on the commandline overrules any depth there might have been in the configuration file
-    setup.depth = int(args.depth)
+    conf.depth = int(args.depth)
 
 if args.keeptrack:
-    setup.keep_track = int(args.keeptrack)
+    conf.keep_track = int(args.keeptrack)
 
 if args.keepgoing:
-    setup.keepgoing = True
+    conf.keepgoing = True
 
-setup.dump()
+conf.dump()
 exit_code = ErrorCode.OK
 
 # construct obsoleta, load and parse everything in one go
 
 try:
-    obsoleta = ObsoletaApi(setup, args)
+    obsoleta = ObsoletaApi(conf, args)
 
     if args.dumpcache:
         print_result_nl(json.dumps(obsoleta.serialize(), indent=4))
@@ -147,12 +147,12 @@ try:
     if args.path:
         try:
             package = Package.construct_from_package_path(
-                setup, args.path, key=args.key, keypath=args.keypath)
+                conf, args.path, key=args.key, keypath=args.keypath)
         except FileNotFoundError as e:
             err(str(e))
             exit(ErrorCode.PACKAGE_NOT_FOUND.value)
     else:
-        package = Package.construct_from_compact(setup, args.package)
+        package = Package.construct_from_compact(conf, args.package)
 
 except ObsoletaException as e:
     err('Exception %s: %s' % (e.ErrorCode.name, str(e)))

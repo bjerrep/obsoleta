@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from log import err, logger
-from common import Setup
+from common import Conf
 from package import Package
 from errorcodes import ErrorCode
 import logging, argparse, os
@@ -8,13 +8,13 @@ import logging, argparse, os
 # ---------------------------------------------------------------------------------------------
 
 
-def find_best_candidate(setup, package, candidates):
+def find_best_candidate(conf, package, candidates):
     candidates = [x.strip() for x in candidates]
     candidates = [os.path.splitext(x)[0] for x in candidates]
     matches = []
 
     for i in candidates:
-        can = Package.construct_from_compact(setup, i)
+        can = Package.construct_from_compact(conf, i)
         if package == can:
             matches.append(can)
 
@@ -56,14 +56,14 @@ if __name__ == '__main__':
     elif args.info:
         logger.setLevel(logging.INFO)
 
-    setup = Setup(args.conffile)
+    conf = Conf(args.conffile)
     try:
-        package = Package.construct_from_compact(setup, args.compact)
+        package = Package.construct_from_compact(conf, args.compact)
 
         with open(args.candidate_file) as f:
             candidates = f.readlines()
 
-        candidate = find_best_candidate(setup, package, candidates)
+        candidate = find_best_candidate(conf, package, candidates)
         print(candidate)
 
     except Exception as e:

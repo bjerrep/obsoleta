@@ -206,7 +206,7 @@ exitcode, output = execute(fixed + '--setarch production', ErrorCode.OK.value)
 exitcode, output = execute(fixed + '--getarch', ErrorCode.OK.value)
 test_eq(output, 'production')
 
-title('S2A', 'multislot get arch from build dir. Requires "relaxed_multislot" in setup')
+title('S2A', 'multislot get arch from build dir. Requires "relaxed_multislot" in configuration')
 prepare_local('multislot')
 exitcode, output = execute(_fixed + '--path local/dixi/build_x --getarch', ErrorCode.OK.value)
 test_eq(output, 'anyarch')

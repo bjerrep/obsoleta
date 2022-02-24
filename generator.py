@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from package import Package
 from log import inf, logger
-from common import Setup
+from common import Conf
 import glob, re, os, logging, sys, pathlib
 
 
@@ -25,7 +25,7 @@ def make_entry(a, first=False):
 
 def generate_c(package_or_path, src_dest, inc_dest):
     if isinstance(package_or_path, str):
-        package = Package.construct_from_package_path(Setup('testdata/mini.conf'), package_or_path)
+        package = Package.construct_from_package_path(Conf('testdata/mini.conf'), package_or_path)
     else:
         package = package_or_path
 

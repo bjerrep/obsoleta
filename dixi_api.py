@@ -6,11 +6,11 @@ class DixiApi:
     """ Python api for dixi.
         Might in time just be merged into dixicore and then there will just be 'dixi'.
     """
-    def __init__(self, setup):
+    def __init__(self, conf):
         """ Notice that the constructor does not give a usable DixiApi since it isn't told what package
             to work with. It should always be followed by a call to load()
         """
-        self.setup = setup
+        self.conf = conf
         self.dixi = None
 
     def load(self, path_or_package, key=None, keypath=None):
@@ -18,7 +18,7 @@ class DixiApi:
             self.dixi = Dixi(path_or_package)
         else:
             package = Package.construct_from_package_path(
-                self.setup,
+                self.conf,
                 path_or_package,
                 key=key,
                 keypath=keypath)
@@ -59,7 +59,7 @@ class DixiApi:
         return self.dixi.set_track(track, track_scope)
 
     def get_track(self, package=None):
-        package = Package.auto_package(self.setup, package)
+        package = Package.auto_package(self.conf, package)
         return self.dixi.get_track(package)
 
     def get_layout(self):

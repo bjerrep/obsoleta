@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from test_common import title, test_true, test_ok, test_eq, test_error, populate_local_temp
-from common import Position, Setup
+from common import Position, Conf
 from obsoleta_api import Args, ObsoletaApi
 from obsoletacore import UpDownstreamFilter
 from errorcodes import ErrorCode
@@ -12,15 +12,15 @@ args = Args()
 args.set_depth(2)
 args.set_root('local/temp')
 # args.set_info_logging()
-setup = Setup('testdata/test.conf')
+conf = Conf('testdata/test.conf')
 
 populate_local_temp('testdata/G2_test_slot')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 
 # check
 
 title('TOA 1A', 'check')
-package = Package.construct_from_compact(setup, 'a')
+package = Package.construct_from_compact(conf, 'a')
 error, messages = obsoleta.check(package)
 test_ok(error)
 
@@ -42,7 +42,7 @@ test_eq(messages, [
     '    f:6.6.6:anytrack:linux:unknown'])
 
 title('TOA 2B', 'tree')
-package = Package.construct_from_compact(setup, 'a')
+package = Package.construct_from_compact(conf, 'a')
 error, messages = obsoleta.tree(package)
 test_ok(error, messages)
 
@@ -61,7 +61,7 @@ test_eq(str(messages),
         'e:5.5.5:anytrack:linux:unknown, a:1.1.1:anytrack:linux:unknown]')
 
 title('TOA 3B', 'buildorder')
-package = Package.construct_from_compact(setup, 'a')
+package = Package.construct_from_compact(conf, 'a')
 error, messages2 = obsoleta.buildorder(package)
 test_ok(error)
 test_eq(messages, messages2)
@@ -90,13 +90,13 @@ test_eq(str(messages_4A2), '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:
                            ' f:6.6.6:anytrack:linux:unknown]')
 
 title('TOA 4B', 'upstream - as TOA 4A')
-package = Package.construct_from_compact(setup, 'a:*::linux')
+package = Package.construct_from_compact(conf, 'a:*::linux')
 error, messages2 = obsoleta.upstreams(package, UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 4C', 'upstream - oups not found')
-package = Package.construct_from_compact(setup, 'oups:*::linux')
+package = Package.construct_from_compact(conf, 'oups:*::linux')
 error, messages = obsoleta.upstreams(package)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
 
@@ -116,14 +116,14 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 title('TOA 5B', 'downstream - b is used by downstream a (from compact)')
-package = Package.construct_from_compact(setup, 'b:*::linux')
+package = Package.construct_from_compact(conf, 'b:*::linux')
 error, messages2 = obsoleta.downstreams(package,
                                         UpDownstreamFilter.ExplicitReferences)
 test_ok(error)
 test_eq(messages, messages2)
 
 title('TOA 5C', 'downstream - oups not found')
-package = Package.construct_from_compact(setup, 'oups:*::linux')
+package = Package.construct_from_compact(conf, 'oups:*::linux')
 error, messages = obsoleta.downstreams(package,
                                        UpDownstreamFilter.ExplicitReferences)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
@@ -150,8 +150,8 @@ test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 def test_bump(compact, path, bump=False, skip_ranged_versions=False, package_for_check=None, dryrun=False):
     populate_local_temp(path)
     args.set_skip_bumping_ranged_versions(skip_ranged_versions)
-    obsoleta = ObsoletaApi(setup, args)
-    target_package = Package.construct_from_compact(setup, compact)
+    obsoleta = ObsoletaApi(conf, args)
+    target_package = Package.construct_from_compact(conf, compact)
 
     # establish a new version number to use
     error, package = obsoleta.find_first_package(target_package, strict=False)
@@ -167,7 +167,7 @@ def test_bump(compact, path, bump=False, skip_ranged_versions=False, package_for
     args.set_skip_bumping_ranged_versions(False)
 
     # use a check() to verify that the bump was a success
-    obsoleta = ObsoletaApi(setup, args)
+    obsoleta = ObsoletaApi(conf, args)
     if package_for_check:
         error, messages = obsoleta.check(package_for_check)
     else:
@@ -264,12 +264,12 @@ test_eq(message,
 # ---------------------------------------------------------------
 
 populate_local_temp('testdata/G1_test_multislot')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 
 
 title('TOA 7', 'select a multislot from path and keypath rather than a compact package name')
 package = Package.construct_from_package_path(
-    setup,
+    conf,
     'local/temp/b_multi_out_of_source',
     keypath='build_linux')
 error, messages = obsoleta.tree(package)
@@ -284,7 +284,7 @@ test_eq(messages,
 
 title('TOA 7b', 'select a multislot from path and key rather than a compact package name')
 package = Package.construct_from_package_path(
-    setup,
+    conf,
     'local/temp/b_multi_out_of_source',
     key='nix')
 error, messages = obsoleta.tree(package)
@@ -299,12 +299,12 @@ test_ok(error)
 
 
 populate_local_temp('testdata/G1_test_multislot')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 
 
 title('TOA 8a', 'use parse_multislot_directly=True, the actual key files are not used')
-parse_multislot_directly = setup.parse_multislot_directly
-setup.parse_multislot_directly = True
+parse_multislot_directly = conf.parse_multislot_directly
+conf.parse_multislot_directly = True
 os.remove('local/temp/b_multi_out_of_source/build_linux/obsoleta.key')
 os.remove('local/temp/b_multi_out_of_source/build_win/obsoleta.key')
 error, messages = obsoleta.tree(package)
@@ -312,18 +312,18 @@ test_ok(error)
 #
 
 populate_local_temp('testdata/G1_test_multislot')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 
 
 title('TOA 8b', 'use parse_multislot_directly=False, the actual key files are required')
-setup.parse_multislot_directly = False
+conf.parse_multislot_directly = False
 error, messages = obsoleta.tree(package)
 test_ok(error)
-setup.parse_multislot_directly = parse_multislot_directly
+conf.parse_multislot_directly = parse_multislot_directly
 
 
 populate_local_temp('testdata/B5_test_missing_package')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 
 
 title('TOA 9A', 'upstream() using ExplicitReferences will not discover the missing upstream package "c" required by "b"')
@@ -342,7 +342,7 @@ test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
 title('TOA 10', 'Test that the switch "keep_track" makes it impossible to resolve "y" ("a" is testing but "y" only exists as production')
 # getting started, "y" in testing is happy to find an "y" in production
 populate_local_temp('testdata/A4_dont_get_confused')
-obsoleta = ObsoletaApi(setup, args)
+obsoleta = ObsoletaApi(conf, args)
 error, messages = obsoleta.tree('a')
 test_eq(messages,
         ['a:0.1.2:testing:linux_x86_64:unknown',
@@ -354,8 +354,8 @@ test_ok(error)
 error, messages = obsoleta.tree('b')
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
 #
-# reload with a setup file setting the global keep_track to true. Same result as above.
-keep_track_setup = Setup('testdata/test_keep_track.conf')
-obsoleta = ObsoletaApi(keep_track_setup, args)
+# reload with a configuration file setting the global keep_track to true. Same result as above.
+keep_track_conf = Conf('testdata/test_keep_track.conf')
+obsoleta = ObsoletaApi(keep_track_conf, args)
 error, messages = obsoleta.tree('a')
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)

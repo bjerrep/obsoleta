@@ -6,10 +6,10 @@ import os
 
 
 class ObsoletaApi:
-    def __init__(self, setup, args=Args()):
-        self.setup = setup
+    def __init__(self, conf, args=Args()):
+        self.conf = conf
         self.args = args
-        self.obsoleta = Obsoleta(self.setup, self.args)
+        self.obsoleta = Obsoleta(self.conf, self.args)
 
     def clear_cache(self):
         os.remove(Obsoleta.default_cache_filename())
@@ -29,32 +29,32 @@ class ObsoletaApi:
         return self.obsoleta.roots[0]
 
     def make_package_from_path(self, path):
-        return Package.construct_from_package_path(self.setup, path)
+        return Package.construct_from_package_path(self.conf, path)
 
     def find_all_packages(self, package_or_compact):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, packages = self.obsoleta.find_all_packages(package_or_compact)
         return error, packages
 
     def find_first_package(self, package_or_compact, strict=False):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, package = self.obsoleta.find_first_package(package_or_compact, strict)
         return error, package
 
     def check(self, package_or_compact):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, errors = self.obsoleta.get_errors(package_or_compact)
         if error.has_error():
             return error, errors
         return error, 'check pass for %s' % package_or_compact
 
     def tree(self, package_or_compact):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         errors, ret = self.obsoleta.dump_tree(package_or_compact)
         return errors, ret
 
     def buildorder(self, package_or_compact, printpaths=False):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, unresolved, resolved = self.obsoleta.dump_build_order(package_or_compact)
         if error.has_error():
             return error, None
@@ -69,7 +69,7 @@ class ObsoletaApi:
         return ErrorOk(), result
 
     def list_missing(self, package_or_compact):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, err_list = self.obsoleta.get_errors(package_or_compact)
         ret = []
         for err in err_list:
@@ -87,7 +87,7 @@ class ObsoletaApi:
             Param: 'as_path_list', returns the paths rather than the package object list.
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_upstreams(package_or_compact,
                                                        filter=filter)
         if error.has_error():
@@ -104,17 +104,15 @@ class ObsoletaApi:
             Param: 'as_path_list' if default false return Package objects else path strings.
             Returns: tuple(errorcode, [Packages] or [paths] according to 'as_path_list' argument)
         """
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_downstreams(package_or_compact,
                                                          filter=filter)
-        if error.has_error():
-            return error, 'unable to locate downstreams for %s' % package_or_compact
-        if as_path_list:
+        if result and as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result
 
     def generate_digraph(self, package_or_compact):
-        package_or_compact = Package.auto_package(self.setup, package_or_compact)
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
         self.obsoleta.generate_digraph(package_or_compact)
 
     from obsoleta_bump import bump_impl

@@ -41,8 +41,8 @@ class Layout(Enum):
 
 
 class Package:
-    def __init__(self, setup, package_path, compact, dictionary, key=None, keypath=None):
-        self.setup = setup
+    def __init__(self, conf, package_path, compact, dictionary, key=None, keypath=None):
+        self.conf = conf
         self.parent = None
         self.package_path = package_path
         self.dependencies = []
@@ -69,23 +69,23 @@ class Package:
             self.from_dict(dictionary)
 
     @classmethod
-    def construct_from_dict(cls, setup, dictionary):
-        return cls(setup, None, None, dictionary)
+    def construct_from_dict(cls, conf, dictionary):
+        return cls(conf, None, None, dictionary)
 
     @classmethod
-    def construct_from_package_path(cls, setup, package_path, key=None, keypath=None, dictionary=None):
+    def construct_from_package_path(cls, conf, package_path, key=None, keypath=None, dictionary=None):
         """ Returns the package object for package at the given path. A multislot package
             requires the specific key to use. """
         if keypath:
             key = Package.load_key(os.path.join(package_path, keypath))
-        return cls(setup, package_path, None, dictionary, key=key)
+        return cls(conf, package_path, None, dictionary, key=key)
 
     @classmethod
-    def construct_from_compact(cls, setup, compact, package_path=None):
-        return cls(setup, package_path, compact, None)
+    def construct_from_compact(cls, conf, compact, package_path=None):
+        return cls(conf, package_path, compact, None)
 
     @classmethod
-    def auto_package(self, setup, package_or_compact):
+    def auto_package(self, conf, package_or_compact):
         """
         Returns a Package object from its compact name. As a convenience it will
         just return the Package if it is given a Package.
@@ -94,7 +94,7 @@ class Package:
             return None
         if isinstance(package_or_compact, Package):
             return package_or_compact
-        return Package.construct_from_compact(setup, package_or_compact)
+        return Package.construct_from_compact(conf, package_or_compact)
 
     @classmethod
     def load_key(self, keypath):
@@ -131,7 +131,7 @@ class Package:
 
         # track, arch and buildtype are deliberately left undefined if they are disabled
         pedantic = True
-        if self.setup.using_track:
+        if self.conf.using_track:
             if 'track' in dictionary:
                 try:
                     self.track = Track[dictionary['track']]
@@ -143,7 +143,7 @@ class Package:
         elif pedantic and 'track' in dictionary:
             war('package %s specifies a track but track is not currently enabled (check config file)' % self.name)
 
-        if self.setup.using_arch:
+        if self.conf.using_arch:
             try:
                 self.arch = dictionary["arch"]
                 if self.arch == anyarch:
@@ -153,7 +153,7 @@ class Package:
         elif pedantic and 'arch' in dictionary:
             war('package %s specifies an arch but arch is not currently enabled (check config file)' % self.name)
 
-        if self.setup.using_buildtype:
+        if self.conf.using_buildtype:
             if 'buildtype' in dictionary:
                 try:
                     self.buildtype = dictionary['buildtype']
@@ -176,23 +176,23 @@ class Package:
                 indent()
 
                 for dependency in dependencies:
-                    package = Package(self.setup, None, None, dependency)
+                    package = Package(self.conf, None, None, dependency)
                     package_copy = copy.copy(package)
                     package.parent = self
                     # inherit optionals from the package if they are unspecified. The downside is that they will no
                     # longer look exactly as they appear in the package file, the upside is that they now tell
                     # explicitly what their minimum requirement is.
-                    if self.setup.using_track:
+                    if self.conf.using_track:
                         if package.track == Track.anytrack:
                             package.track = self.track
-                    if self.setup.using_arch:
+                    if self.conf.using_arch:
                         if package.arch == anyarch:
                             if not package.explicit_anyarch:
                                 package.arch = self.arch
                         if self.arch != anyarch and package.arch != self.arch:
                             package.add_error(
                                 Error(ErrorCode.ARCH_MISMATCH, package, 'parent is %s' % self.to_string()))
-                    if self.setup.using_buildtype:
+                    if self.conf.using_buildtype:
                         if package.buildtype == buildtype_unknown:
                             package.buildtype = self.buildtype
 
@@ -277,7 +277,7 @@ class Package:
             # So if we have a key file, and there is a package file in the up dir, lets silently relocate
             # and go with that further below. If all this sounds awful then set 'relaxed_multislot' to false.
             try:
-                if self.setup.relaxed_multislot and not key and not os.path.exists(json_file):
+                if self.conf.relaxed_multislot and not key and not os.path.exists(json_file):
                     key_file = os.path.join(self.package_path, 'obsoleta.key')
                     if os.path.exists(key_file):
                         updir = os.path.split(os.path.abspath(self.package_path))[0]
@@ -359,13 +359,13 @@ class Package:
         self.version = VersionAny
         self.package_path = package_path
         optionals = 0
-        if self.setup.using_track:
+        if self.conf.using_track:
             self.track = Track.anytrack
             optionals += 1
-        if self.setup.using_arch:
+        if self.conf.using_arch:
             self.arch = anyarch
             optionals += 1
-        if self.setup.using_buildtype:
+        if self.conf.using_buildtype:
             self.buildtype = buildtype_unknown
             optionals += 1
 
@@ -388,21 +388,21 @@ class Package:
                     ver = '*'
                 self.version = Version(ver)
 
-                if self.setup.using_track:
+                if self.conf.using_track:
                     current = 'track'
                     track = entries.pop(0)
                     if track:
                         self.track = Track[track]
                     else:
                         self.track = Track.anytrack
-                if self.setup.using_arch:
+                if self.conf.using_arch:
                     current = 'arch'
                     arch = entries.pop(0)
                     if arch:
                         self.arch = arch
                     else:
                         self.arch = anyarch
-                if self.setup.using_buildtype:
+                if self.conf.using_buildtype:
                     current = 'buildtype'
                     buildtype = entries.pop(0)
                     if buildtype:
@@ -430,13 +430,13 @@ class Package:
         if self.get_readonly():
             dictionary['readonly'] = True
 
-        if self.setup.using_track and self.track != Track.anytrack:
+        if self.conf.using_track and self.track != Track.anytrack:
             dictionary['track'] = TrackToString[self.track.value]
 
-        if self.setup.using_arch and self.arch != anyarch:
+        if self.conf.using_arch and self.arch != anyarch:
             dictionary['arch'] = self.arch
 
-        if self.setup.using_buildtype and self.buildtype != buildtype_unknown:
+        if self.conf.using_buildtype and self.buildtype != buildtype_unknown:
             dictionary['buildtype'] = self.buildtype
 
         if add_path and self.package_path:
@@ -570,17 +570,17 @@ class Package:
         # The fully unique identifier string for a package
         if self.string:
             return self.string
-        if self.setup.using_all_optionals:
+        if self.conf.using_all_optionals:
             self.string = '%s:%s:%s:%s:%s' % (self.name, str(self.version),
                                               TrackToString[self.track.value],
                                               self.arch, self.buildtype)
         else:
             optionals = ''
-            if self.setup.using_track:
+            if self.conf.using_track:
                 optionals = ':%s' % TrackToString[self.track.value]
-            if self.setup.using_arch:
+            if self.conf.using_arch:
                 optionals = '%s:%s' % (optionals, self.arch)
-            if self.setup.using_buildtype:
+            if self.conf.using_buildtype:
                 optionals = '%s:%s' % (optionals, self.buildtype)
             self.string = '%s:%s%s' % (self.name, str(self.version), optionals)
         return self.string
@@ -636,7 +636,7 @@ class Package:
                 (self.version != other.version)):
             return False
 
-        if self.setup.using_track:
+        if self.conf.using_track:
             if other.track == Track.production and self.track != Track.production:
                 return False
 
@@ -647,13 +647,13 @@ class Package:
                 if self.track < other.track:
                     return False
 
-        if self.setup.using_arch:
+        if self.conf.using_arch:
             if not (self.arch == anyarch or other.arch == anyarch or self.arch == other.arch):
                 return False
 
         # if any tracks are production then different explicit tracks are not allowed and on top
         # of that the buildtypes must match. Might be a bogus rule that needs to go.
-        if self.setup.using_track and self.setup.using_buildtype:
+        if self.conf.using_track and self.conf.using_buildtype:
             if self.track == Track.production or other.track == Track.production:
                 if self.track == other.track or self.track == Track.anytrack or other.track == Track.anytrack:
                     # yes, both are production or can mix. Disallow different explicit build types
@@ -678,7 +678,7 @@ class Package:
         this code instead.
         """
         match = self.name == other.name
-        if self.setup.using_arch and match:
+        if self.conf.using_arch and match:
             match = self.arch == other.arch
         return match
 

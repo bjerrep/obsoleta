@@ -151,7 +151,7 @@ class Version:
 
     def increase(self, position):
         self.digits[position.value].increase()
-        if common.get_setup() and common.get_setup().semver:
+        if common.get_conf() and common.get_conf().semver:
             if position == Position.MINOR:
                 self.digits[Position.BUILD.value].reset()
             elif position == Position.MAJOR:

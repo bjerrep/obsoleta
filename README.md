@@ -283,6 +283,8 @@ What happens is that the package definition used by obsoleta will be the 'slot' 
 	    "arch": "x86"
 	}
 
+The key to use when dealing  with a slotted package can also be given on the command line with the --key argument. This will bypass any key files.
+
 ### Multislots
 
 If building for multiple architectures is done out-of-source in a single directory it could look like this:

@@ -17,17 +17,17 @@ class UpDownstreamFilter(Enum):
 
 
 class Obsoleta:
-    def __init__(self, setup, args):
-        self.setup = setup
+    def __init__(self, conf, args):
+        self.conf = conf
         self.args = args
         self.dirs_checked = 0
         self.roots = self.construct_root_list()
-        self.setup.root = min(self.roots, key=len)
+        self.conf.root = min(self.roots, key=len)
         self.package_files = self.find_package_files(self.roots)
         self.loaded_packages = []
 
         try:
-            if setup.cache:
+            if conf.cache:
                 try:
                     deb('loading from cache')
                     self.load_cache()
@@ -49,7 +49,7 @@ class Obsoleta:
             else:
                 err('attribute aggregation skipped due to errors in %s' % package.to_string())
 
-        if not self.setup.allow_duplicates:
+        if not self.conf.allow_duplicates:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
@@ -67,7 +67,7 @@ class Obsoleta:
                     unindent()
             unindent()
 
-        if setup.cache:
+        if conf.cache:
             self.write_cache()
 
     def construct_root_list(self):
@@ -78,11 +78,11 @@ class Obsoleta:
 
         try:
             blacklist_paths = self.args.blacklist_paths.split(os.pathsep)
-            self.setup.blacklist_paths += blacklist_paths
+            self.conf.blacklist_paths += blacklist_paths
         except:
             pass
         roots.append(os.getenv('OBSOLETA_ROOT', ''))
-        roots += self.setup.paths
+        roots += self.conf.paths
         roots = [os.path.abspath(p) for p in roots if p]  # fully qualified non-empty paths
 
         # prepare to remove any duplicate paths, both literally as well as paths already
@@ -91,14 +91,14 @@ class Obsoleta:
         to_delete = []
 
         # in order to complicate things then paths seperated by a distance longer than
-        # the current Setup.depth should both be preserved.
+        # the current Conf.depth should both be preserved.
         for i in range(len(roots)):
             delete = [root for root in roots[i + 1:] if root.startswith(roots[0])]
             for d in delete:
                 difference_path = d.replace(roots[0], '')
                 difference_path = difference_path[1:]
                 distance = difference_path.count('/')
-                if distance < self.setup.depth:
+                if distance < self.conf.depth:
                     to_delete.append(d)
 
         for delete in to_delete:
@@ -115,7 +115,7 @@ class Obsoleta:
         package_files = []
         for root in roots:
             inf('path = %s' % root)
-            self.dirs_checked = find_in_path(root, 'obsoleta.json', self.setup.depth, package_files)
+            self.dirs_checked = find_in_path(root, 'obsoleta.json', self.conf.depth, package_files)
 
         inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
         unindent()
@@ -153,25 +153,25 @@ class Obsoleta:
                         raise BadPackageFile('malformed json in %s' % file)
 
                     if dictionary.get('multislot'):
-                        if self.setup.parse_multislot_directly:
+                        if self.conf.parse_multislot_directly:
                             packages = []
                             for key in dictionary.keys():
                                 if key != 'multislot' and self.dictionary_is_valid(dictionary[key]):
                                     packages.append(Package.construct_from_package_path(
-                                        self.setup, file, key=key, dictionary=dictionary))
+                                        self.conf, file, key=key, dictionary=dictionary))
                         else:
                             key_files = []
                             path = os.path.dirname(file)
                             find_in_path(path, 'obsoleta.key', 2, key_files)
                             packages = [
                                 Package.construct_from_package_path(
-                                    self.setup, file, keypath=key_path, dictionary=dictionary)
+                                    self.conf, file, keypath=key_path, dictionary=dictionary)
                                 for key_path in key_files]
                     else:
-                        packages = [Package.construct_from_package_path(self.setup, file, dictionary=dictionary), ]
+                        packages = [Package.construct_from_package_path(self.conf, file, dictionary=dictionary), ]
 
                 except (BadPackageFile, MissingKeyFile) as e:
-                    if self.setup.keepgoing:
+                    if self.conf.keepgoing:
                         war('keep going is set, ignoring invalid package %s' % file)
                         continue
                     else:
@@ -192,11 +192,11 @@ class Obsoleta:
                         message = 'duplicate package %s in %s, already exists as %s' % \
                                   (package, package.package_path, dupe[0].package_path)
 
-                        if not self.setup.allow_duplicates or self.setup.keepgoing:
+                        if not self.conf.allow_duplicates or self.conf.keepgoing:
                             reason = ''
-                            if not self.setup.allow_duplicates:
+                            if not self.conf.allow_duplicates:
                                 reason = ' (ignore duplicates)'
-                            if self.setup.keepgoing:
+                            if self.conf.keepgoing:
                                 reason += ' (keepgoing)'
                             war('ignoring ' + message + reason)
                             self.loaded_packages.append(package)
@@ -206,7 +206,7 @@ class Obsoleta:
                         self.loaded_packages.append(package)
 
             except Exception as e:
-                if self.setup.keepgoing:
+                if self.conf.keepgoing:
                     war('keep going is set, ignoring invalid package %s' % file)
                 else:
                     raise e
@@ -299,7 +299,7 @@ class Obsoleta:
                         return False
 
                     # mixing different arch is downright illegal
-                    if self.setup.using_arch:
+                    if self.conf.using_arch:
                         resolved_arch = resolved.get_arch(implicit=True)
                         package_arch = package.get_arch(implicit=True)
 
@@ -332,7 +332,7 @@ class Obsoleta:
             binary = os.readlink(so)
             version = binary. replace(lib_name + '.', '')
             _ = Version(version)
-            package = Package.construct_from_compact(self.setup, '%s:%s' % (name, version), so_path)
+            package = Package.construct_from_compact(self.conf, '%s:%s' % (name, version), so_path)
             self.loaded_packages.append(package)
             return [package]
         except:
@@ -347,7 +347,7 @@ class Obsoleta:
 
         if not candidates:
             for package in self.loaded_packages:
-                if self.setup.keep_track or target_package.keep_track:
+                if self.conf.keep_track or target_package.keep_track:
                     if package.package_is_equal_or_better(target_package):
                         candidates.append(package)
                 elif package.package_is_equal_or_better_relaxed_track(target_package):
@@ -633,7 +633,7 @@ class Obsoleta:
     def load_cache(self):
         with open(self.default_cache_filename()) as f:
             cache = json.loads(f.read())
-        self.loaded_packages = [Package.construct_from_dict(self.setup, p) for p in cache]
+        self.loaded_packages = [Package.construct_from_dict(self.conf, p) for p in cache]
 
     def generate_digraph(self, target_package):
         header = '"%s"[label=<<font face="DejaVuSans" point-size="14">'\

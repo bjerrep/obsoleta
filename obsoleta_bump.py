@@ -3,7 +3,7 @@ from package import Package, anyarch
 from log import deb, inf, indent, unindent, get_indent
 from common import ErrorOk
 from version import Version
-from exceptions import UnknownException, ObsoletaException
+from exceptions import UnknownException, ObsoletaException, PackageNotFound
 from obsoletacore import UpDownstreamFilter
 from errorcodes import ErrorCode
 import os, copy
@@ -15,7 +15,7 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
 
     def bump_package(package_or_compact, new_version):
         ret = []
-        package = Package.auto_package(self.setup, package_or_compact)
+        package = Package.auto_package(self.conf, package_or_compact)
         dixi_api.load(package)
         old_version = dixi_api.set_version(new_version)[0]
         package_path = os.path.relpath(dixi_api.get_package().get_path(), self.get_common_path())
@@ -164,11 +164,11 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
     if dryrun:
         inf(' - this is a dryrun, changes are not saved -')
 
-    dixi_api = DixiApi(self.setup)
+    dixi_api = DixiApi(self.conf)
 
     relaxed = False
 
-    target_package = Package.auto_package(self.setup, package_or_compact)
+    target_package = Package.auto_package(self.conf, package_or_compact)
 
     err, current_package = self.obsoleta.find_first_package(target_package)
     current_version = current_package.get_version()
@@ -197,6 +197,9 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
     already_processed = []
     for package in packages:
         error, _package = self.obsoleta.find_first_package(package, strict=True)
+
+        if not _package:
+            raise PackageNotFound('dependency %s not found' % package)
 
         if _package in already_processed:
             continue

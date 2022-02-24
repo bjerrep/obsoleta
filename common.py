@@ -1,8 +1,8 @@
+import os, json, time, datetime
+from enum import Enum
 from log import set_log_level, deb, inf
 from errorcodes import ErrorCode
 from exceptions import BadPath
-import os, json, time, datetime
-from enum import Enum
 
 
 class Position(Enum):
@@ -11,20 +11,20 @@ class Position(Enum):
     BUILD = 2
 
 
-_setup = None
+_conf = None
 
 
-def get_setup():
-    return _setup
+def get_conf():
+    return _conf
 
 
-class Setup:
+class Conf:
     """
-    The setup class represents the settings in the configuration
+    The Conf class represents the settings in the configuration
     file (default 'obsoleta.conf')
     """
     def __init__(self, configuration_file=None):
-        global _setup
+        global _conf
 
         self.paths = []
         self.blacklist_paths = []
@@ -35,7 +35,6 @@ class Setup:
         self.allow_duplicates = True
         self.keepgoing = False
         self.cache = False
-        self.obsoleta_root = None
         self.depth = 1
         self.semver = False
         # allow a multislot key dir to be given as package root. Naughty,
@@ -45,17 +44,17 @@ class Setup:
         # The alternative is that only the slots for which a physical keyfile is found is parsed.
         self.parse_multislot_directly = True
 
-        _setup = self
+        _conf = self
 
-        Setup.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
+        self.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
 
         if configuration_file:
-            conffile = configuration_file
+            conf_file = configuration_file
         else:
-            conffile = os.path.join(Setup.obsoleta_root, 'obsoleta.conf')
+            conf_file = os.path.join(self.obsoleta_root, 'obsoleta.conf')
 
         try:
-            with open(conffile) as f:
+            with open(conf_file) as f:
                 conf = json.loads(f.read())
                 try:
                     self.paths += conf.get('root')
@@ -64,7 +63,7 @@ class Setup:
                 env_paths = conf.get('env_root')
                 if env_paths:
                     expanded = os.path.expandvars(env_paths)
-                    deb('environment search path %s expanded to %s' % (env_paths, expanded))
+                    deb(f'environment search path {env_paths} expanded to {expanded}')
                     self.paths += expanded.split(os.pathsep)
                 blacklist_paths = conf.get('blacklist_paths')
                 if blacklist_paths:
@@ -88,11 +87,11 @@ class Setup:
                 except KeyError:
                     pass
         except FileNotFoundError:
-            inf('no configuration file %s found - continuing regardless' % conffile)
+            inf(f'no configuration file {conf_file} found - continuing regardless')
 
     def dump(self):
         deb('Configuration:')
-        deb('  depth = %i' % self.depth)
+        deb(f'  depth = {self.depth}')
 
 
 class Args:
@@ -213,7 +212,7 @@ def find_in_path(path, filename, maxdepth, results, dirs_checked=1):
     for entry in scan_list:
         if entry.is_dir():
             is_blacklisted = False
-            for blacklist in _setup.blacklist_paths:
+            for blacklist in _conf.blacklist_paths:
                 if blacklist in os.path.join(path, entry.name):
                     deb('- blacklisted, ignoring %s recursively' % entry.path)
                     is_blacklisted = True
@@ -248,13 +247,13 @@ def get_key_filepath(path):
 
 def printing_path(path):
     """
-    Return an absolute path as relative to Setup.root. Enable in setup file as
+    Return an absolute path as relative to Conf.root. Enable in configuration file as
     'relative_trace_paths' if the full paths in trace output are just a complete
     waste of space and are distracting to look at.
     """
     try:
-        if _setup.relative_trace_paths:
-            return path.replace(_setup.root, '')[1:]
+        if _conf.relative_trace_paths:
+            return path.replace(_conf.paths[0], '')[1:]
     except:
         pass
     return path

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from log import set_log_level, deb, inf, err, cri, print_result
-from common import Setup
+from common import Conf
 from common import Position
 from package import Package
 from dixicore import Dixi, TrackSetScope
@@ -103,12 +103,12 @@ parser.add_argument('--setvalue',
 args = parser.parse_args()
 
 if args.printtemplate:
-    setup = Setup()
-    setup.using_arch = True
-    setup.using_buildtype = True
-    setup.using_track = True
-    _package = Package.construct_from_compact(setup, 'a:0.0.0:development:archname:buildtype')
-    _depends = Package.construct_from_compact(setup, 'b:0.0.0:development:archname:buildtype')
+    conf = Conf()
+    conf.using_arch = True
+    conf.using_buildtype = True
+    conf.using_track = True
+    _package = Package.construct_from_compact(conf, 'a:0.0.0:development:archname:buildtype')
+    _depends = Package.construct_from_compact(conf, 'b:0.0.0:development:archname:buildtype')
     _package.add_dependency(_depends)
     dixi = Dixi(_package)
     print(dixi.to_merged_json())
@@ -129,11 +129,11 @@ if not args.path:
     deb('no path given, using current directory')
     args.path = '.'
 
-setup = Setup(args.conffile)
+conf = Conf(args.conffile)
 
 try:
     package = Package.construct_from_package_path(
-        setup, args.path, key=args.key, keypath=args.keypath)
+        conf, args.path, key=args.key, keypath=args.keypath)
 except ObsoletaException as e:
     err(str(e))
     exit(e.ErrorCode.value)
@@ -143,7 +143,7 @@ except Exception as e:
 
 try:
     if args.depends:
-        dependency = Package.construct_from_compact(setup, args.depends)
+        dependency = Package.construct_from_compact(conf, args.depends)
     else:
         dependency = None
 
@@ -195,7 +195,7 @@ try:
         save_pending = True
 
     elif args.settrack:
-        if not setup.using_track:
+        if not conf.using_track:
             cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         scopes = ['downstream', 'upgrade', 'force']
         settrackscope = TrackSetScope(scopes.index(args.settrackscope))
@@ -203,35 +203,35 @@ try:
         save_pending = True
 
     elif args.gettrack:
-        if not setup.using_track:
+        if not conf.using_track:
             cri('track identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         ret = dx.get_track()
 
     elif args.setarch:
-        if not setup.using_arch:
+        if not conf.using_arch:
             cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         ret = dx.set_arch(args.setarch)
         save_pending = True
 
     elif args.getarch:
-        if not setup.using_arch:
+        if not conf.using_arch:
             cri('arch identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         ret = dx.get_arch()
 
     elif args.setbuildtype:
-        if not setup.using_buildtype:
+        if not conf.using_buildtype:
             cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         ret = dx.set_buildtype(args.setbuildtype)
         save_pending = True
 
     elif args.getbuildtype:
-        if not setup.using_buildtype:
+        if not conf.using_buildtype:
             cri('buildtype identifier is not enabled, see --conf', ErrorCode.OPTION_DISABLED)
         ret = dx.get_buildtype()
 
     elif args.getvalue:
         try:
-            depends_package = Package.construct_from_compact(setup, args.depends)
+            depends_package = Package.construct_from_compact(conf, args.depends)
         except:
             depends_package = None
         try:
@@ -241,7 +241,7 @@ try:
 
     elif args.setvalue:
         try:
-            depends_package = Package.construct_from_compact(setup, args.depends)
+            depends_package = Package.construct_from_compact(conf, args.depends)
         except:
             depends_package = None
         try:
