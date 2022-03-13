@@ -1,3 +1,5 @@
+import json, os, copy
+from enum import Enum
 from log import logger as log
 from log import deb, inf, war, indent, unindent, get_indent
 from version import Version, VersionAny
@@ -5,8 +7,6 @@ from common import Error, get_package_filepath, get_key_filepath, printing_path
 from errorcodes import ErrorCode
 from exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile
 from exceptions import CompactParseError, UnknownException, IllegalDependency
-from enum import Enum
-import json, os, copy
 
 buildtype_unknown = 'unknown'
 anyarch = 'anyarch'
@@ -105,7 +105,7 @@ class Package:
                 dictionary = json.loads(_json)
                 return dictionary['key']
         except FileNotFoundError:
-            raise MissingKeyFile('%s not found' % fqn)
+            raise MissingKeyFile(f'{fqn} not found')
         except json.JSONDecodeError as e:
             raise InvalidKeyFile(str(e) + ' ' + fqn)
         except Exception as e:
@@ -136,12 +136,11 @@ class Package:
                 try:
                     self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise CompactParseError('invalid track name "%s" %s' %
-                                            (dictionary['track'], path))
+                    raise CompactParseError(f'invalid track name "{dictionary["track"]}" {path}')
             else:
                 self.track = Track.anytrack
         elif pedantic and 'track' in dictionary:
-            war('package %s specifies a track but track is not currently enabled (check config file)' % self.name)
+            war(f'package {self.name} specifies a track but track is not currently enabled (check config file)')
 
         if self.conf.using_arch:
             try:
@@ -151,20 +150,19 @@ class Package:
             except:
                 self.arch = anyarch
         elif pedantic and 'arch' in dictionary:
-            war('package %s specifies an arch but arch is not currently enabled (check config file)' % self.name)
+            war(f'package {self.name} specifies an arch but arch is not currently enabled (check config file)')
 
         if self.conf.using_buildtype:
             if 'buildtype' in dictionary:
                 try:
                     self.buildtype = dictionary['buildtype']
                 except:
-                    raise CompactParseError('invalid buildtype "%s" %s' %
-                                            (dictionary['buildtype'], path))
+                    raise CompactParseError(f'invalid buildtype "{dictionary["buildtype"]}" {path}')
             else:
                 self.buildtype = buildtype_unknown
         elif pedantic and 'buildtype' in dictionary:
-            war('package %s specifies an buildtype but buildtype is not currently enabled '
-                '(check config file)' % self.name)
+            war(f'package {self.name} specifies an buildtype but buildtype is not currently enabled '
+                '(check config file)')
 
         try:
             dependencies = dictionary['depends']
@@ -687,7 +685,7 @@ class Package:
         for package in package_list:
             if package.package_is_equal_or_better_relaxed_track(self):
                 ret.append(package)
-        return ret
+        return sorted(ret, reverse=True)
 
     def find_dependency(self, depends_package, strict=False):
         """
@@ -713,22 +711,36 @@ class Package:
     def __hash__(self):
         return hash(self.to_string())
 
-    def dump(self, ret, errors=None, skip_dependencies=False):
+    def dump(self, ret=None, errors=None, skip_dependencies=False):
+        """
+        Returns a tupple with a list of errors, if any, and a list of compact representation(s).
+
+        With skip_dependencies equal True dump() will return any errors and the output of to_string() for
+        the package itself (but still wrapped in lists).
+
+        With skip_dependencies equal False, dump() will additionally recurse through all dependencies with
+        indentations in the compact representations for visually presenting the package and its dependencies
+        in tree style.
+        """
+        if ret is None:
+            ret = []
+
         if errors is None:
             errors = []
-
-        if self.errors:
-            return self.errors
 
         title = get_indent() + self.to_string()
         ret.append(title)
 
+        if self.errors:
+            return self.errors, ret
+
         if not skip_dependencies and self.dependencies:
             indent()
             for dependency in self.dependencies:
-                errors.extend(dependency.dump(ret))
+                _errors, _ = dependency.dump(ret)
+                errors.extend(_errors)
             unindent()
-        return list(set(errors))
+        return list(set(errors)), ret
 
     def get_dependencies(self):
         """

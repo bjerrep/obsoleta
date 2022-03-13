@@ -30,19 +30,19 @@ exitcode, output = execute(fixed + '--root testdata/A1_test_obsoleta:.. --depth 
 title('A2', 'simple sunshine --tree')
 exitcode, output = execute(fixed + '--root testdata/A2_test_simple --package \'*\' --tree --info', ErrorCode.OK)
 print(output)
-test_pass = """a:0.1.2:anytrack:anyarch:unknown
-  b:1.1.2:anytrack:linux_x86_64:unknown
-    c:2.1.2:anytrack:anyarch:unknown
-      e:1.2.3:anytrack:linux_x86_64:unknown
-    d:0.1.2:anytrack:linux_x86_64:release
+test_pass = """e:1.2.3:anytrack:linux_x86_64:unknown
+d:0.1.2:anytrack:linux_x86_64:release
+c:2.1.2:anytrack:anyarch:unknown
+  e:1.2.3:anytrack:linux_x86_64:unknown
 b:1.1.2:anytrack:linux_x86_64:unknown
   c:2.1.2:anytrack:anyarch:unknown
     e:1.2.3:anytrack:linux_x86_64:unknown
   d:0.1.2:anytrack:linux_x86_64:release
-c:2.1.2:anytrack:anyarch:unknown
-  e:1.2.3:anytrack:linux_x86_64:unknown
-d:0.1.2:anytrack:linux_x86_64:release
-e:1.2.3:anytrack:linux_x86_64:unknown""" in output
+a:0.1.2:anytrack:anyarch:unknown
+  b:1.1.2:anytrack:linux_x86_64:unknown
+    c:2.1.2:anytrack:anyarch:unknown
+      e:1.2.3:anytrack:linux_x86_64:unknown
+    d:0.1.2:anytrack:linux_x86_64:release""" in output
 test_eq(test_pass)
 
 title('A3', 'simple sunshine --check')

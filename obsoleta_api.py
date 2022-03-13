@@ -1,8 +1,8 @@
+import os
 from obsoletacore import Obsoleta, UpDownstreamFilter
 from package import Package
 from common import Error, ErrorOk, Args
 from errorcodes import ErrorCode
-import os
 
 
 class ObsoletaApi:
@@ -37,6 +37,15 @@ class ObsoletaApi:
         return error, packages
 
     def find_first_package(self, package_or_compact, strict=False):
+        """
+        Return tupple (error or ErrorOk, package found)
+        If strict=True it is an error if more than one candidate package was found.
+
+        For the case where strict=False and there are more than a single candidate
+        package found then note that the name find_first_package is slightly misleading.
+        The package returned will be the package with the highest version, not simply
+        just the first found.
+        """
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, package = self.obsoleta.find_first_package(package_or_compact, strict)
         return error, package
@@ -46,7 +55,7 @@ class ObsoletaApi:
         error, errors = self.obsoleta.get_errors(package_or_compact)
         if error.has_error():
             return error, errors
-        return error, 'check pass for %s' % package_or_compact
+        return error, f'check pass for {package_or_compact}'
 
     def tree(self, package_or_compact):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
@@ -61,7 +70,7 @@ class ObsoletaApi:
         if unresolved:
             return Error(ErrorCode.RESOLVE_ERROR,
                          package_or_compact,
-                         'unable to fully resolve %s' % package_or_compact), None
+                         f'unable to fully resolve {package_or_compact}'), None
         if printpaths:
             result = [_package.get_path() for _package in resolved]
         else:
@@ -79,7 +88,7 @@ class ObsoletaApi:
             ret.append(error)
         return error, ret
 
-    def upstreams(self, package_or_compact, filter=UpDownstreamFilter.FollowTree, as_path_list=False):
+    def upstreams(self, package_or_compact, updown_stream_filter=UpDownstreamFilter.FollowTree, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages that this
             package depends on as given by the depends section).
             Param: 'package_or_compact' is a Package object or a string with compact name.
@@ -89,14 +98,14 @@ class ObsoletaApi:
         """
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_upstreams(package_or_compact,
-                                                       filter=filter)
+                                                       filter=updown_stream_filter)
         if error.has_error():
-            return error, 'unable to locate %s' % package_or_compact
+            return error, f'unable to locate {package_or_compact}'
         if as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result
 
-    def downstreams(self, package_or_compact, filter=UpDownstreamFilter.FollowTree, as_path_list=False):
+    def downstreams(self, package_or_compact, updown_stream_filter=UpDownstreamFilter.FollowTree, as_path_list=False):
         """ Find all/any downstream packages and return them as a list.
             (Downstream: packages depending on the package specified)
             Param: 'package_or_compact' is a Package object or a string with compact name.
@@ -106,7 +115,7 @@ class ObsoletaApi:
         """
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_downstreams(package_or_compact,
-                                                         filter=filter)
+                                                         filter=updown_stream_filter)
         if result and as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result

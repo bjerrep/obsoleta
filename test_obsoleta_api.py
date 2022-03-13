@@ -147,6 +147,24 @@ test_ok(error)
 test_eq(str(messages), '[a:1.1.1:anytrack:linux:unknown]')
 
 
+# TOA FFP : find first package
+
+populate_local_temp('testdata/C5_test_multiple_versions')
+obsoleta = ObsoletaApi(conf, args)
+
+title('TOA FFP_A', 'find first package, strict=False')
+error, messages = obsoleta.find_first_package('c')
+test_ok(error)
+test_eq(str(messages), 'c:1.2.4:anytrack:anyarch:unknown')
+
+title('TOA FFP_B', 'find first package, strict=True so this will fail')
+error, messages = obsoleta.find_first_package('c', strict=True)
+test_error(error, ErrorCode.PACKAGE_NOT_UNIQUE)
+test_eq(str(messages), '[c:1.2.4:anytrack:anyarch:unknown, c:1.2.3:anytrack:anyarch:unknown]')
+
+
+# bump
+
 def test_bump(compact, path, bump=False, skip_ranged_versions=False, package_for_check=None, dryrun=False):
     populate_local_temp(path)
     args.set_skip_bumping_ranged_versions(skip_ranged_versions)
@@ -175,6 +193,9 @@ def test_bump(compact, path, bump=False, skip_ranged_versions=False, package_for
     test_ok(error)
     return result
 
+
+populate_local_temp('testdata/G2_test_slot')
+obsoleta = ObsoletaApi(conf, args)
 
 title('TOA 6A', 'bump slot - b')
 message = test_bump('b', 'testdata/G2_test_slot')

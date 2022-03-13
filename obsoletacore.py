@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os, copy, collections, json, html, datetime
+from enum import Enum
 from log import deb, inf, inf_alt, inf_alt2, war, err, get_info_log_level, indent, unindent
 from common import Error, ErrorOk, printing_path
 from common import find_in_path
@@ -6,8 +8,6 @@ from version import Version
 from exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
 from errorcodes import ErrorCode
 from package import Package, anyarch, buildtype_unknown, Track
-import os, copy, collections, json, html, datetime
-from enum import Enum
 
 
 class UpDownstreamFilter(Enum):
@@ -58,7 +58,7 @@ class Obsoleta:
         if args.verbose:
             indent()
             for package in self.loaded_packages:
-                first_error, errors = self.get_errors(package)
+                _, errors = self.get_errors(package)
                 if errors:
                     err('errors in %s' % (package.to_extra_string()))
                     indent()
@@ -102,7 +102,7 @@ class Obsoleta:
                     to_delete.append(d)
 
         for delete in to_delete:
-            inf('removing duplicate path %s from list of root paths' % delete)
+            inf(f'removing duplicate path {delete} from list of root paths')
             roots.remove(delete)
 
         if not roots:
@@ -114,10 +114,10 @@ class Obsoleta:
         indent()
         package_files = []
         for root in roots:
-            inf('path = %s' % root)
+            inf(f'path = {root}')
             self.dirs_checked = find_in_path(root, 'obsoleta.json', self.conf.depth, package_files)
 
-        inf('found %i package files in %i directories' % (len(package_files), self.dirs_checked))
+        inf(f'found {len(package_files)} package files in {self.dirs_checked} directories')
         unindent()
         return package_files
 
@@ -141,7 +141,7 @@ class Obsoleta:
     def load(self, json_files):
         json_files = sorted(json_files)
         for file in json_files:
-            inf_alt2('loading %s:' % printing_path(file))
+            inf_alt2(f'loading {printing_path(file)}:')
             indent()
             try:
                 try:
@@ -150,7 +150,7 @@ class Obsoleta:
                             _json = f.read()
                             dictionary = json.loads(_json)
                     except json.JSONDecodeError:
-                        raise BadPackageFile('malformed json in %s' % file)
+                        raise BadPackageFile(f'malformed json in {file}')
 
                     if dictionary.get('multislot'):
                         if self.conf.parse_multislot_directly:
@@ -207,7 +207,7 @@ class Obsoleta:
 
             except Exception as e:
                 if self.conf.keepgoing:
-                    war('keep going is set, ignoring invalid package %s' % file)
+                    war(f'keep going is set, ignoring invalid package {file}')
                 else:
                     raise e
             unindent()
@@ -231,7 +231,7 @@ class Obsoleta:
 
                 if dependency_dependencies:
                     for resolved in dependency_dependencies:
-                        deb('lookup gave "%s" for dependency %s' % (str(resolved), str(dependency)))
+                        deb(f'lookup gave "{str(resolved)}" for dependency {str(dependency)}')
 
                         resolved.parent = package
                         resolved = copy.copy(resolved)
@@ -373,8 +373,8 @@ class Obsoleta:
 
     def find_first_package(self, package, strict=False):
         """
-        Return the first package matching 'package'. If strict is True it is an error if
-        more than one candidate is found.
+        Return tupple (error if any, the first package matching 'package').
+        If strict is True it is itself an error if more than one candidate is found.
         """
         error, matches = self.find_all_packages(package)
 
@@ -385,11 +385,11 @@ class Obsoleta:
             if strict:
                 ret = []
                 for _package in matches:
-                    error = _package.dump(ret, error, skip_dependencies=True)
+                    _package.dump(ret, skip_dependencies=True)
                 message = 'Package "%s", candidates are %s' % (package, str(ret))
                 return Error(ErrorCode.PACKAGE_NOT_UNIQUE, _package, message), matches
             else:
-                inf('find_any=True: returning %s but other candidates were %s' % (matches[0], matches[1:]))
+                inf('multiple candidates found but strict=False, returning %s but other candidates were %s' % (matches[0], matches[1:]))
 
         return ErrorOk(), matches[0]
 
@@ -506,7 +506,7 @@ class Obsoleta:
 
     def dump_tree(self, root_package):
         """
-        Return a list of all package compact names in the root_package tree.
+        Return tupple (first error found or ErrorOk, list of all package compact names in the root_package tree)
         If there are multiple candidates found it is flagged as an error and the list
         will contain only the possible candidates preventing a unique match.
         If there are no errors then the list will contain a full recursive dump with
@@ -526,7 +526,7 @@ class Obsoleta:
             return Error(ErrorCode.PACKAGE_NOT_UNIQUE, root_package, message), ret
 
         for package in matches:
-            errors = package.dump(ret, skip_dependencies=False)
+            errors, _ = package.dump(ret, skip_dependencies=False)
             if errors:
                 return errors[0], ret
 
@@ -644,7 +644,7 @@ class Obsoleta:
         dependency = '<tr><td><font color="orange">%s=%s</font></td></tr>\n'
         footer = '</table></font>>];\n'
 
-        errorcode, packages = self.find_all_dependencies(target_package)
+        _, packages = self.find_all_dependencies(target_package)
         for package in packages:
             dest_file = package.to_compact_string('_', True) + '.gv'
             inf('generating digraph for %s as %s' % (package, dest_file))
@@ -683,7 +683,7 @@ class Obsoleta:
                                 markup += footer
                                 f.write('\n' + markup + '\n')
                     else:
-                        f.write('"%s"\n' % _package.get_name())
+                        f.write(f'"{_package.get_name()}"\n')
 
                 write_package(package)
                 f.write('}')
