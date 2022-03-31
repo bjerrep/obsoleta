@@ -227,7 +227,7 @@ class Obsoleta:
             level += 1
 
             for dependency in dependencies:
-                errorcode, dependency_dependencies = self.find_all_dependencies(dependency)
+                _, dependency_dependencies = self.find_all_dependencies(dependency)
 
                 if dependency_dependencies:
                     for resolved in dependency_dependencies:
@@ -303,7 +303,7 @@ class Obsoleta:
                         resolved_arch = resolved.get_arch(implicit=True)
                         package_arch = package.get_arch(implicit=True)
 
-                        if resolved_arch != anyarch and resolved_arch != package_arch:
+                        if resolved_arch not in (anyarch, package_arch):
                             if package_arch != anyarch:
                                 error = Error(
                                     ErrorCode.ARCH_MISMATCH, resolved, 'arch collision with ' + package.to_string())
@@ -316,7 +316,7 @@ class Obsoleta:
                                     err(error.to_string())
                                 return False
                             else:
-                                deb('setting implicit arch for %s to %s' % (package.get_name(), resolved_arch))
+                                deb(f'setting implicit arch for {package.get_name()} to {resolved_arch}')
                                 package.set_implicit('arch', resolved.get_arch())
             unindent()
 
@@ -399,9 +399,20 @@ class Obsoleta:
             archs.append(package.get_arch())
         return list(set(archs))
 
-    def locate_upstreams(self, target_package, filter, upstream_packages=None):
+    def get_archs(self, package):
+        error, targets = self.find_all_packages(package)
+        if error.has_error():
+            return error, package
+
+        archs = []
+        for target in targets:
+            archs.append(target.get_arch())
+        return ErrorOk(), list(set(archs))
+
+    def locate_upstreams(self, target_package, updown_stream_filter, upstream_packages=None):
         """"
-        Param: 'filter' of type UpDownstreamFilter.ExplicitReferences or .FollowTree
+        Find any upstream packages that the 'target_package' references.
+        Param: 'updown_stream_filter' of type UpDownstreamFilter (specifying the depth)
         Returns: tuple(errorcode, [upstream packages])
         """
         if upstream_packages is None:
@@ -416,9 +427,9 @@ class Obsoleta:
             return ErrorOk(), upstream_packages
 
         for upstream in dependencies:
-            if filter == UpDownstreamFilter.FollowTree:
+            if updown_stream_filter == UpDownstreamFilter.FollowTree:
                 error, candidates = self.locate_upstreams(upstream,
-                                                          filter=filter,
+                                                          updown_stream_filter=updown_stream_filter,
                                                           upstream_packages=upstream_packages)
                 if error.has_error():
                     return error, candidates
@@ -434,10 +445,11 @@ class Obsoleta:
                     return err, upstream_packages
         return ErrorOk(), sorted(list(set(upstream_packages)))
 
-    def locate_downstreams(self, target_package, filter, downstream_packages=None):
+    def locate_downstreams(self, target_package, updown_stream_filter, downstream_packages=None):
         """
         Find any downstream packages that references the 'target_package' in their
         depends section.
+        Param: 'updown_stream_filter' of type UpDownstreamFilter (specifying the depth)
         Returns: tuple(errorcode, [downstream packages])
         """
         if downstream_packages is None:
@@ -448,20 +460,18 @@ class Obsoleta:
             if package_deps:
                 for package in package_deps:
                     if package.package_is_equal_or_better(target_package, strict_track=False):
-                        if (filter != UpDownstreamFilter.TreeOnly or
-                                not parent.parent):
+                        if updown_stream_filter != UpDownstreamFilter.TreeOnly or not parent.parent:
                             downstream_packages.append(parent)
-                        if (filter == UpDownstreamFilter.FollowTree or
-                                filter == UpDownstreamFilter.TreeOnly):
+                        if updown_stream_filter in (UpDownstreamFilter.FollowTree, UpDownstreamFilter.TreeOnly):
                             self.locate_downstreams(parent,
-                                                    filter=filter,
+                                                    updown_stream_filter=updown_stream_filter,
                                                     downstream_packages=downstream_packages)
 
         if downstream_packages:
             return ErrorOk(), sorted(list(set(downstream_packages)))
         return Error(ErrorCode.PACKAGE_NOT_FOUND,
                      target_package,
-                     "%s not found" % target_package), downstream_packages
+                     f'{target_package} not found'), downstream_packages
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
@@ -484,10 +494,10 @@ class Obsoleta:
                         if candidate[i].is_duplicate(second_candidate):
                             err1 = Error(ErrorCode.MULTIPLE_VERSIONS,
                                          candidate[i],
-                                         'with parent %s' % candidate[i].parent)
+                                         f'with parent {candidate[i].parent}')
                             err2 = Error(ErrorCode.MULTIPLE_VERSIONS,
                                          second_candidate,
-                                         'with parent %s' % second_candidate.parent)
+                                         f'with parent {second_candidate.parent}')
                             package.add_error(err1)
                             package.add_error(err2)
                             if self.args.verbose:

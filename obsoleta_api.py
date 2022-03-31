@@ -98,7 +98,7 @@ class ObsoletaApi:
         """
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_upstreams(package_or_compact,
-                                                       filter=updown_stream_filter)
+                                                       updown_stream_filter=updown_stream_filter)
         if error.has_error():
             return error, f'unable to locate {package_or_compact}'
         if as_path_list:
@@ -115,7 +115,7 @@ class ObsoletaApi:
         """
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, result = self.obsoleta.locate_downstreams(package_or_compact,
-                                                         filter=updown_stream_filter)
+                                                         updown_stream_filter=updown_stream_filter)
         if result and as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result

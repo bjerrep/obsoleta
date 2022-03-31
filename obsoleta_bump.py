@@ -1,3 +1,4 @@
+import os, copy
 from dixi_api import DixiApi
 from package import Package, anyarch
 from log import deb, inf, indent, unindent, get_indent
@@ -6,7 +7,6 @@ from version import Version
 from exceptions import UnknownException, ObsoletaException, PackageNotFound
 from obsoletacore import UpDownstreamFilter
 from errorcodes import ErrorCode
-import os, copy
 
 
 def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, indent_messages=False):
@@ -42,7 +42,7 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
         return ErrorOk(), ret
 
     def bump_downstreams(package, new_version, dependency_digit, ret=None):
-        inf('----- bump processing %s -----' % package)
+        inf(f'----- bump processing {package} -----')
         if ret is None:
             ret = []
         dixi_api.load(package)
@@ -52,11 +52,11 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
         if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
             return ErrorOk(), ''
         elif error.has_error():
-            return error, ['downstream search failed for {%s}' % package, ]
+            return error, [f'downstream search failed for {package}', ]
 
-        inf('"%s" has %i downstream packages:' % (package, len(downstreams)))
+        inf(f'"{package}" has {len(downstreams)} downstream packages:')
         for downstream in downstreams:
-            inf('  %s' % downstream)
+            inf(f'  {downstream}')
 
         if indent_messages:
             indent()
@@ -171,6 +171,9 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
     target_package = Package.auto_package(self.conf, package_or_compact)
 
     err, current_package = self.obsoleta.find_first_package(target_package)
+    if err.has_error():
+        return err, package_or_compact.to_string()
+
     current_version = current_package.get_version()
     dependency_digit = Version(current_version).get_change(new_version)
     if not dependency_digit:
@@ -178,13 +181,11 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
 
     if package_or_compact.get_arch() == anyarch:
         relaxed = True
-        all_archs = self.obsoleta.get_all_archs()
+        error, all_archs = self.obsoleta.get_archs(package_or_compact)
 
-        inf('bumping for the architectures %s' % str(all_archs))
+        inf(f'bumping for the architectures {str(all_archs)}')
         packages = []
         for arch in all_archs:
-            if arch == 'anyarch':
-                continue
             _p = copy.copy(target_package)
             _p.set_arch(arch)
             packages.append(_p)
@@ -199,7 +200,7 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
         error, _package = self.obsoleta.find_first_package(package, strict=True)
 
         if not _package:
-            raise PackageNotFound('dependency %s not found' % package)
+            raise PackageNotFound(f'dependency {package} not found')
 
         if _package in already_processed:
             continue
@@ -208,7 +209,7 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
 
         if error.has_error():
             if relaxed:
-                inf('relaxed mode, ignoring not found %s' % package)
+                inf(f'relaxed mode, ignoring not found {package}')
                 continue
             return error, 'failed to find unique package to process'
 
