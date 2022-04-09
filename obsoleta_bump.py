@@ -49,10 +49,12 @@ def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, i
 
         error, downstreams = self.downstreams(package, UpDownstreamFilter.ExplicitReferences)
 
-        if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-            return ErrorOk(), ''
-        elif error.has_error():
+        if error.has_error():
             return error, [f'downstream search failed for {package}', ]
+
+        if not downstreams:
+            inf(f'"{package}" has no downstream packages:')
+            return ErrorOk(), []
 
         inf(f'"{package}" has {len(downstreams)} downstream packages:')
         for downstream in downstreams:

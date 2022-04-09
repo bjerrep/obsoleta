@@ -57,7 +57,10 @@ class Conf:
             with open(conf_file) as f:
                 conf = json.loads(f.read())
                 try:
-                    self.paths += conf.get('root')
+                    conf_root = conf.get('root')
+                    for cr in conf_root:
+                        if cr:
+                            self.paths.append(cr)
                 except:
                     pass
                 env_paths = conf.get('env_root')
@@ -253,7 +256,7 @@ def printing_path(path):
     """
     try:
         if _conf.relative_trace_paths:
-            return path.replace(_conf.paths[0], '')[1:]
+            return path.replace(_conf.paths[0], '')
     except:
         pass
     return path

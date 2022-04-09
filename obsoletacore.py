@@ -47,20 +47,20 @@ class Obsoleta:
             if self.resolve_dependencies(package):
                 self.aggregate_attributes(package)
             else:
-                err('attribute aggregation skipped due to errors in %s' % package.to_string())
+                err(f'attribute aggregation skipped due to errors in {package.to_string()}')
 
         if not self.conf.allow_duplicates:
             self.check_for_multiple_versions()
         else:
             deb('ignore duplicates, not running "check_for_multiple_versions"')
 
-        inf('loading and parsing complete with %i errors' % self.get_error_count())
+        inf(f'loading and parsing complete with {self.get_error_count()} errors')
         if args.verbose:
             indent()
             for package in self.loaded_packages:
                 _, errors = self.get_errors(package)
                 if errors:
-                    err('errors in %s' % (package.to_extra_string()))
+                    err(f'errors in {package.to_extra_string()}')
                     indent()
                     for error in errors:
                         err(error.print())
@@ -174,8 +174,7 @@ class Obsoleta:
                     if self.conf.keepgoing:
                         war('keep going is set, ignoring invalid package %s' % file)
                         continue
-                    else:
-                        raise e
+                    raise e
 
                 # multislot packages have more than one package from construction above
                 for package in packages:
@@ -292,7 +291,7 @@ class Obsoleta:
             indent()
 
             for dependency in dependencies:
-                errorcode, resolved_list = self.find_all_dependencies(dependency)
+                _errorcode, resolved_list = self.find_all_dependencies(dependency)
 
                 for resolved in resolved_list:
                     if not self.aggregate_attributes(resolved, level):
@@ -315,9 +314,9 @@ class Obsoleta:
                                 if self.args.verbose:
                                     err(error.to_string())
                                 return False
-                            else:
-                                deb(f'setting implicit arch for {package.get_name()} to {resolved_arch}')
-                                package.set_implicit('arch', resolved.get_arch())
+
+                            deb(f'setting implicit arch for {package.get_name()} to {resolved_arch}')
+                            package.set_implicit('arch', resolved.get_arch())
             unindent()
 
         return True
@@ -326,7 +325,7 @@ class Obsoleta:
         try:
             so_path = target_package.get_value('so')
             name = target_package.get_value('name')
-            lib_name = 'lib%s.so' % name
+            lib_name = f'lib{name}.so'
             so = os.path.join(so_path, lib_name)
 
             binary = os.readlink(so)
@@ -386,10 +385,10 @@ class Obsoleta:
                 ret = []
                 for _package in matches:
                     _package.dump(ret, skip_dependencies=True)
-                message = 'Package "%s", candidates are %s' % (package, str(ret))
+                message = f'Package "{package}", candidates are {str(ret)}'
                 return Error(ErrorCode.PACKAGE_NOT_UNIQUE, _package, message), matches
-            else:
-                inf('multiple candidates found but strict=False, returning %s but other candidates were %s' % (matches[0], matches[1:]))
+
+            inf(f'multiple candidates found but strict=False, returning {matches[0]} but other candidates were {matches[1:]}')
 
         return ErrorOk(), matches[0]
 
@@ -417,14 +416,17 @@ class Obsoleta:
         """
         if upstream_packages is None:
             upstream_packages = []
+            error, package = self.find_first_package(target_package, strict=True)
+            if not package:
+                return Error(ErrorCode.PACKAGE_NOT_FOUND,
+                             target_package,
+                             f'{target_package} not found'), upstream_packages
 
         error, target = self.find_first_package(target_package)
         if error.has_error():
             return error, target
 
         dependencies = target.get_dependencies()
-        if not dependencies:
-            return ErrorOk(), upstream_packages
 
         for upstream in dependencies:
             if updown_stream_filter == UpDownstreamFilter.FollowTree:
@@ -439,11 +441,15 @@ class Obsoleta:
                 if found:
                     upstream_packages.append(found)
                 else:
-                    err = Error(ErrorCode.PACKAGE_NOT_FOUND,
+                    error = Error(ErrorCode.PACKAGE_NOT_FOUND,
                                 target,
                                 "no upstream %s found for %s" % (upstream, target))
-                    return err, upstream_packages
-        return ErrorOk(), sorted(list(set(upstream_packages)))
+                    return error, upstream_packages
+
+        upstreams = sorted(list(set(upstream_packages)))
+        if not upstreams:
+            inf(f'no upstreams found for {target_package}')
+        return ErrorOk(), upstreams
 
     def locate_downstreams(self, target_package, updown_stream_filter, downstream_packages=None):
         """
@@ -454,6 +460,11 @@ class Obsoleta:
         """
         if downstream_packages is None:
             downstream_packages = []
+            _error, package = self.find_first_package(target_package, strict=True)
+            if not package:
+                return Error(ErrorCode.PACKAGE_NOT_FOUND,
+                             target_package,
+                             f'{target_package} not found'), downstream_packages
 
         for parent in self.loaded_packages:
             package_deps = parent.get_dependencies()
@@ -467,11 +478,9 @@ class Obsoleta:
                                                     updown_stream_filter=updown_stream_filter,
                                                     downstream_packages=downstream_packages)
 
-        if downstream_packages:
-            return ErrorOk(), sorted(list(set(downstream_packages)))
-        return Error(ErrorCode.PACKAGE_NOT_FOUND,
-                     target_package,
-                     f'{target_package} not found'), downstream_packages
+        if not downstream_packages:
+            inf(f'no downstreams found for {target_package}')
+        return ErrorOk(), sorted(list(set(downstream_packages)))
 
     def check_for_multiple_versions(self):
         inf('checking for multiple versions in package tree')
@@ -543,19 +552,19 @@ class Obsoleta:
         return ErrorOk(), ret
 
     def dump_build_order(self, root_package):
+        """
+        Returns a tupple (error, [upstreams sorted in build order])
+        """
         packages_build_order = []
 
         error, match = self.find_first_package(root_package)
         if error.has_error():
-            return error, match, []
+            return error, []
 
         if match.get_errors():
-            return match.get_errors()[0], match, []
+            return match.get_errors()[0], []
 
         package_list = self.get_package_list(match)
-
-        packages = list(dict.fromkeys(package_list))
-        package_copy = packages
 
         if package_list:
             deleted = []
@@ -563,11 +572,11 @@ class Obsoleta:
 
             while found_next:
                 found_next = False
-                for package in package_copy:
+                for package in package_list.copy():
                     upstreams = package.get_nof_dependencies()
                     if not upstreams:
                         packages_build_order.append(package)
-                        package_copy.remove(package)
+                        package_list.remove(package)
                         deleted.append(package)
                         found_next = True
                         break
@@ -577,18 +586,23 @@ class Obsoleta:
                             upstreams -= 1
                     if not upstreams:
                         packages_build_order.append(package)
-                        package_copy.remove(package)
+                        package_list.remove(package)
                         deleted.append(package)
                         found_next = True
                         break
+
             if not packages_build_order:
                 error = Error(ErrorCode.CIRCULAR_DEPENDENCY, root_package, 'can\'t resolve %s' % root_package)
+            if package_list:
+                return Error(ErrorCode.RESOLVE_ERROR,
+                             root_package,
+                             f'unable to fully resolve {root_package}'), packages_build_order
         else:
             error = Error(ErrorCode.RESOLVE_ERROR, root_package, '%s not found' % root_package)
 
         if not error:
             error = ErrorOk()
-        return error, package_copy, packages_build_order
+        return error, packages_build_order
 
     def get_errors(self, package, errors=None):
         if errors is None:

@@ -95,6 +95,12 @@ error, messages2 = obsoleta.upstreams(package, UpDownstreamFilter.ExplicitRefere
 test_ok(error)
 test_eq(messages, messages2)
 
+title('TOA 4B2', 'upstream - f has no upstreams')
+package = Package.construct_from_compact(conf, 'f:::linux')
+error, messages = obsoleta.upstreams(package)
+test_ok(error)
+test_eq(messages, [])
+
 title('TOA 4C', 'upstream - oups not found')
 package = Package.construct_from_compact(conf, 'oups:*::linux')
 error, messages = obsoleta.upstreams(package)
@@ -107,7 +113,6 @@ test_eq(messages, [])
 
 
 # find downstream packages, i.e. packages that depends on the package argument
-
 
 title('TOA 5A', 'downstream - b is used by downstream a')
 error, messages = obsoleta.downstreams('b:*::linux',
@@ -122,11 +127,23 @@ error, messages2 = obsoleta.downstreams(package,
 test_ok(error)
 test_eq(messages, messages2)
 
+#
+
+title('TOA 5A2', 'downstream - a has no downstreams')
+error, messages = obsoleta.downstreams('a:*::linux',
+                                       UpDownstreamFilter.ExplicitReferences)
+test_ok(error)
+test_eq(messages, [])
+
+#
+
 title('TOA 5C', 'downstream - oups not found')
 package = Package.construct_from_compact(conf, 'oups:*::linux')
 error, messages = obsoleta.downstreams(package,
                                        UpDownstreamFilter.ExplicitReferences)
 test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
+
+#
 
 title('TOA 5D', 'downstream to f = a (UpDownstreamFilter.ExplicitReferences)')
 error, messages = obsoleta.downstreams('f:*::linux',

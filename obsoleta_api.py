@@ -64,13 +64,9 @@ class ObsoletaApi:
 
     def buildorder(self, package_or_compact, printpaths=False):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
-        error, unresolved, resolved = self.obsoleta.dump_build_order(package_or_compact)
+        error, resolved = self.obsoleta.dump_build_order(package_or_compact)
         if error.has_error():
             return error, None
-        if unresolved:
-            return Error(ErrorCode.RESOLVE_ERROR,
-                         package_or_compact,
-                         f'unable to fully resolve {package_or_compact}'), None
         if printpaths:
             result = [_package.get_path() for _package in resolved]
         else:
