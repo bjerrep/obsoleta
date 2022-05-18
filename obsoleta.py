@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse, json, os, traceback
 from log import set_log_level, inf, deb, err, print_result, print_result_nl
 from common import Conf
 from errorcodes import ErrorCode
@@ -6,7 +7,6 @@ from package import Package
 from obsoletacore import Obsoleta
 from obsoleta_api import ObsoletaApi
 from exceptions import ObsoletaException
-import argparse, json, os, traceback
 
 # This is the script for calling obsoleta from the command line.
 
@@ -66,7 +66,8 @@ parser.add_argument('--printpaths', action='store_true',
                     help='print package paths rather than the compressed form')
 
 parser.add_argument('--conf', dest='conffile',
-                    help='load specified configuration file rather than the default obsoleta.conf')
+                    help='load specified configuration file rather than the default obsoleta.conf. Use "default" '
+                         'to use the built-in default configuration')
 parser.add_argument('--clearcache', action='store_true',
                     help='delete the cache file')
 parser.add_argument('--dumpcache', action='store_true',
@@ -272,7 +273,7 @@ try:
     exit(exit_code.value)
 
 except Exception as e:
-    err('command gave unexpected exception: %s' % str(e))
+    err(f'command gave unexpected exception: {str(e)}')
     if args.verbose or args.info:
         print(traceback.format_exc())
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)

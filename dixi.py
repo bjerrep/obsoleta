@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json, argparse, os
 from log import set_log_level, deb, inf, err, cri, print_result
 from common import Conf
 from common import Position
@@ -7,7 +8,7 @@ from dixicore import Dixi, TrackSetScope
 from errorcodes import ErrorCode
 from exceptions import ObsoletaException
 import generator
-import json, argparse, os
+
 
 # ---------------------------------------------------------------------------------------------
 
@@ -103,7 +104,7 @@ parser.add_argument('--setvalue',
 args = parser.parse_args()
 
 if args.printtemplate:
-    conf = Conf()
+    conf = Conf(configuration_file='default')
     conf.using_arch = True
     conf.using_buildtype = True
     conf.using_track = True
@@ -150,7 +151,7 @@ try:
     dx = Dixi(package)
 
 except FileNotFoundError as e:
-    err('caught exception: %s' % str(e))
+    err(f'caught exception: {str(e)}')
     exit(ErrorCode.MISSING_INPUT.value)
 
 save_pending = False
@@ -271,7 +272,7 @@ try:
 
 except Exception as e:
     err(str(e))
-    exit(e.ErrorCode.value)
+    exit(ErrorCode.UNKNOWN_EXCEPTION.value)
 
 if ret:
     print_result(str(ret), args.newline)

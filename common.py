@@ -1,6 +1,6 @@
 import os, json, time, datetime
 from enum import Enum
-from log import set_log_level, deb, inf
+from log import set_log_level, deb
 from errorcodes import ErrorCode
 from exceptions import BadPath
 
@@ -48,6 +48,9 @@ class Conf:
 
         self.obsoleta_root = os.path.dirname(os.path.abspath(__file__))
 
+        if configuration_file == 'default':
+            return
+
         if configuration_file:
             conf_file = configuration_file
         else:
@@ -90,7 +93,7 @@ class Conf:
                 except KeyError:
                     pass
         except FileNotFoundError:
-            inf(f'no configuration file {conf_file} found - continuing regardless')
+            raise Exception(f'configuration file "{conf_file}" not found')
 
     def dump(self):
         deb('Configuration:')
