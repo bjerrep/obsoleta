@@ -543,7 +543,7 @@ class Package:
         return 'multislot'
 
     def get_value(self, key):
-        return self.original_dict[key]
+        return self.original_dict.get(key)
 
     def get_package_value(self, key, depends_package):
         try:
@@ -555,6 +555,7 @@ class Package:
         for depends in self.original_dict['depends']:
             if depends_package.get_name() == depends['name']:
                 return depends[key]
+        return None
 
     def set_value(self, key, value, depend_name=None):
         if depend_name:
@@ -652,7 +653,7 @@ class Package:
         # if any tracks are production then different explicit tracks are not allowed and on top
         # of that the buildtypes must match. Might be a bogus rule that needs to go.
         if self.conf.using_track and self.conf.using_buildtype:
-            if self.track == Track.production or other.track == Track.production:
+            if Track.production in (self.track, other.track):
                 if self.track == other.track or self.track == Track.anytrack or other.track == Track.anytrack:
                     # yes, both are production or can mix. Disallow different explicit build types
                     return (self.buildtype == other.buildtype or
@@ -672,9 +673,11 @@ class Package:
         catch that a package with a given name is found more than once in a
         dependency tree which will be the case if it can be found in e.g. multiple
         versions. Generally this is more or less illegal and should be fixed.
-        Advanced users might want to allow exactly this but then they should fix
-        this code instead.
+        And naturally there is a loophole: if both packages have the attributes 'allow_duplicates' defined and
+        set to True then they will not be seen as duplicates.
         """
+        if self.get_value('allow_duplicates') is True and other.get_value('allow_duplicates') is True:
+            return False
         match = self.name == other.name
         if self.conf.using_arch and match:
             match = self.arch == other.arch
@@ -793,14 +796,13 @@ class Package:
         if not package_under_test:
             package_under_test = self
         else:
-            deb('checking if upstream %s is the same as %s' % (str(self), package_under_test.to_string()))
+            deb(f'checking if upstream {str(self)} is the same as {package_under_test.to_string()}')
 
         if self.parent:
             if self.parent.get_name() == package_under_test.get_name():
                 log.info('circular dependency found for package ' + package_under_test.to_string())
                 return True
-            else:
-                found = self.parent.search_upstream(package_under_test)
+            found = self.parent.search_upstream(package_under_test)
         return found
 
     def get_layout(self):

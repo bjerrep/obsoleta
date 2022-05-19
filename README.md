@@ -174,6 +174,12 @@ If using the operators (at least '>') in the compact name given with the --packa
 
 By default obsoleta makes a full scan and a full resolve of everything at each invocation. The upside is that if it doesn't complain then everything should be in working order in all scanned packages and every operation is good to go. The downside is that a rogue package for say for an architecture for which you couldn't care less now can make the whole thing fall apart. For this there is a --keepgoing option that ignores unresolvable packages so the only errors encountered will be if the current operation is actually impossible to resolve. A default keepgoing value can be set in the configuration file (see obsoleta.conf.template) and a --keepgoing argument will overrule it.
 
+### allow_duplicates
+
+There will be cases where a dependency tree will have multiple explicit references to the same package. Normally it will be flagged as a fatal error if different versions of a given package are used matching e.g. packages containing binaries used for linking. With this in mind there are two ways to allow duplicates anyhow.
+
+The first is typically a really really bad idea and that is to globally set allow_duplicates to true in the configuration file. The second way is potentially slightly less bad, and that is to set the attribute allow_duplicates directly on any (non-binary/non-distributed) packages where it should be allowed to resolve a package in multiple versions.
+
 
 
 

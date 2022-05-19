@@ -199,11 +199,12 @@ try:
     elif args.buildorder:
         exit_code = ErrorCode.OK
         deb('packages listed in buildorder')
-        error, resolved = obsoleta.buildorder(package)
+        errors, resolved = obsoleta.buildorder(package)
 
-        if error.has_error():
-            err(error.get_message())
-            exit_code = error.get_errorcode()
+        if errors[0].has_error():
+            for error in errors:
+                err(error.get_message())
+            exit_code = errors[0].get_errorcode()
         else:
             for _package in resolved:
                 if args.printpaths:
@@ -211,11 +212,11 @@ try:
                 else:
                     print_result(_package.to_string(), True)
 
-                errors = _package.get_errors()
-                if errors:
-                    for error in errors:
-                        exit_code = error.get_errorcode()
-                        err(' - error: ' + error.to_string())
+                _errors = _package.get_errors()
+                if _errors:
+                    for _error in _errors:
+                        exit_code = _error.get_errorcode()
+                        err(' - error: ' + _error.to_string())
 
     elif args.listmissing:
         exit_code = ErrorCode.OK

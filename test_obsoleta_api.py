@@ -53,8 +53,8 @@ test_error(error, ErrorCode.PACKAGE_NOT_FOUND, messages)
 # buildorder
 
 title('TOA 3A', 'buildorder')
-error, messages = obsoleta.buildorder('a')
-test_ok(error)
+errors, messages = obsoleta.buildorder('a')
+test_ok(errors[0])
 test_eq(str(messages),
         '[b:2.2.2:anytrack:anyarch:unknown, c:3.3.3:anytrack:anyarch:unknown, '
         'd:4.4.4:anytrack:linux:unknown, f:6.6.6:anytrack:linux:unknown, '
@@ -62,17 +62,17 @@ test_eq(str(messages),
 
 title('TOA 3B', 'buildorder')
 package = Package.construct_from_compact(conf, 'a')
-error, messages2 = obsoleta.buildorder(package)
-test_ok(error)
+errors, messages2 = obsoleta.buildorder(package)
+test_ok(errors[0])
 test_eq(messages, messages2)
 
 title('TOA 3C', 'buildorder')
-error, messages = obsoleta.buildorder('oups')
-test_error(ErrorCode.PACKAGE_NOT_FOUND, error.errorcode, messages)
+errors, messages = obsoleta.buildorder('oups')
+test_error(ErrorCode.PACKAGE_NOT_FOUND, errors[0].errorcode, messages)
 
 title('TOA 3D', 'buildorder')
-error, messages = obsoleta.buildorder('a', True)
-test_ok(error)
+errors, messages = obsoleta.buildorder('a', True)
+test_ok(errors[0])
 
 # find upstream packages, i.e packages that the package argument depend on
 
@@ -397,3 +397,29 @@ keep_track_conf = Conf('testdata/test_keep_track.conf')
 obsoleta = ObsoletaApi(keep_track_conf, args)
 error, messages = obsoleta.tree('a')
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
+
+
+# TOA : tests with allow_duplicates=True from either configuration file or from package attributes
+# This will for all trivial binary linking result in ABI rubbish
+
+populate_local_temp('testdata/C5_test_multiple_versions')
+conf.allow_duplicates = True
+obsoleta = ObsoletaApi(conf, args)
+
+title('TOA 11A', 'allow_duplicates=True so package c will be resolved with two versions')
+errors, messages = obsoleta.buildorder('a')
+test_ok(errors[0])
+test_eq(str(messages),'[c:1.2.3:anytrack:anyarch:unknown, c:1.2.4:anytrack:anyarch:unknown, \
+d:1.2.3:anytrack:anyarch:unknown, b:0.1.0:anytrack:anyarch:unknown, a:0.1.2:anytrack:anyarch:unknown]')
+conf.allow_duplicates = False
+
+
+populate_local_temp('testdata/C6_test_multiple_versions_with_allow_duplicates')
+obsoleta = ObsoletaApi(conf, args)
+
+title('TOA 11B', 'package c has key:value "allow_duplicates=true" so package c will be succesfully resolved with two versions')
+errors, messages = obsoleta.buildorder('a')
+test_ok(errors[0])
+test_eq(str(messages),'[c:1.2.3:anytrack:anyarch:unknown, c:1.2.4:anytrack:anyarch:unknown, \
+d:1.2.3:anytrack:anyarch:unknown, b:0.1.0:anytrack:anyarch:unknown, a:0.1.2:anytrack:anyarch:unknown]')
+

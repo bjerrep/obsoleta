@@ -64,14 +64,14 @@ class ObsoletaApi:
 
     def buildorder(self, package_or_compact, printpaths=False):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
-        error, resolved = self.obsoleta.dump_build_order(package_or_compact)
-        if error.has_error():
-            return error, None
+        errors, resolved = self.obsoleta.dump_build_order(package_or_compact)
+        if errors[0].has_error():
+            return errors, None
         if printpaths:
             result = [_package.get_path() for _package in resolved]
         else:
             result = resolved
-        return ErrorOk(), result
+        return [ErrorOk()], result
 
     def list_missing(self, package_or_compact):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)

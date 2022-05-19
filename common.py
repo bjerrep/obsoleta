@@ -32,7 +32,7 @@ class Conf:
         self.using_arch = False
         self.using_buildtype = False
         self.using_all_optionals = False
-        self.allow_duplicates = True
+        self.allow_duplicates = False
         self.keepgoing = False
         self.cache = False
         self.depth = 1

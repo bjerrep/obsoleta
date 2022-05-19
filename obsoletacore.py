@@ -553,20 +553,22 @@ class Obsoleta:
 
     def dump_build_order(self, root_package):
         """
-        Returns a tupple (error, [upstreams sorted in build order])
+        Returns a tupple with two lists ([errors], [upstreams sorted in build order])
+        The error list will be [ErrorOk] on success.
         """
         packages_build_order = []
 
         error, match = self.find_first_package(root_package)
         if error.has_error():
-            return error, []
+            return [error], []
 
         if match.get_errors():
-            return match.get_errors()[0], []
+            return match.get_errors(), []
 
         package_list = self.get_package_list(match)
 
         if package_list:
+            package_list = list(dict.fromkeys(package_list))
             deleted = []
             found_next = True
 
@@ -594,15 +596,15 @@ class Obsoleta:
             if not packages_build_order:
                 error = Error(ErrorCode.CIRCULAR_DEPENDENCY, root_package, 'can\'t resolve %s' % root_package)
             if package_list:
-                return Error(ErrorCode.RESOLVE_ERROR,
+                return [Error(ErrorCode.RESOLVE_ERROR,
                              root_package,
-                             f'unable to fully resolve {root_package}'), packages_build_order
+                             f'unable to fully resolve {root_package}')], packages_build_order
         else:
             error = Error(ErrorCode.RESOLVE_ERROR, root_package, '%s not found' % root_package)
 
         if not error:
             error = ErrorOk()
-        return error, packages_build_order
+        return [error], packages_build_order
 
     def get_errors(self, package, errors=None):
         if errors is None:
