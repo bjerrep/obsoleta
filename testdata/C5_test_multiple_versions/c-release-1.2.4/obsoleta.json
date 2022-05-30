@@ -1,5 +1,5 @@
 {
   "name": "c",
-  "state": "release",
+  "track": "production",
   "version": "1.2.4"
 }

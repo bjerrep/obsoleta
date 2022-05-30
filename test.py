@@ -11,6 +11,8 @@ if __name__ == '__main__':
     import test_obsoleta
     import test_dixi
     import test_obsoleta_api
+    import test_obsoleta_api_print
+    import test_obsoleta_api_listmissing
     import test_dixi_api
     import version
     #import test_c_generator

@@ -1,6 +1,47 @@
 from common import Position
 from version import Version, VersionAny
 
+
+# ------------------------------------------
+# Figure out who has the most significant version requirement
+aye = 0
+nay = 0
+
+nay += Version('2.0.>=0').more_significant_than(Version('2.0.>0'))   # False
+aye += Version('2.0.>0').more_significant_than(Version('2.0.>=0'))   # True
+
+aye += Version('2.0.>=1').more_significant_than(Version('2.0.>=0'))  # True
+nay += Version('2.0.>=0').more_significant_than(Version('2.0.>=1'))  # False
+
+nay += Version('2.0.>=0').more_significant_than(Version('2.0.1'))    # False
+aye += Version('2.0.1').more_significant_than(Version('2.0.>=0'))    # True
+
+if nay or aye != 3:
+    print(f'Figure out who has the most significant version requirement ({nay}/{aye})')
+    exit(1)
+
+
+
+# ------------------------------------------
+# Comparing versions that do not overlap
+aye = 0
+nay = 0
+
+nay += Version('2.0.1') >= Version('>=2.>=0.>=2')   # False
+nay += Version('1.2.<3') > Version('1.2.>=3')       # False
+nay += Version('1.2.<3') == Version('1.2.>=3')      # False
+nay += Version('1.2.>3') == Version('1.2.<=3')      # False
+aye += Version('1.2.<3') < Version('1.2.>=3')       # True. Or what
+
+if nay or aye != 1:
+    print(f'Comparing versions that have no overlap ({nay}/{aye})')
+    exit(1)
+
+
+
+# ------------------------------------------
+# Straight no fuzz version comparisons
+
 aye = 0
 nay = 0
 
@@ -28,13 +69,14 @@ if nay or aye != 7:
     print(f'failed plain numbers ({nay}/{aye})')
     exit(1)
 
-# ------------------------------------------
 
+# ------------------------------------------
+# Straight no fuzz version comparisons - ranged
 aye = 0
+nay = 0
 
 aye += Version('1.2.>=3') == v123
 aye += Version('1.2.>=3') == Version('1.2.<=3')
-nay += Version('1.2.>3') == Version('1.2.<=3')
 aye += Version('1.2.>=3') == Version('1.2.>=3')
 
 aye += Version('1.>2.3') == Version('1.3.3')
@@ -59,7 +101,6 @@ aye += Version('>=1.>=2.>=3') == Version('2.0.0')
 aye += Version('>=1.>=2.>=3') == Version('1.3.0')
 aye += Version('>=1.>=2.>=3') == Version('1.2.4')
 
-nay += Version('2.0.1') >= Version('>=2.>=0.>=2')
 aye += Version('2.0.1') < Version('>=2.>=0.>=2')
 nay += Version('3.0.1') < Version('>=2.>=0.>=2')
 nay += Version('>=2.>=0.>=2') <= Version('2.0.1')
@@ -67,12 +108,12 @@ aye += Version('>=2.>=0.>=2') > Version('2.0.1')
 
 nay += v123 == Version('1.>2.3')
 
-if nay != 4 or aye != 21:
+if nay != 0 or aye != 21:
     print(f'failed simple range equality test ({nay}/{aye})')
     exit(1)
 
 # ------------------------------------------
-
+# wildchars
 aye = 0
 nay = 0
 
@@ -104,7 +145,7 @@ if nay or aye != 19:
     exit(1)
 
 # ------------------------------------------
-
+# api get_change()
 aye = 0
 
 aye += not Version('1.2.3').get_change('1.2.3')
@@ -114,15 +155,17 @@ aye += Version('1.2.3').get_change('2.2.3') == Position.MAJOR
 aye += Version('>=1.2.3').get_change('>=2.2.3') == Position.MAJOR
 
 if aye != 5:
-    print('failed get_change tests')
+    print('api: get_change failed')
     exit(1)
 
 # ------------------------------------------
+# api increase()
+aye = 0
 
-try:
-    _ = str(Version('1.2').increase(Position.MINOR))
-except:
-    print('fail version other tests')
+aye += Version('1.2').increase(Position.MINOR) == Version('1.3')
+
+if aye != 1:
+    print('api: increase()')
     exit(1)
 
 print('test version: pass')

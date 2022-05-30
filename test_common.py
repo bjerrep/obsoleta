@@ -1,13 +1,13 @@
+import subprocess, shutil
 from errorcodes import ErrorCode
 from common import Error
 from log import print_result, print_result_nl
 from package import Package
-import subprocess, shutil
 
 
 def test_eq(result, expected=True):
     if result != expected:
-        print('assertion failed: %s != %s' % (str(result), str(expected)))
+        print(f'assertion failed, got:\n{str(result)}\nexpected:\n{str(expected)}')
         print('\nTEST FAILED\n')
         exit(ErrorCode.TEST_FAILED.value)
 
@@ -23,7 +23,7 @@ def test_ok(error, output=None):
                 output = ''
         print_result(output)
     if error.has_error():
-        print_result_nl(' - failed with "%s"' % error)
+        print_result_nl(f' - failed with "{error}"')
         exit(1)
     else:
         print_result_nl(' - pass')
@@ -60,7 +60,7 @@ def test_error(errorcode, expected_error, output=None):
 def title(serial, purpose):
     print()
     print('---------------------------------------------')
-    print('Test ' + str(serial))
+    print(f'Test {str(serial)}')
     print(purpose)
     print('---------------------------------------------')
 
@@ -73,7 +73,7 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
         pass
 
     if not quiet:
-        print('executing "%s"' % command)
+        print(f'executing "{command}"')
 
     proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output, _ = proc.communicate()
@@ -91,9 +91,8 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
         print('  success, process failed with expected exit code %i\n\n%s' % (expected_exit_code, output))
         return proc.returncode, output
 
-    else:
-        if not quiet:
-            print('  success')
+    if not quiet:
+        print('  success')
 
     return proc.returncode, output
 
@@ -101,5 +100,5 @@ def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
 def populate_local_temp(src):
     shutil.rmtree('local/temp', True)
     shutil.copytree(src, 'local/temp')
-    print('copy testdata from %s to local/temp' % src)
+    print(f'copy testdata from {src} to local/temp')
     return 'local/temp'

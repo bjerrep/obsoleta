@@ -172,12 +172,12 @@ obsoleta = ObsoletaApi(conf, args)
 title('TOA FFP_A', 'find first package, strict=False')
 error, messages = obsoleta.find_first_package('c')
 test_ok(error)
-test_eq(str(messages), 'c:1.2.4:anytrack:anyarch:unknown')
+test_eq(str(messages), 'c:1.2.4:production:anyarch:unknown')
 
 title('TOA FFP_B', 'find first package, strict=True so this will fail')
 error, messages = obsoleta.find_first_package('c', strict=True)
 test_error(error, ErrorCode.PACKAGE_NOT_UNIQUE)
-test_eq(str(messages), '[c:1.2.4:anytrack:anyarch:unknown, c:1.2.3:anytrack:anyarch:unknown]')
+test_eq(str(messages), '[c:1.2.4:production:anyarch:unknown, c:1.2.3:production:anyarch:unknown]')
 
 
 # bump
@@ -366,13 +366,13 @@ obsoleta = ObsoletaApi(conf, args)
 
 title('TOA 9A', 'upstream() using ExplicitReferences will not discover the missing upstream package "c" required by "b"')
 error, messages = obsoleta.upstreams('a', UpDownstreamFilter.ExplicitReferences)
-test_eq(str(messages), '[b:0.1.0:anytrack:anyarch:unknown]')
+test_eq(str(messages), '[b:0.1.0:testing:anyarch:unknown]')
 test_ok(error)
 
 
 title('TOA 9B', 'upstream fails with missing package "c" required by "b" with default filter FollowTree')
 error, messages = obsoleta.upstreams('a')
-test_eq('Package not found: c:1.2.3:anytrack:anyarch:unknown from parent b:0.1.0:anytrack:anyarch:unknown',
+test_eq('Package not found: c:1.2.3:production:anyarch:unknown from parent b:0.1.0:testing:anyarch:unknown',
         error.to_string())
 test_error(error.get_errorcode(), ErrorCode.PACKAGE_NOT_FOUND)
 
@@ -409,17 +409,16 @@ obsoleta = ObsoletaApi(conf, args)
 title('TOA 11A', 'allow_duplicates=True so package c will be resolved with two versions')
 errors, messages = obsoleta.buildorder('a')
 test_ok(errors[0])
-test_eq(str(messages),'[c:1.2.3:anytrack:anyarch:unknown, c:1.2.4:anytrack:anyarch:unknown, \
-d:1.2.3:anytrack:anyarch:unknown, b:0.1.0:anytrack:anyarch:unknown, a:0.1.2:anytrack:anyarch:unknown]')
+test_eq(str(messages),'[c:1.2.3:production:anyarch:unknown, c:1.2.4:production:anyarch:unknown, \
+d:1.2.3:production:anyarch:unknown, b:0.1.0:testing:anyarch:unknown, a:0.1.2:development:anyarch:unknown]')
 conf.allow_duplicates = False
 
 
+title('TOA 11B', 'package c has key:value "allow_duplicates=true" so package c will be succesfully resolved with two versions')
 populate_local_temp('testdata/C6_test_multiple_versions_with_allow_duplicates')
 obsoleta = ObsoletaApi(conf, args)
-
-title('TOA 11B', 'package c has key:value "allow_duplicates=true" so package c will be succesfully resolved with two versions')
 errors, messages = obsoleta.buildorder('a')
 test_ok(errors[0])
-test_eq(str(messages),'[c:1.2.3:anytrack:anyarch:unknown, c:1.2.4:anytrack:anyarch:unknown, \
-d:1.2.3:anytrack:anyarch:unknown, b:0.1.0:anytrack:anyarch:unknown, a:0.1.2:anytrack:anyarch:unknown]')
+test_eq(str(messages),'[c:1.2.3:production:anyarch:unknown, c:1.2.4:production:anyarch:unknown, \
+d:1.2.3:production:anyarch:unknown, b:0.1.0:testing:anyarch:unknown, a:0.1.2:development:anyarch:unknown]')
 

@@ -1,0 +1,15 @@
+{
+  "multislot": {
+    "name": "b",
+    "version": "2.2.2"
+  },
+  "arm32": {
+    "arch": "arm32"
+  },  
+  "arm32hf": {
+    "arch": "arm32hf"
+  },
+  "arm64": {
+    "arch": "arm64"
+  }  
+}

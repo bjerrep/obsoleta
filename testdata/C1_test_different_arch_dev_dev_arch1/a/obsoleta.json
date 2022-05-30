@@ -1,11 +1,11 @@
 {
   "name": "a",
-  "state": "development",
+  "track": "development",
   "version": "0.1.2",
   "depends": [
     {
       "name": "b",
-      "state": "development",
+      "track": "development",
       "version": "0.1.2"
     }
   ]

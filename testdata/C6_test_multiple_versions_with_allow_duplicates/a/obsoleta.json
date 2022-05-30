@@ -1,16 +1,16 @@
 {
   "name": "a",
-  "state": "development",
+  "track": "development",
   "version": "0.1.2",
   "depends": [
     {
       "name": "b",
-      "state": "testing",
+      "track": "testing",
       "version": "0.1.0"
     },
     {
       "name": "c",
-      "state": "release",
+      "track": "production",
       "version": "1.2.4"
     }
   ]

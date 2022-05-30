@@ -1,7 +1,7 @@
 import os
 from obsoletacore import Obsoleta, UpDownstreamFilter
 from package import Package
-from common import Error, ErrorOk, Args
+from common import ErrorOk, Args
 from errorcodes import ErrorCode
 
 
@@ -64,7 +64,9 @@ class ObsoletaApi:
 
     def buildorder(self, package_or_compact, printpaths=False):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
+
         errors, resolved = self.obsoleta.dump_build_order(package_or_compact)
+
         if errors[0].has_error():
             return errors, None
         if printpaths:
@@ -73,16 +75,71 @@ class ObsoletaApi:
             result = resolved
         return [ErrorOk()], result
 
+    def print(self, package_or_compact):
+        """
+        Returns (error, dictionary)
+        The dictionary is fully resolved with all required packages for the package argument
+        in the same format as an ordinary package file (once it is converted to json).
+        See also dump_build_order() which is used internally by print().
+        """
+        package_or_compact = Package.auto_package(self.conf, package_or_compact)
+        error, package = self.obsoleta.find_first_package(package_or_compact, strict=True)
+
+        if error.has_error():
+            return error, None
+
+        errors, resolved = self.obsoleta.dump_build_order(package_or_compact)
+
+        if errors[0].has_error():
+            return error[0], None
+
+        result = resolved[-1].to_dict(add_depends=False)
+
+        if len(resolved) > 1:
+            depends = []
+            for dependency in resolved[:-1]:
+                depends.append(dependency.to_dict(add_depends=False))
+            result['depends'] = depends
+
+        return ErrorOk(), result
+
     def list_missing(self, package_or_compact):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, err_list = self.obsoleta.get_errors(package_or_compact)
-        ret = []
-        for err in err_list:
-            if err.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-                ret.append(err)
-        if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
-            ret.append(error)
-        return error, ret
+
+        # first get all packages which are missing
+        packages = [x.get_package() for x in err_list if x.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND]
+
+        # next make sure that any duplicates are merged to a single package. Remember that there
+        # can be any number of duplicates.
+        discard = True
+        while discard:
+            discard = []
+
+            for i in range(len(packages)):
+                if discard:
+                    break
+                for j in range(i + 1, len(packages)):
+                    pi = packages[i]
+                    pj = packages[j]
+                    if pi.is_duplicate(pj):
+                        if pi.get_version().more_significant_than(pj.get_version()):
+                            discard.append(pj)
+                        else:
+                            discard.append(pi)
+                        break
+
+            org = []
+
+            for d in discard:
+                for p in packages:
+                    if d.to_compact_string() != p.to_compact_string():
+                        org.append(p)
+
+            if org:
+                packages = org
+
+        return error, packages
 
     def upstreams(self, package_or_compact, updown_stream_filter=UpDownstreamFilter.FollowTree, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages that this
@@ -97,6 +154,7 @@ class ObsoletaApi:
                                                        updown_stream_filter=updown_stream_filter)
         if error.has_error():
             return error, f'unable to locate {package_or_compact}'
+
         if as_path_list:
             return error, "\n".join(p.get_path() for p in result)
         return error, result

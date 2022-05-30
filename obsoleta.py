@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse, json, os, traceback
 from log import set_log_level, inf, deb, err, print_result, print_result_nl
-from common import Conf
+from common import Conf, pretty
 from errorcodes import ErrorCode
 from package import Package
 from obsoletacore import Obsoleta
@@ -42,6 +42,8 @@ parser.add_argument('--upstream', action='store_true',
                          'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
 parser.add_argument('--downstream', action='store_true',
                     help='command: get the paths for packages using the package given with --package')
+parser.add_argument('--print', action='store_true',
+                    help='command: like buildorder but print as a package json. See also dixi --print.')
 parser.add_argument('--digraph', action='store_true',
                     help='command: make dependency plot for the package given with --package')
 
@@ -91,7 +93,7 @@ if args.verbose:
 elif args.info:
     set_log_level(info=True)
 
-valid_package_action = (args.tree or args.check or args.buildorder or args.listmissing or
+valid_package_action = (args.tree or args.check or args.buildorder or args.listmissing or args.print or
                         args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph)
 
 valid_command = valid_package_action or args.dumpcache
@@ -111,7 +113,7 @@ if args.clearcache:
 
 if not valid_command:
     err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream,'
-        ' --downstream --bumpdirect --bump or --dumpcache')
+        ' --downstream --bumpdirect --bump or --dumpcache --print')
     exit(ErrorCode.MISSING_INPUT.value)
 
 if not args.dumpcache and not args.package and not args.path:
@@ -218,12 +220,18 @@ try:
                         exit_code = _error.get_errorcode()
                         err(' - error: ' + _error.to_string())
 
+    elif args.print:
+        error, jsn = obsoleta.print(package)
+        if error.is_ok():
+            print(pretty(jsn))
+        exit_code = error.get_errorcode()
+
     elif args.listmissing:
         exit_code = ErrorCode.OK
         deb('list any missing packages for %s' % package)
         error, missing_list = obsoleta.list_missing(package)
         for missing in missing_list:
-            print(missing.package.to_string())
+            print(missing.to_string())
 
     elif args.upstream:
         error, lookup = obsoleta.upstreams(package)

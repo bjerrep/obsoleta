@@ -150,8 +150,8 @@ exitcode, output = execute(fixed + '--root testdata/C4_test_different_buildtypes
 title('C5', 'failing since a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package a --check', ErrorCode.MULTIPLE_VERSIONS)
 print(output)
-test_eq("c:1.2.3:anytrack:anyarch:unknown" in output)
-test_eq("c:1.2.4:anytrack:anyarch:unknown" in output)
+test_eq("c:1.2.3:production:anyarch:unknown" in output)
+test_eq("c:1.2.4:production:anyarch:unknown" in output)
 
 title('C6', 'testing d is ok, a <<< c-1.2.4 but a <<< b <<< c-1.2.3 and b <<< d <<< c-1.2.4')
 exitcode, output = execute(fixed + '--root testdata/C5_test_multiple_versions --package d --check', ErrorCode.OK)

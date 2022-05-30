@@ -150,6 +150,9 @@ class Error:
     def get_errorcode(self):
         return self.errorcode
 
+    def get_package(self):
+        return self.package
+
     def has_error(self):
         return self.errorcode != ErrorCode.OK
 
@@ -271,3 +274,7 @@ def get_local_time_tz():
     now = datetime.datetime.now()
     local_with_tz = now.replace(microsecond=0, tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
     return local_with_tz
+
+
+def pretty(dictionary):
+    return json.dumps(dictionary, indent=2)

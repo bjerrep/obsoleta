@@ -136,7 +136,7 @@ class Package:
                 try:
                     self.track = Track[dictionary['track']]
                 except KeyError:
-                    raise CompactParseError(f'invalid track name "{dictionary["track"]}" {path}')
+                    raise CompactParseError(f'invalid track name "{dictionary["track"]}" {path} in {self.name}')
             else:
                 self.track = Track.anytrack
         elif pedantic and 'track' in dictionary:
@@ -414,7 +414,7 @@ class Package:
             except Exception as e:
                 raise CompactParseError(str(e))
 
-    def to_dict(self, add_path=False):
+    def to_dict(self, add_path=False, add_depends=True):
         if not self.package_section and self.original_dict:
             dictionary = copy.deepcopy(self.original_dict)
         elif self.package_section:
@@ -442,10 +442,11 @@ class Package:
 
         dictionary.pop('depends', None)
 
-        if self.dependencies:
-            dictionary['depends'] = []
-            for dependency in self.dependencies:
-                dictionary['depends'].append(dependency.to_dict(add_path))
+        if add_depends:
+            if self.dependencies:
+                dictionary['depends'] = []
+                for dependency in self.dependencies:
+                    dictionary['depends'].append(dependency.to_dict(add_path))
 
         return dictionary
 

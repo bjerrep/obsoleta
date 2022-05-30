@@ -53,6 +53,11 @@ class ModifyingReadonlyPackage(ObsoletaException):
         super().__init__(msg, ErrorCode.MODIFYING_READONLY_PACKAGE)
 
 
+class InvalidVersionNumber(ObsoletaException):
+    def __init__(self, msg):
+        super().__init__(msg, ErrorCode.INVALID_VERSION_NUMBER)
+
+
 class UnknownException(ObsoletaException):
     def __init__(self, msg):
         super().__init__(msg, ErrorCode.UNKNOWN_EXCEPTION)
