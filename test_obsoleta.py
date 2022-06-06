@@ -13,6 +13,6 @@ if __name__ == '__main__':
     import obsoleta.test.test_obsoleta_api_print
     import obsoleta.test.test_obsoleta_api_listmissing
     import obsoleta.test.test_dixi_api
-    import obsoleta.test.test_c_generator
+    # import obsoleta.test.test_c_generator
 
     print('\n\nsuccess, all tests took %.3f secs\n' % (time.time() - start_time))
