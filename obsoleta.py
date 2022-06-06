@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import argparse, json, os, traceback
-from log import set_log_level, inf, deb, err, print_result, print_result_nl
-from common import Conf, pretty
-from errorcodes import ErrorCode
-from package import Package
-from obsoletacore import Obsoleta
-from obsoleta_api import ObsoletaApi
-from exceptions import ObsoletaException
+from obsoleta.log import set_log_level, inf, deb, err, print_result, print_result_nl
+from obsoleta.common import Conf, pretty
+from obsoleta.errorcodes import ErrorCode
+from obsoleta.package import Package
+from obsoleta.obsoletacore import Obsoleta
+from obsoleta.obsoleta_api import ObsoletaApi
+from obsoleta.exceptions import ObsoletaException
 
 # This is the script for calling obsoleta from the command line.
 

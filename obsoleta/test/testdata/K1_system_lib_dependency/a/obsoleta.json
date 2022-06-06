@@ -1,0 +1,11 @@
+{
+  "name": "k1",
+  "version": "0.1.2",
+  "depends": [
+    {
+      "name": "external",
+      "so": "obsoleta/test/testdata/K1_system_lib_dependency/lib/",
+      "version": "1.2.3"
+    }
+  ]
+}

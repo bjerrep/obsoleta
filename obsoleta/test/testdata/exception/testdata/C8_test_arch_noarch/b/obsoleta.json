@@ -1,0 +1,12 @@
+{
+  "name": "b",
+  "arch": "beos",
+  "version": "0.1.2",
+  "depends": [
+      {
+      "name": "c",
+      "version": "1.2.3",
+      "arch": "anyarch"
+      }
+  ]
+}

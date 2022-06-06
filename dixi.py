@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import json, argparse, os
-from log import set_log_level, deb, inf, err, cri, print_result
-from common import Conf
-from common import Position
-from package import Package
-from dixicore import Dixi, TrackSetScope
-from errorcodes import ErrorCode
-from exceptions import ObsoletaException
-import generator
+from obsoleta.log import set_log_level, deb, inf, err, cri, print_result
+from obsoleta.common import Conf
+from obsoleta.common import Position
+from obsoleta.package import Package
+from obsoleta.dixicore import Dixi, TrackSetScope
+from obsoleta.errorcodes import ErrorCode
+from obsoleta.exceptions import ObsoletaException
+import obsoleta.generator
 
 
 # ---------------------------------------------------------------------------------------------
@@ -111,7 +111,7 @@ if args.printtemplate:
     _package = Package.construct_from_compact(conf, 'a:0.0.0:development:archname:buildtype')
     _depends = Package.construct_from_compact(conf, 'b:0.0.0:development:archname:buildtype')
     _package.add_dependency(_depends)
-    dixi = Dixi(_package)
+    dixi = Dixi(conf, _package)
     print(dixi.to_merged_json())
     exit(ErrorCode.OK.value)
 
@@ -148,7 +148,7 @@ try:
     else:
         dependency = None
 
-    dx = Dixi(package)
+    dx = Dixi(conf, package)
 
 except FileNotFoundError as e:
     err(f'caught exception: {str(e)}')

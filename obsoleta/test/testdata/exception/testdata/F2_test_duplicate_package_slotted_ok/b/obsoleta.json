@@ -1,0 +1,14 @@
+{
+  "slot": {
+    "name": "b",
+    "track": "development"
+  },
+  "key1": {
+    "version": "2.1.2",
+    "arch": "x86_64"
+  },
+  "key2": {
+    "version": "2.1.2",
+    "arch": "x86"
+  }
+}

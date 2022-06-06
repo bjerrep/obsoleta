@@ -1,0 +1,6 @@
+{
+  "name": "z",
+  "version": "99.99.99",
+  "arch": "anyarch",
+  "about": "e.g. a small toolchain asset that should not unconditionally trigger changes in the gigantic downstream b asset, see b"
+}

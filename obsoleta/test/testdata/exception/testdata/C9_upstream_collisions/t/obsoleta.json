@@ -1,0 +1,6 @@
+{
+  "name": "t",
+  "version": "1",
+  "arch": "linux_x86_32",
+  "buildtype": "release"
+}

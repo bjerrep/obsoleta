@@ -22,7 +22,7 @@ const char* obsoleta_entry_#OBSOLETA_NAME#(const char* argument)
         
         if (OBSOLETA_NOF_DEPENDS)
         {
-            printf("<-");
+            printf("<<<");
             for(int i=1; i<=OBSOLETA_NOF_DEPENDS; i++)
             {
                 printf("%s:%s ", version_#OBSOLETA_NAME#[i]->name, version_#OBSOLETA_NAME#[i]->version);

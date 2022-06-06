@@ -1,0 +1,20 @@
+{
+  "slot": {
+    "name": "a",
+    "track": "development",
+    "buildtype": "debug",
+    "version": "0.1.2",
+    "depends": [
+      {
+        "name": "b",
+        "version": "2.1.2"
+      }
+    ]
+  },
+  "key1": {
+    "arch": "x86_64"
+  },
+  "key2": {
+    "arch": "x86"
+  }
+}

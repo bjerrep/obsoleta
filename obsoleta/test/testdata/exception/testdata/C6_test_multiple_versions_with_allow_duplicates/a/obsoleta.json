@@ -1,0 +1,17 @@
+{
+  "name": "a",
+  "track": "development",
+  "version": "0.1.2",
+  "depends": [
+    {
+      "name": "b",
+      "track": "testing",
+      "version": "0.1.0"
+    },
+    {
+      "name": "c",
+      "track": "production",
+      "version": "1.2.4"
+    }
+  ]
+}

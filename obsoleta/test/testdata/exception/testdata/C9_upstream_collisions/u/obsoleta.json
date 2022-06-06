@@ -1,0 +1,7 @@
+{
+  "name": "u",
+  "version": "1",
+  "arch": "linux_x86_64",
+  "track": "production",
+  "buildtype": "release"
+}

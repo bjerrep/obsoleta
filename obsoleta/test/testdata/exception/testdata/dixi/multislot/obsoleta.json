@@ -1,0 +1,28 @@
+{
+  "multislot": {
+    "name": "a",
+    "version": "0.1.2",
+    "mykey": true,
+    "depends": [
+      {
+        "name": "b",
+        "version": "2.2.2"
+      }
+    ]
+  },
+  "key_build_a": {
+    "arch": "x86_64",
+    "depends": [
+      {
+        "name": "c",
+        "version": "3.3.3",
+        "track": "production"
+      }
+    ]
+  },
+  "key_build_b": {
+    "arch": "x86"
+  },
+  "key_build_x": {
+  }
+}
