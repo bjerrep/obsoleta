@@ -37,6 +37,8 @@ parser.add_argument('--buildorder', action='store_true',
                     help='command: show dependencies in building order for a package')
 parser.add_argument('--listmissing', action='store_true',
                     help='command: list missing packages in --package dependency tree')
+parser.add_argument('--listmissingfull', action='store_true',
+                    help='command: as --listmissing but output parents and other information as well')
 parser.add_argument('--upstream', action='store_true',
                     help='command: get the paths for the packages matching --package. Notice that the "last package '
                          'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
@@ -95,8 +97,8 @@ if args.verbose:
 elif args.info:
     set_log_level(info=True)
 
-valid_package_command = (args.tree or args.check or args.buildorder or args.listmissing or args.print or
-                        args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph)
+valid_package_command = (args.tree or args.check or args.buildorder or args.listmissing or args.listmissingfull or
+                         args.print or args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph)
 
 # commands that needs no package defined
 valid_non_package_command = args.dumpcache or args.printarchs
@@ -117,7 +119,7 @@ if args.clearcache:
 # go-no-go checks
 
 if not valid_command:
-    err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream,'
+    err('no action specified (--check, --tree, --buildorder, --listmissing, --listmissingfull, --upstream,'
         ' --downstream --printarchs --bumpdirect --bump --dumpcache --print')
     exit(ErrorCode.MISSING_INPUT.value)
 
@@ -237,6 +239,12 @@ try:
         error, missing_list = obsoleta.list_missing(package)
         for missing in missing_list:
             print(missing.to_string())
+
+    elif args.listmissingfull:
+        exit_code = ErrorCode.OK
+        deb('extended list of any missing packages for %s' % package)
+        error, missing = obsoleta.list_missing_full(package)
+        print(pretty(missing))
 
     elif args.printarchs:
         exit_code = ErrorCode.OK

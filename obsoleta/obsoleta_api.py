@@ -1,3 +1,5 @@
+import copy
+
 import os
 from obsoleta.obsoletacore import Obsoleta, UpDownstreamFilter
 from obsoleta.package import Package
@@ -113,8 +115,8 @@ class ObsoletaApi:
         # first get all packages which are missing
         packages = [x.get_package() for x in err_list if x.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND]
 
-        # next make sure that any duplicates are merged to a single package. Remember that there
-        # can be any number of duplicates.
+        # next make sure that any duplicates are merged to a single package. There can be any number of
+        # duplicates so pick the one with the highest version.
         discard = True
         while discard:
             discard = []
@@ -143,6 +145,29 @@ class ObsoletaApi:
                 packages = org
 
         return error, packages
+
+    def list_missing_full(self, package_or_compact, relative_paths=False):
+        """
+        Return missing packages as a dictionary with infomation about the missing packages parent.
+        'relative_paths' will give paths relative to obsoleta_root in config file. Used when testing.
+        """
+        error, missing_packages = self.list_missing(package_or_compact)
+        result = {}
+        for package in missing_packages:
+            info = {}
+            info['parent'] = package.get_parent().to_compact_string()
+            info['parentpath'] = package.get_parent().get_path()
+            if relative_paths:
+                info['parentpath'] = info['parentpath'].replace(self.conf.obsoleta_root, '')
+
+            _ = copy.copy(package)
+            _.set_version('*')
+            _err, candidates = self.find_all_packages(_)
+            info['candidates'] = [c.to_compact_string() for c in candidates]
+
+            result[package.to_compact_string()] = info
+
+        return error, result
 
     def upstreams(self, package_or_compact, updown_stream_filter=UpDownstreamFilter.FollowTree, as_path_list=False):
         """ Find all/any upstream packages and return them as a list. (Upstream: packages that this
