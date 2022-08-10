@@ -50,6 +50,9 @@ class ObsoletaApi:
         error, package = self.obsoleta.find_first_package(package_or_compact, strict)
         return error, package
 
+    def get_all_archs(self):
+        return self.obsoleta.get_all_archs()
+
     def check(self, package_or_compact):
         package_or_compact = Package.auto_package(self.conf, package_or_compact)
         error, errors = self.obsoleta.get_errors(package_or_compact)

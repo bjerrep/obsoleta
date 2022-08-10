@@ -116,6 +116,12 @@ test_eq("""a:0.1.2:testing:linux_x86_64:unknown
   x:2.2.2:testing:linux_x86_64:unknown
   y:3.3.3:production:linux_x86_64:unknown""", output)
 
+title('A13', 'simple sunshine --printarchs')
+exitcode, output = run_std('A2_test_simple', '--printarchs', ErrorCode.OK)
+test_eq("""anyarch
+linux_x86_64
+""", output)
+
 title('B1', 'no json files found (bad path)')
 exitcode, output = run_std('nonexisting', '--package a --check', ErrorCode.BAD_PATH)
 

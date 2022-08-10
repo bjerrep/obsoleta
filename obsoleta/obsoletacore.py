@@ -110,7 +110,7 @@ class Obsoleta:
         return roots
 
     def find_package_files(self, roots):
-        inf('searching %i roots' % len(roots))
+        inf(f'searching {len(roots)} roots')
         indent()
         package_files = []
         for root in roots:
@@ -399,7 +399,7 @@ class Obsoleta:
         archs = []
         for package in self.loaded_packages:
             archs.append(package.get_arch())
-        return list(set(archs))
+        return ErrorOk(), sorted(list(set(archs)))
 
     def get_archs(self, package):
         error, targets = self.find_all_packages(package)

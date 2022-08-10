@@ -42,6 +42,8 @@ parser.add_argument('--upstream', action='store_true',
                          'for an end-artifact" will itself be an upsteam package which can be slightly confusing')
 parser.add_argument('--downstream', action='store_true',
                     help='command: get the paths for packages using the package given with --package')
+parser.add_argument('--printarchs', action='store_true',
+                    help='command: print the name of all found architectures')
 parser.add_argument('--print', action='store_true',
                     help='command: like buildorder but print as a package json. See also dixi --print.')
 parser.add_argument('--digraph', action='store_true',
@@ -93,16 +95,19 @@ if args.verbose:
 elif args.info:
     set_log_level(info=True)
 
-valid_package_action = (args.tree or args.check or args.buildorder or args.listmissing or args.print or
+valid_package_command = (args.tree or args.check or args.buildorder or args.listmissing or args.print or
                         args.upstream or args.downstream or args.bumpdirect or args.bump or args.digraph)
 
-valid_command = valid_package_action or args.dumpcache
+# commands that needs no package defined
+valid_non_package_command = args.dumpcache or args.printarchs
+
+valid_command = valid_package_command or valid_non_package_command
 
 if args.clearcache:
     # clearcache can be used as standalone command
     try:
         os.remove(Obsoleta.default_cache_filename())
-        inf('cache cleared (%s)' % Obsoleta.default_cache_filename())
+        inf(f'cache cleared ({Obsoleta.default_cache_filename()})')
     except:
         err('cache not found')
     if not valid_command:
@@ -113,10 +118,10 @@ if args.clearcache:
 
 if not valid_command:
     err('no action specified (--check, --tree, --buildorder, --listmissing, --upstream,'
-        ' --downstream --bumpdirect --bump or --dumpcache --print')
+        ' --downstream --printarchs --bumpdirect --bump --dumpcache --print')
     exit(ErrorCode.MISSING_INPUT.value)
 
-if not args.dumpcache and not args.package and not args.path:
+if valid_package_command and not args.package and not args.path:
     err('no package specified (use --package for compact form or --path for package dir)')
     exit(ErrorCode.MISSING_INPUT.value)
 
@@ -142,26 +147,22 @@ exit_code = ErrorCode.OK
 try:
     obsoleta = ObsoletaApi(conf, args)
 
-    if args.dumpcache:
-        print_result_nl(json.dumps(obsoleta.serialize(), indent=4))
-        if not valid_package_action:
-            exit(ErrorCode.OK.value)
-
-    if args.path:
-        try:
-            package = Package.construct_from_package_path(
-                conf, args.path, key=args.key, keypath=args.keypath)
-        except FileNotFoundError as e:
-            err(str(e))
-            exit(ErrorCode.PACKAGE_NOT_FOUND.value)
-    else:
-        package = Package.construct_from_compact(conf, args.package)
+    if valid_package_command:
+        if args.path:
+            try:
+                package = Package.construct_from_package_path(
+                    conf, args.path, key=args.key, keypath=args.keypath)
+            except FileNotFoundError as e:
+                err(str(e))
+                exit(ErrorCode.PACKAGE_NOT_FOUND.value)
+        else:
+            package = Package.construct_from_compact(conf, args.package)
 
 except ObsoletaException as e:
-    err('Exception %s: %s' % (e.ErrorCode.name, str(e)))
+    err(f'Exception {e.ErrorCode.name}: {str(e)}')
     exit_code = e.ErrorCode
 except Exception as e:
-    err('caught unexpected exception: %s' % str(e))
+    err(f'caught unexpected exception: {str(e)}')
     if args.verbose:
         print(traceback.format_exc())
     exit(ErrorCode.UNKNOWN_EXCEPTION.value)
@@ -173,8 +174,12 @@ try:
     if exit_code != ErrorCode.OK:
         pass
 
+    elif args.dumpcache:
+        exit_code = ErrorCode.OK
+        print_result_nl(json.dumps(obsoleta.serialize(), indent=4))
+
     elif args.check:
-        deb('checking package "%s"' % package)
+        deb(f'checking package "{package}"')
         error, errors = obsoleta.get_errors(package)
 
         if error.get_errorcode() == ErrorCode.PACKAGE_NOT_FOUND:
@@ -232,6 +237,12 @@ try:
         error, missing_list = obsoleta.list_missing(package)
         for missing in missing_list:
             print(missing.to_string())
+
+    elif args.printarchs:
+        exit_code = ErrorCode.OK
+        error, archs = obsoleta.get_all_archs()
+        for arch in archs:
+            print(arch)
 
     elif args.upstream:
         error, lookup = obsoleta.upstreams(package)
