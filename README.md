@@ -101,13 +101,13 @@ The obsoleta.json files for a minimal **a**-**b**-**c** package setup could cont
 
 Assuming the local workspace contains the package json files as above then a --check will find no problems:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --check
 
 The silence means that the --check was successful. 
 
 The tree view will also show errors if there are any (which there isn't):
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --tree
 	    a:0.1.2:anytrack:anyarch:unknown
 	      b:0.1.2:anytrack:anyarch:unknown
 	        c:0.1.2:anytrack:anyarch:unknown
@@ -135,13 +135,13 @@ A colleague checks out **a** to get the latest and greatest. The json files will
 
 which as might be suspected iznogood:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --check
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --check
 	    checking package "a:*:anytrack:anyarch:unknown": failed, 1 errors found
 	       Package not found: b:0.2.2:anytrack:anyarch:unknown required by a:0.1.2:anytrack:anyarch:unknown
 
 which can be seen in the tree as well
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --tree
 	    package tree for "a:*:anytrack:anyarch:unknown"
 	    a:0.1.2:anytrack:anyarch:unknown
 	      b:0.2.2:anytrack:anyarch:unknown
@@ -164,7 +164,7 @@ It is possible to use comparison operators (> >= == <= <) for any packages liste
 
 where a '--tree a' with some kind of mathematical justice returns
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --tree
 	a:0.2.2:anytrack:anyarch:unknown
 	  c:0.3.2:anytrack:anyarch:unknown
 
@@ -189,36 +189,37 @@ The first is typically a really really bad idea and that is to globally set allo
 
 The track is used to add release management life cycles into the mix. The allowed tracks are currently arbitrarily hardcoded as a.o. 'anytrack', 'development', 'testing' and 'production'. The catch is that they introduce a binding where pulled in packages need to be at the same track or better than the parent.
 
-	  "name": "a", "version": "0.1.2",
-		  "depends": [{ "name": "b", "version": "0.1.2"  }]
+An example using a modified copy of the 'a' and 'b' packages from the 'A2_test_simple' testset:
+
+	"name": "a", "version": "0.1.2", 
+		"depends": [{"name": "b", "version": "1.1.2"}]
 	
-	  "name": "b", "track" : "testing", "version": "0.1.2"
+	"name": "b",  "version": "1.1.2", "arch": "linux_x86_64"
 
 This is ok, **b** will be picked up:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
+	./obsoleta.py --conf mini.conf --root local/arch_demo --package a --tree
 	a:0.1.2:anytrack:anyarch:unknown
-	  b:0.1.2:testing:anyarch:unknown
+	  b:1.1.2:anytrack:linux_x86_64:unknown
 
 But this:
 
-	  "name": "a", "track": "testing", "version": "0.1.2",
-		  "depends": [{ "name": "b", "version": "0.1.2"  }]
+	"name": "a", "version": "0.1.2", "track": "testing", 
+		"depends": [{"name": "b", "version": "1.1.2"}]
 	
-	  "name": "b", "track" : "development", "version": "0.1.2"
+	"name": "b",  "version": "1.1.2", , "track" : "development", "arch": "linux_x86_64"
 
-is not legal:
+is not legal since a 'b' in 'testing' can't be found:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --tree
-	a:0.1.2:testing:anyarch:unknown
-	  b:0.1.2:testing:anyarch:unknown
-	   - Package not found: b:0.1.2:testing:anyarch:unknown required by a:0.1.2:testing:anyarch:unknown
+	./obsoleta.py --conf mini.conf --root local/arch_demo --package a --tree
+	
+	ERR Package not found b:1.1.2:testing:anyarch:unknown, b:1.1.2:testing:anyarch:unknown required by a:0.1.2:testing:anyarch:unknown
 
-Complaining about the package b:0.1.2:testing:anyarch:unknown which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
+Complaining about the package b:1.1.2:testing:anyarch:unknown which is a dummy constructed for the occasion might not be the best way to convey the problem but that's the way it is right now. Also the valid track names are currently hardcoded in the python script which is not the way it should be.
 
 **keep_track**
 
-It is possible to specify a "keeptrack":true on specific dependencies (or as a commandline switch or permanently in the setup file) which will refuse to resolve a dependency with a package with 'a better track' as described in the previous paragraph. A use case could be that an upstream package contains some extras in the development track that you want to make sure is available in a development build.
+It is possible to specify a "keep_track": true on specific dependencies (or as a commandline switch or permanently in the setup file) which will refuse to resolve a dependency with a package with 'a better track' as described in the previous paragraph. A use case could be that an upstream package contains some extras in the development track that you want to make sure is available in a development build.
 
 
 
@@ -326,21 +327,21 @@ If having 3 numbers in the version number is considered good enough, then yes. T
 
 The examples above are most of all just intellectual exercises until the information can be used for actual building. For this there is a --buildorder option which does pretty much what it says:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --buildorder
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --buildorder
 	c:0.1.2:anytrack:anyarch:unknown
 	b:0.1.2:anytrack:anyarch:unknown
 	a:0.1.2:anytrack:anyarch:unknown
 
 For automation the paths are more interesting and can be listed using --printpaths:
 
-	./obsoleta.py --conf mini.conf --root testdata/A2_test_simple --package a --buildorder --printpaths
+	./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A2_test_simple --package a --buildorder --printpaths
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/c
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/b
 	/home/obsoleta/src/obsoleta/test/A2_test_simple/a
 
 Conceptually there isn't a long way to a pseudo script that could wrap everything up:
 
-	for path in "--path testdata/test_simple --package all --buildorder --printpaths"
+	for path in "--root rootdir --package downstream --buildorder --printpaths"
 		cd path
 		git pull
 		export obsoleta=$obsoleta:path # for the build system to use
@@ -353,7 +354,7 @@ The underlying theme for most of this readme is the expectation that the workspa
 For this there is an command called --listmissing which will simply list any missing dependencies for a given package without the usual error messages and exitcodes associated with a broken tree. It could look like this:
 
 ```
-./obsoleta.py --conf mini.conf --root testdata/E1_list_missing_packages --package a --listmissing
+./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/E1_list_missing_packages --package a --listmissing
 b:1.1.1:anytrack:c64:unknown
 e:1.1.1:anytrack:c64:unknown
 ```
@@ -366,7 +367,7 @@ With a little script wizzardry **b** and **e** could now be checked out from the
 
 The inner obsoleta workings happens in 'obsoletacore.py' and 'obsoleta.py' is just a wrapper script with command line parsing. The Obsoleta python class (in obsoletacore) does not make a virtue of consistency in its methods, and it might be a bad idea to rely on its inner workings. There is a 'pythonapi.py' which provides a wrapper class with slightly more meaningfull names and a slightly more consistent api. An usage example could be something like:
 
-    my_root = 'test/G2_test_slot'
+    my_root = 'obsoleta/test/testdata/G2_test_slot'
     
     args = Args()
     args.set_info(True)
@@ -388,7 +389,7 @@ Caching will make sense in a scenario where a build system ends up calling obsol
 
 The cache file is a pretty printed json file and it might give some interesting insights since it summarizes the whole  scan in a single file. It is possible to generate it explicitly regardless of whether caching is enabled or not:
 
-        ./obsoleta.py --conf mini.conf --root testdata/A1_test_obsoleta:. --depth 1 --dumpcache
+    ./obsoleta.py --conf mini.conf --root obsoleta/test/testdata/A1_test_obsoleta:. --depth 1 --dumpcache
         [
             {
                 "name": "obsoleta",
@@ -446,14 +447,14 @@ If 'value' are 'True' or 'False' it will be converted to a boolean type as oppos
 
 An simple dixi example:
 
-    ./dixi.py --conf mini.conf --path testdata/A2_test_simple/a --getversion
+    ./dixi.py --conf mini.conf --path obsoleta/test/testdata/A2_test_simple/a --getversion
     0.1.2
 
 Another operation is to print a template package file using the argument '--printtemplate' as it was shown above somewhere.
 
 Dixi can also print the merged version of a slotted or multislotted package file if told which key to use. It might be handy if e.g. obsoleta is suspected to do a bad merge. An example:
 
-    ./dixi.py --conf mini.conf --path testdata/G1_test_multislot/b_multi_out_of_source --keypath build_linux --print
+    ./dixi.py --conf mini.conf --path obsoleta/test/testdata/G1_test_multislot /b_multi_out_of_source --keypath build_linux --print
     {
         "name": "b",
         "version": "1.1.1",
@@ -480,15 +481,15 @@ A bump is the operation of updating the version for a given package anywhere it 
 
 Lets try it out. Copy the contents from *testdata/F2_test_duplicate_package_slotted_ok* to *local/temp* in order not to mess with the original testdata.
 
-`rm local/temp -rf && cp -R testdata/F2_test_duplicate_package_slotted_ok local/temp`
+`rm local/temp -rf && cp -R obsoleta/test/testdata/F2_test_duplicate_package_slotted_ok local/temp`
 
 Check that the x86 arch is ok (in this testset there is a x86_64 arch which is missing a 'b'):
 
-`./obsoleta.py --conf testdata/test.conf --root local/temp --check --package a:::x86`
+`./obsoleta.py --conf obsoleta/test/testdata/test.conf --root local/temp --check --package a:::x86`
 
 Due to the absence of complaints it is. Now bump b for arch x86:
 
-`./obsoleta.py --conf testdata/test.conf --root local/temp --bump --package b:::x86 --version 7.9.13`
+`./obsoleta.py --conf obsoleta/test/testdata/test.conf --root local/temp --bump --package b:::x86 --version 7.9.13`
 
 which gives
 
@@ -502,7 +503,7 @@ Sounds about right. Note that the downstream package "a" which got a new 7.9.13 
 
 A new --check will tell that the x86 arch still adds up . And the version of 'b' from above is now:
 
-`./dixi.py --conf testdata/test.conf --path local/temp/b --getversion`
+`./dixi.py --conf obsoleta/test/testdata/test.conf --path local/temp/b --getversion`
 
 `7.9.13`
 
@@ -524,7 +525,7 @@ Dixi has experimental support for auto generating C source files making it possi
 
 Also from the exotic department obsoleta can be told to make a graphviz dependency graph with the command --digraph. An example:
 
-`./obsoleta.py --conf testdata/test.conf --root testdata/A2_test_simple/ --package a --digraph`
+`./obsoleta.py --conf obsoleta/test/testdata/test.conf --root obsoleta/test/testdata/A2_test_simple/ --package a --digraph`
 
 This will produce an 'a.gv' file that can be converted to a .png with: 
 `dot -Tpng a.gv -o depgraph.png`
