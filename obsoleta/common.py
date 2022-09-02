@@ -1,8 +1,8 @@
 import os, json, time, datetime
 from enum import Enum
-from obsoleta.log import set_log_level, deb
-from obsoleta.errorcodes import ErrorCode
-from obsoleta.exceptions import BadPath
+from .log import set_log_level, deb
+from .errorcodes import ErrorCode
+from .exceptions import BadPath
 
 
 class Position(Enum):

@@ -4,9 +4,9 @@ import glob, re, os, logging, sys, pathlib
 obs_root = os.path.join(os.path.dirname(__file__), os.pardir)
 sys.path.append(obs_root)
 
-from obsoleta.package import Package
-from obsoleta.log import inf, logger
-from obsoleta.common import Conf
+from .package import Package
+from .log import inf, logger
+from .common import Conf
 
 
 def curly(a, b, first=False):

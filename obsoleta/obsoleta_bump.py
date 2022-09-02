@@ -1,12 +1,12 @@
 import os, copy
-from obsoleta.dixi_api import DixiApi
-from obsoleta.package import Package, anyarch
-from obsoleta.log import deb, inf, indent, unindent, get_indent
-from obsoleta.common import ErrorOk
-from obsoleta.version import Version
-from obsoleta.exceptions import UnknownException, ObsoletaException, PackageNotFound
-from obsoleta.obsoletacore import UpDownstreamFilter
-from obsoleta.errorcodes import ErrorCode
+from .dixi_api import DixiApi
+from .package import Package, anyarch
+from .log import deb, inf, indent, unindent, get_indent
+from .common import ErrorOk
+from .version import Version
+from .exceptions import UnknownException, ObsoletaException, PackageNotFound
+from .obsoletacore import UpDownstreamFilter
+from .errorcodes import ErrorCode
 
 
 def bump_impl(self, package_or_compact, new_version, bump=False, dryrun=False, indent_messages=False):

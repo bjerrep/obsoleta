@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import os, copy, collections, json, html, datetime
 from enum import Enum
-from obsoleta.log import deb, inf, inf_alt, inf_alt2, war, err, get_info_log_level, indent, unindent
-from obsoleta.common import Error, ErrorOk, printing_path
-from obsoleta.common import find_in_path
-from obsoleta.version import Version
-from obsoleta.exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
-from obsoleta.errorcodes import ErrorCode
-from obsoleta.package import Package, anyarch, buildtype_unknown, Track
+from .log import deb, inf, inf_alt, inf_alt2, war, err, get_info_log_level, indent, unindent
+from .common import Error, ErrorOk, printing_path
+from .common import find_in_path
+from .version import Version
+from .exceptions import PackageNotFound, BadPackageFile, MissingKeyFile, DuplicatePackage
+from .errorcodes import ErrorCode
+from .package import Package, anyarch, buildtype_unknown, Track
 
 
 class UpDownstreamFilter(Enum):

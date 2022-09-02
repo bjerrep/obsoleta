@@ -1,10 +1,10 @@
 import copy
 
 import os
-from obsoleta.obsoletacore import Obsoleta, UpDownstreamFilter
-from obsoleta.package import Package
-from obsoleta.common import ErrorOk, Args
-from obsoleta.errorcodes import ErrorCode
+from .obsoletacore import Obsoleta, UpDownstreamFilter
+from .package import Package
+from .common import ErrorOk, Args
+from .errorcodes import ErrorCode
 
 
 class ObsoletaApi:

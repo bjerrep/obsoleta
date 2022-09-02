@@ -1,10 +1,10 @@
 from enum import Enum
 import json, os, datetime
-from obsoleta.log import deb, inf
-from obsoleta.version import Version
-from obsoleta.package import anyarch, Track, TrackToString, track_from_string, buildtype_unknown
-from obsoleta.common import get_local_time_tz
-from obsoleta.exceptions import BadPackageFile, ModifyingReadonlyPackage
+from .log import deb, inf
+from .version import Version
+from .package import anyarch, Track, TrackToString, track_from_string, buildtype_unknown
+from .common import get_local_time_tz
+from .exceptions import BadPackageFile, ModifyingReadonlyPackage
 
 
 class TrackSetScope(Enum):

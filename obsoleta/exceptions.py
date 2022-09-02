@@ -1,5 +1,5 @@
 
-from obsoleta.errorcodes import ErrorCode
+from .errorcodes import ErrorCode
 
 
 class ObsoletaException(Exception):

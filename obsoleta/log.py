@@ -1,5 +1,5 @@
 import logging, sys
-from obsoleta.errorcodes import ErrorCode
+from .errorcodes import ErrorCode
 
 indent_string = ''
 
@@ -23,16 +23,20 @@ RESET = '\033[0m'
 
 logger = logging.getLogger('obsoleta')
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(levelname)s %(message)s\033[0m')
+formatter = logging.Formatter(f'%(levelname)s %(message)s{RESET}')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.WARNING)
 logger.propagate = False
 
-if logging.getLevelName(logging.DEBUG) == 'DEBUG':
-    # don't touch the level names if already done by someone else
+
+def set_log_colors():
+    """
+    This will colorize the base logging module so it is by default only used for obsoletas own
+    executables obsoleta.py and dixi.py in the hope it will increase their amenity value.
+    """
     GREY = '\033[0;37m'
-    WHITE = '\033[1;37m'
+    # WHITE = '\033[1;37m'
     LIGHT_GREEN = '\033[1;32m'
     LIGHT_RED = '\033[1;31m'
     LIGHT_RED2 = '\033[1;37;41m'

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import copy
 from enum import Enum
-from obsoleta.common import Position
+from .common import Position
 
 
 class Match(Enum):

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import logging, argparse, os
-from obsoleta.log import err, logger
-from obsoleta.common import Conf
-from obsoleta.package import Package
-from obsoleta.errorcodes import ErrorCode
+from .log import err, logger
+from .common import Conf
+from .package import Package
+from .errorcodes import ErrorCode
 
 # ---------------------------------------------------------------------------------------------
 

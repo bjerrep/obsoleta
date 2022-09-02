@@ -1,12 +1,12 @@
 import json, os, copy
 from enum import Enum
-from obsoleta.log import logger as log
-from obsoleta.log import deb, inf, war, indent, unindent, get_indent
-from obsoleta.version import Version, VersionAny
-from obsoleta.common import Error, get_package_filepath, get_key_filepath, printing_path
-from obsoleta.errorcodes import ErrorCode
-from obsoleta.exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile
-from obsoleta.exceptions import CompactParseError, UnknownException, IllegalDependency
+from .log import logger as log
+from .log import deb, inf, war, indent, unindent, get_indent
+from .version import Version, VersionAny
+from .common import Error, get_package_filepath, get_key_filepath, printing_path
+from .errorcodes import ErrorCode
+from .exceptions import BadPackageFile, MissingKeyFile, InvalidKeyFile
+from .exceptions import CompactParseError, UnknownException, IllegalDependency
 
 buildtype_unknown = 'unknown'
 anyarch = 'anyarch'
