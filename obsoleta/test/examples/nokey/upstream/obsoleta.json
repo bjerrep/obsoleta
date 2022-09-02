@@ -1,0 +1,12 @@
+{
+  "multislot": {
+    "name": "upstream",
+    "version": "2.2.2"
+  },
+  "linux": {
+    "arch": "linux"
+  },
+  "win": {
+    "arch": "windows"
+  }
+}

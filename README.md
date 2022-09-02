@@ -305,6 +305,25 @@ If building for multiple architectures is done out-of-source in a single directo
 
 So compared to the slot version above there will now have to be multiple key files, one in each build directory, where all are referring to the same package file. The only difference to the slot section above is that the base key is now called "multislot" rather than just "slot" in the package file.
 
+### Querying without a key file
+
+Using a physical key file as above makes the package explicitly defined in the file system for a given architecture. This matches the world view of a build system producing e.g. binaries. A key file is not needed when querying as the slot key can be specified on the command line. Some ways to do that could look like:
+
+```
+./obsoleta.py --conf obsoleta/test/testdata/test.conf --root obsoleta/test/examples --package mypackage:::linux --tree
+```
+or
+```
+./obsoleta.py --conf obsoleta/test/testdata/test.conf --root obsoleta/test/examples --path obsoleta/test/examples/nokey/mypackage --key linux --tree
+```
+
+and both will give the output:
+
+```
+mypackage:1.1.1:anytrack:linux:unknown
+  upstream:2.2.2:anytrack:linux:unknown
+```
+
 ### Blacklisting and skipping
 
 There are three ways to tell obsoleta to ignore a directory (and any subdirectories) even if there are otherwise valid obsoleta files present.
