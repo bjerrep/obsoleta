@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse, json, os, traceback
-from obsoleta.log import set_log_level, inf, deb, err, print_result, print_result_nl
+from obsoleta.log import set_log_colors, set_log_level, inf, deb, err, print_result, print_result_nl
 from obsoleta.common import Conf, pretty
 from obsoleta.errorcodes import ErrorCode
 from obsoleta.package import Package
@@ -92,6 +92,7 @@ if args.yappi:
     import yappirun
     yappirun.start_yappi()
 
+set_log_colors()
 if args.verbose:
     set_log_level(verbose=True)
 elif args.info:
@@ -144,9 +145,8 @@ if args.keepgoing:
 conf.dump()
 exit_code = ErrorCode.OK
 
-# construct obsoleta, load and parse everything in one go
-
 try:
+    # construct obsoleta, load and parse everything in one go
     obsoleta = ObsoletaApi(conf, args)
 
     if valid_package_command:

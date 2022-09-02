@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import json, argparse, os
-from obsoleta.log import set_log_level, deb, inf, err, cri, print_result
+from obsoleta.log import set_log_colors, set_log_level, deb, inf, err, cri, print_result
 from obsoleta.common import Conf
 from obsoleta.common import Position
 from obsoleta.package import Package
 from obsoleta.dixicore import Dixi, TrackSetScope
 from obsoleta.errorcodes import ErrorCode
 from obsoleta.exceptions import ObsoletaException
-import obsoleta.generator
 
 
 # ---------------------------------------------------------------------------------------------
@@ -121,6 +120,7 @@ if args.printkey:
     print(json.dumps(_json, indent=4))
     exit(ErrorCode.OK.value)
 
+set_log_colors()
 if args.verbose:
     set_log_level(verbose=True)
 elif args.info:
