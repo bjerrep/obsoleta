@@ -307,7 +307,7 @@ So compared to the slot version above there will now have to be multiple key fil
 
 ### Querying without a key file
 
-Using a physical key file as above makes the package explicitly defined in the file system for a given architecture. This matches the world view of a build system producing e.g. binaries. A key file is not needed when querying as the slot key can be specified on the command line. Some ways to do that could look like:
+Using a physical key file as above makes the package explicitly defined in the file system for a given architecture. This matches the world view of a build system producing e.g. architecture specific binaries. A key file is not needed when querying as the slot key can be specified on the command line. Some ways to do that could look like:
 
 ```
 ./obsoleta.py --conf obsoleta/test/testdata/test.conf --root obsoleta/test/examples --package mypackage:::linux --tree

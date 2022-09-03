@@ -4,8 +4,9 @@ from obsoleta.common import Error
 from obsoleta.log import print_result, print_result_nl
 from obsoleta.package import Package
 
+OBSOLETA_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
 
-TESTDATA_PATH = 'obsoleta/test/testdata'
+TESTDATA_PATH = os.path.join(OBSOLETA_ROOT, 'obsoleta/test/testdata')
 
 def test_eq(result, expected=True):
     if result != expected:
@@ -68,7 +69,6 @@ def title(serial, purpose):
 
 
 def execute(command, expected_exit_code=0, quiet=False, exitonerror=True):
-    global exit_code
     try:
         expected_exit_code = expected_exit_code.value
     except:

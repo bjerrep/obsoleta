@@ -71,6 +71,15 @@ class Obsoleta:
             self.write_cache()
 
     def construct_root_list(self):
+        """
+        Return the net root list of paths to scan from all the various sources
+        and remove any duplicates.
+        Would-be duplicates seperated by more than conf.depth directories
+        are kept.
+        Note that there is a grey zone where a specified root path will be removed
+        since it is in itself covered by a parent path, but will now not be scanned
+        in a depth according to conf.depth as would be expected. This should be fixed.
+        """
         try:
             roots = self.args.root.split(os.pathsep)
         except:
@@ -90,16 +99,21 @@ class Obsoleta:
         roots = sorted(roots, key=len)
         to_delete = []
 
-        # in order to complicate things then paths seperated by a distance longer than
+        # in order to complicate things then paths separated by a distance longer than
         # the current Conf.depth should both be preserved.
         for i in range(len(roots)):
-            delete = [root for root in roots[i + 1:] if root.startswith(roots[0])]
-            for d in delete:
-                difference_path = d.replace(roots[0], '')
-                difference_path = difference_path[1:]
-                distance = difference_path.count('/')
-                if distance < self.conf.depth:
-                    to_delete.append(d)
+            for j in range(i+1, len(roots)):
+                check = [roots[i], roots[j]]
+                check.sort(key=len)
+                first, second = check
+                common = os.path.commonpath(check)
+
+                if common == first:
+                    difference_path = second.replace(common, '')
+                    difference_path = difference_path[1:]
+                    distance = difference_path.count('/')
+                    if distance < self.conf.depth:
+                        to_delete.append(second)
 
         for delete in to_delete:
             inf(f'removing duplicate path {delete} from list of root paths')
